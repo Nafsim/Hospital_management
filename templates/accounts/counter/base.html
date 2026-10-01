@@ -4,13 +4,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}NHIMS - Ministry of Health{% endblock %}</title>
+    <title>{% block title %}NHIMS - Reception{% endblock %}</title>
+
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
+
         :root {
             --sidebar-top: #1e3a5f;
             --sidebar-middle: #1d4f7a;
@@ -20,14 +22,13 @@
             --active-start: #dbeafe;
             --active-end: #bfdbfe;
             --active-text: #075985;
-            --blue: #0ea5e9;
-            --blue-dark: #2563eb;
             --text: #172033;
             --muted: #718096;
             --border: #e3eaf3;
             --page: #f5f8fc;
             --white: #ffffff;
         }
+
         body.dark {
             --text: #e7edf7;
             --muted: #9eabc0;
@@ -35,37 +36,30 @@
             --page: #101827;
             --white: #182235;
         }
-        html, body {
-            min-height: 100%;
-        }
+
         body {
             font-family: "Segoe UI", Arial, sans-serif;
             background: var(--page);
             color: var(--text);
         }
+
         .sidebar {
             width: 265px;
             height: 100vh;
             position: fixed;
-            top: 0;
             left: 0;
-            z-index: 1000;
+            top: 0;
             overflow-y: auto;
+            z-index: 1000;
             background: linear-gradient(
                 180deg,
                 var(--sidebar-top) 0%,
                 var(--sidebar-middle) 48%,
                 var(--sidebar-bottom) 100%
             );
-            box-shadow: 5px 0 20px rgba(15, 45, 80, 0.08);
+            box-shadow: 5px 0 20px rgba(15,45,80,.08);
         }
-        .sidebar::-webkit-scrollbar {
-            width: 5px;
-        }
-        .sidebar::-webkit-scrollbar-thumb {
-            background: rgba(255,255,255,.25);
-            border-radius: 10px;
-        }
+
         .brand {
             min-height: 105px;
             display: flex;
@@ -74,38 +68,40 @@
             padding: 17px 18px;
             border-bottom: 1px solid rgba(255,255,255,.10);
         }
+
         .brand-logo {
             width: 78px;
             height: 70px;
             flex-shrink: 0;
-            background: #ffffff;
-            border-radius: 14px;
             display: flex;
             align-items: center;
             justify-content: center;
+            background: #ffffff;
+            border-radius: 14px;
         }
+
         .brand-logo img {
             width: 67px;
             max-height: 60px;
             object-fit: contain;
         }
-        .brand-text {
-            min-width: 0;
-        }
+
         .brand-text h3 {
             color: #ffffff;
             font-size: 18px;
             font-weight: 700;
             margin-bottom: 4px;
         }
+
         .brand-text p {
             color: #c8d8ea;
             font-size: 12px;
-            line-height: 1.4;
         }
+
         .menu {
             padding: 24px 12px 30px;
         }
+
         .menu-title {
             color: var(--sidebar-muted);
             font-size: 11px;
@@ -113,9 +109,7 @@
             letter-spacing: 1px;
             margin: 0 12px 10px;
         }
-        .menu-title.section-space {
-            margin-top: 25px;
-        }
+
         .menu-item {
             min-height: 52px;
             display: flex;
@@ -128,32 +122,36 @@
             text-decoration: none;
             font-size: 15px;
             font-weight: 500;
-            line-height: 1.3;
-            transition: background .2s ease, color .2s ease, transform .2s ease;
+            transition: .2s ease;
         }
+
         .menu-item:hover {
             color: #ffffff;
             background: rgba(255,255,255,.09);
         }
+
         .menu-item.active {
             color: var(--active-text);
             font-weight: 700;
             background: linear-gradient(
                 135deg,
-                var(--active-start) 0%,
-                var(--active-end) 100%
+                var(--active-start),
+                var(--active-end)
             );
             box-shadow: 0 7px 20px rgba(96,165,250,.18);
         }
+
         .menu-item svg {
             width: 22px;
             height: 22px;
             flex-shrink: 0;
         }
+
         .main {
             min-height: 100vh;
             margin-left: 265px;
         }
+
         .topbar {
             height: 82px;
             position: sticky;
@@ -165,6 +163,7 @@
             background: var(--white);
             border-bottom: 1px solid var(--border);
         }
+
         .search-box {
             width: 420px;
             height: 46px;
@@ -176,12 +175,13 @@
             border-radius: 12px;
             background: var(--page);
         }
+
         .search-box svg {
             width: 21px;
             height: 21px;
             color: var(--muted);
-            flex-shrink: 0;
         }
+
         .search-box input {
             width: 100%;
             border: none;
@@ -190,39 +190,44 @@
             color: var(--text);
             font-size: 14px;
         }
+
         .search-box input::placeholder {
             color: #8997aa;
         }
+
         .top-actions {
             margin-left: auto;
             display: flex;
             align-items: center;
             gap: 10px;
         }
+
         .icon-btn {
             width: 43px;
             height: 43px;
-            position: relative;
             display: flex;
             align-items: center;
             justify-content: center;
+            position: relative;
             border: 1px solid var(--border);
             border-radius: 11px;
             background: var(--white);
             color: #7185a0;
             cursor: pointer;
             text-decoration: none;
-            transition: .2s ease;
         }
+
         .icon-btn:hover {
             color: #1684d9;
             border-color: #a9cdfd;
             background: #f0f7ff;
         }
+
         .icon-btn svg {
             width: 20px;
             height: 20px;
         }
+
         .notification-dot {
             position: absolute;
             top: 8px;
@@ -233,115 +238,33 @@
             border-radius: 50%;
             background: #0ea5e9;
         }
-        .notification-menu {
-            display: none;
-            position: absolute;
-            top: 58px;
-            right: 60px;
-            width: 320px;
-            max-height: 400px;
-            overflow-y: auto;
-            background: var(--white);
-            border: 1px solid var(--border);
-            border-radius: 15px;
-            box-shadow: 0 16px 40px rgba(20,40,80,.18);
-        }
-        .notification-menu.show {
-            display: block;
-        }
-        .notification-menu::-webkit-scrollbar {
-            width: 5px;
-        }
-        .notification-menu::-webkit-scrollbar-thumb {
-            background: rgba(0,0,0,.15);
-            border-radius: 10px;
-        }
-        .notification-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 16px 18px;
-            border-bottom: 1px solid var(--border);
-        }
-        .notification-header h3 {
-            font-size: 15px;
-            font-weight: 700;
-            color: var(--text);
-            margin: 0;
-        }
-        .notification-header a {
-            font-size: 13px;
-            color: var(--blue);
-            text-decoration: none;
-            font-weight: 500;
-        }
-        .notification-item {
-            padding: 14px 18px;
-            border-bottom: 1px solid var(--border);
-            cursor: pointer;
-            transition: background .2s ease;
-        }
-        .notification-item:hover {
-            background: var(--page);
-        }
-        .notification-item:last-child {
-            border-bottom: none;
-        }
-        .notification-item-title {
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--text);
-            margin-bottom: 4px;
-        }
-        .notification-item-message {
-            font-size: 13px;
-            color: var(--muted);
-            margin-bottom: 6px;
-            line-height: 1.4;
-        }
-        .notification-item-time {
-            font-size: 12px;
-            color: #8997aa;
-        }
-        .notification-item-priority {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 10px;
-            font-size: 11px;
-            font-weight: 600;
-            margin-bottom: 6px;
-        }
-        .priority-urgent { background: #fee2e2; color: #dc2626; }
-        .priority-high { background: #ffedd5; color: #ea580c; }
-        .priority-medium { background: #dbeafe; color: #2563eb; }
-        .priority-low { background: #f1f5f9; color: #64748b; }
-        .notification-empty {
-            padding: 40px 20px;
-            text-align: center;
-            color: var(--muted);
-            font-size: 14px;
-        }
+
         .profile-wrap {
             position: relative;
             margin-left: 5px;
         }
+
         .profile-btn {
             width: 47px;
             height: 47px;
             border: none;
             border-radius: 50%;
-            background: linear-gradient(135deg, #0ea5e9, #2563eb);
+            background: linear-gradient(
+                135deg,
+                #0ea5e9,
+                #2563eb
+            );
             color: #ffffff;
             font-size: 15px;
             font-weight: 700;
             cursor: pointer;
-            box-shadow: 0 5px 15px rgba(37,99,235,.22);
         }
+
         .profile-menu {
             display: none;
             position: absolute;
-            top: 58px;
             right: 0;
+            top: 58px;
             width: 270px;
             overflow: hidden;
             background: var(--white);
@@ -349,9 +272,11 @@
             border-radius: 15px;
             box-shadow: 0 16px 40px rgba(20,40,80,.18);
         }
+
         .profile-menu.show {
             display: block;
         }
+
         .profile-head {
             display: flex;
             align-items: center;
@@ -359,37 +284,36 @@
             padding: 18px;
             border-bottom: 1px solid var(--border);
         }
+
         .profile-mini-avatar {
             width: 43px;
             height: 43px;
-            flex-shrink: 0;
             display: flex;
             align-items: center;
             justify-content: center;
             border-radius: 50%;
-            background: linear-gradient(135deg, #0ea5e9, #2563eb);
-            color: #ffffff;
-            font-size: 14px;
+            background: linear-gradient(
+                135deg,
+                #0ea5e9,
+                #2563eb
+            );
+            color: white;
             font-weight: 700;
         }
-        .profile-info {
-            min-width: 0;
-        }
+
         .profile-info strong {
             display: block;
             color: var(--text);
             font-size: 15px;
-            font-weight: 700;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
         }
+
         .profile-info span {
             display: block;
             margin-top: 3px;
             color: var(--muted);
             font-size: 13px;
         }
+
         .profile-link,
         .logout-button {
             width: 100%;
@@ -408,188 +332,264 @@
             cursor: pointer;
             text-align: left;
         }
+
         .profile-link:hover,
         .logout-button:hover {
             background: var(--page);
         }
+
         .profile-link svg,
         .logout-button svg {
             width: 20px;
             height: 20px;
         }
-        .profile-link svg {
-            color: #1684d9;
-        }
+
         .logout-button {
             color: #dc2626;
             border-bottom: 0;
         }
+
         .content {
             padding: 28px;
         }
+
         @media (max-width: 950px) {
             .sidebar {
                 width: 225px;
             }
+
             .main {
                 margin-left: 225px;
             }
+
             .search-box {
                 width: 300px;
             }
-            .brand-logo {
-                width: 65px;
-            }
         }
     </style>
+
     {% block extra_css %}{% endblock %}
 </head>
+
 <body>
+
 <aside class="sidebar">
+
     <div class="brand">
+
         <div class="brand-logo">
             <img src="{% static 'images/image2.png' %}" alt="NHIMS Logo">
         </div>
+
         <div class="brand-text">
             <h3>NHIMS</h3>
-            <p>Ministry of Health</p>
+            <p>Reception</p>
         </div>
+
     </div>
+
     <nav class="menu">
+
         <div class="menu-title">MAIN</div>
-        <a href="{% url 'moh_dashboard' %}" class="menu-item {% if request.resolver_match.url_name == 'moh_dashboard' %}active{% endif %}">
+
+        <!-- Dashboard -->
+        <a href="{% url 'counter_dashboard' %}"
+           class="menu-item {% if request.resolver_match.url_name == 'counter_dashboard' %}active{% endif %}">
+
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                 <rect x="3" y="3" width="7" height="7" rx="1"/>
                 <rect x="14" y="3" width="7" height="7" rx="1"/>
                 <rect x="3" y="14" width="7" height="7" rx="1"/>
                 <rect x="14" y="14" width="7" height="7" rx="1"/>
             </svg>
+
             <span>Dashboard</span>
         </a>
-        <a href="{% url 'moh_notices' %}" class="menu-item {% if request.resolver_match.url_name == 'moh_notices' %}active{% endif %}">
+
+        <!-- Patients -->
+        <a href="{% url 'counter_patients' %}"
+           class="menu-item {% if request.resolver_match.url_name == 'counter_patients' %}active{% endif %}">
+
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                <path d="M3 11l18-5v12L3 13z"/>
-                <path d="M7 14l2 6h4l-2-7"/>
+                <circle cx="9" cy="8" r="3"/>
+                <path d="M3 21c0-4 2.5-7 6-7s6 3 6 7"/>
+                <path d="M16 11c2.5 0 4.5 2 4.5 5"/>
+                <path d="M16 5.5a2.5 2.5 0 1 1 0 5"/>
             </svg>
-            <span>Notice & Announcements</span>
+
+            <span>Patients</span>
         </a>
-        <div class="menu-title section-space">MANAGEMENT</div>
-        <a href="{% url 'hospital_approval' %}" class="menu-item {% if request.resolver_match.url_name == 'hospital_approval' %}active{% endif %}">
+
+        <!-- Appointments -->
+        <a href="{% url 'counter_appointments' %}"
+           class="menu-item {% if request.resolver_match.url_name == 'counter_appointments' %}active{% endif %}">
+
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                <path d="M4 21h16"/>
-                <path d="M5 21V5h14v16"/>
-                <path d="M9 9h6"/>
-                <path d="M12 6v6"/>
-                <path d="M9 21v-5h6v5"/>
+                <rect x="3" y="5" width="18" height="16" rx="2"/>
+                <path d="M16 3v4"/>
+                <path d="M8 3v4"/>
+                <path d="M3 10h18"/>
+                <path d="M8 14h3"/>
             </svg>
-            <span>Hospital Approval</span>
+
+            <span>Appointments</span>
         </a>
-        <a href="{% url 'moh_facilities' %}" class="menu-item {% if request.resolver_match.url_name == 'moh_facilities' %}active{% endif %}">
+
+        <!-- Doctors -->
+        <a href="{% url 'counter_doctors' %}"
+           class="menu-item {% if request.resolver_match.url_name == 'counter_doctors' %}active{% endif %}">
+
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                <path d="M4 21V4h10v17"/>
-                <path d="M14 9h6v12"/>
-                <path d="M8 8h2"/>
-                <path d="M8 12h2"/>
-                <path d="M8 16h2"/>
-                <path d="M17 13h1"/>
-                <path d="M17 17h1"/>
+                <circle cx="12" cy="7" r="3"/>
+                <path d="M5 21c0-4 3-7 7-7s7 3 7 7"/>
+                <path d="M19 4v6"/>
+                <path d="M16 7h6"/>
             </svg>
-            <span>Facilities</span>
+
+            <span>Doctors</span>
         </a>
-        <a href="{% url 'moh_analytics' %}" class="menu-item {% if request.resolver_match.url_name == 'moh_analytics' %}active{% endif %}">
+
+        <!-- Billing -->
+        <a href="{% url 'counter_billing' %}"
+           class="menu-item {% if request.resolver_match.url_name == 'counter_billing' %}active{% endif %}">
+
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                <path d="M4 20V11"/>
-                <path d="M10 20V5"/>
-                <path d="M16 20v-8"/>
-                <path d="M22 20H2"/>
+                <rect x="4" y="3" width="16" height="18" rx="2"/>
+                <path d="M8 7h8"/>
+                <path d="M8 11h8"/>
+                <path d="M8 15h4"/>
+                <path d="M15 15h1"/>
             </svg>
-            <span>Analytics</span>
+
+            <span>Billing & Payments</span>
         </a>
-        <div class="menu-title section-space">SYSTEM</div>
-        <a href="{% url 'moh_configuration' %}" class="menu-item {% if request.resolver_match.url_name == 'moh_configuration' %}active{% endif %}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-                <path d="M4 6h10"/>
-                <path d="M18 6h2"/>
-                <circle cx="16" cy="6" r="2"/>
-                <path d="M4 12h3"/>
-                <path d="M11 12h9"/>
-                <circle cx="9" cy="12" r="2"/>
-                <path d="M4 18h8"/>
-                <path d="M16 18h4"/>
-                <circle cx="14" cy="18" r="2"/>
+
+        <!-- Notices -->
+        <a href="{% url 'counter_notices' %}"
+           class="menu-item {% if request.resolver_match.url_name == 'counter_notices' %}active{% endif %}">
+
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/>
+                <path d="M10 21h4"/>
             </svg>
-            <span>Configuration</span>
+
+            <span>Notices & Announcement</span>
         </a>
+
+        <div class="menu-title" style="margin-top:25px;">ACCOUNT</div>
+
+        <!-- My Profile -->
+        <a href="{% url 'counter_profile' %}"
+           class="menu-item {% if request.resolver_match.url_name == 'counter_profile' %}active{% endif %}">
+
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <circle cx="12" cy="8" r="3"/>
+                <path d="M5 21c0-4 3-7 7-7s7 3 7 7"/>
+            </svg>
+
+            <span>My Profile</span>
+        </a>
+
     </nav>
+
 </aside>
+
 <main class="main">
+
     <header class="topbar">
-        <form class="search-box" method="get" action="{% url 'moh_facilities' %}">
+
+        <!-- Search -->
+        <form class="search-box" method="get" action="{% url 'counter_patients' %}">
+
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                 <circle cx="11" cy="11" r="7"/>
                 <path d="m20 20-4-4"/>
             </svg>
-            <input type="text" name="q" value="{{ request.GET.q }}" placeholder="Search hospitals...">
+
+            <input
+                type="text"
+                name="q"
+                value="{{ request.GET.q }}"
+                placeholder="Search patients..."
+            >
+
         </form>
+
         <div class="top-actions">
-            <a href="{% url 'hospital_approval' %}?add=1" class="icon-btn" title="Add Hospital">
+
+            <!-- Plus → Appointments -->
+            <a href="{% url 'counter_appointments' %}"
+               class="icon-btn"
+               title="New Appointment">
+
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                     <path d="M12 5v14"/>
                     <path d="M5 12h14"/>
                 </svg>
+
             </a>
-            <button type="button" class="icon-btn" id="notificationButton" title="Notifications">
+
+            <!-- Bell → Notices -->
+            <a href="{% url 'counter_notices' %}"
+               class="icon-btn"
+               title="Notices">
+
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                     <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/>
                     <path d="M10 21h4"/>
                 </svg>
+
                 <span class="notification-dot"></span>
-            </button>
-            <div class="notification-menu" id="notificationMenu">
-                <div class="notification-header">
-                    <h3>Notifications</h3>
-                    <a href="{% url 'moh_notices' %}">View All</a>
-                </div>
-                {% if notices %}
-                    {% for notice in notices %}
-                        <div class="notification-item">
-                            <span class="notification-item-priority priority-{{ notice.priority }}">{{ notice.get_priority_display }}</span>
-                            <div class="notification-item-title">{{ notice.title }}</div>
-                            <div class="notification-item-message">{{ notice.message|truncatewords:15 }}</div>
-                            <div class="notification-item-time">{{ notice.created_at|timesince }} ago</div>
-                        </div>
-                    {% endfor %}
-                {% else %}
-                    <div class="notification-empty">No notifications</div>
-                {% endif %}
-            </div>
-            <button type="button" class="icon-btn" id="themeButton" title="Dark mode">
+
+            </a>
+
+            <!-- Dark Mode -->
+            <button type="button"
+                    class="icon-btn"
+                    id="themeButton"
+                    title="Dark mode">
+
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                     <path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/>
                 </svg>
+
             </button>
+
+            <!-- Profile -->
             <div class="profile-wrap">
-                <button type="button" class="profile-btn" id="profileButton">
+
+                <button type="button"
+                        class="profile-btn"
+                        id="profileButton">
+
                     {% if request.user.first_name %}
                         {{ request.user.first_name|first|upper }}
                     {% elif request.user.username %}
                         {{ request.user.username|first|upper }}
                     {% else %}
-                        M
+                        R
                     {% endif %}
+
                 </button>
+
                 <div class="profile-menu" id="profileMenu">
+
                     <div class="profile-head">
+
                         <div class="profile-mini-avatar">
+
                             {% if request.user.first_name %}
                                 {{ request.user.first_name|first|upper }}
                             {% elif request.user.username %}
                                 {{ request.user.username|first|upper }}
                             {% else %}
-                                M
+                                R
                             {% endif %}
+
                         </div>
+
                         <div class="profile-info">
+
                             <strong>
                                 {% if request.user.get_full_name %}
                                     {{ request.user.get_full_name }}
@@ -597,72 +597,78 @@
                                     {{ request.user.username }}
                                 {% endif %}
                             </strong>
-                            <span>Ministry of Health</span>
+
+                            <span>Reception</span>
+
                         </div>
+
                     </div>
-                    <a href="{% url 'moh_configuration' %}" class="profile-link">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-                            <path d="M4 6h10"/>
-                            <path d="M18 6h2"/>
-                            <circle cx="16" cy="6" r="2"/>
-                            <path d="M4 12h3"/>
-                            <path d="M11 12h9"/>
-                            <circle cx="9" cy="12" r="2"/>
-                            <path d="M4 18h8"/>
-                            <path d="M16 18h4"/>
-                            <circle cx="14" cy="18" r="2"/>
+
+                    <!-- My Profile -->
+                    <a href="{% url 'counter_profile' %}"
+                       class="profile-link">
+
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                            <circle cx="12" cy="8" r="3"/>
+                            <path d="M5 21c0-4 3-7 7-7s7 3 7 7"/>
                         </svg>
-                        <span>Settings</span>
+
+                        <span>My Profile</span>
+
                     </a>
+
+                    <!-- Logout -->
                     <form method="post" action="{% url 'logout' %}">
+
                         {% csrf_token %}
+
                         <button type="submit" class="logout-button">
+
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                                 <path d="M10 17l5-5-5-5"/>
                                 <path d="M15 12H3"/>
                                 <path d="M14 3h6a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1h-6"/>
                             </svg>
+
                             <span>Sign out</span>
+
                         </button>
+
                     </form>
+
                 </div>
+
             </div>
+
         </div>
+
     </header>
+
     <section class="content">
-        {% block content %}{% endblock %}
+
+        {% block content %}
+        {% endblock %}
+
     </section>
+
 </main>
+
 <script>
     const profileButton = document.getElementById("profileButton");
     const profileMenu = document.getElementById("profileMenu");
     const themeButton = document.getElementById("themeButton");
-    const notificationButton = document.getElementById("notificationButton");
-    const notificationMenu = document.getElementById("notificationMenu");
 
     profileButton.addEventListener("click", function(event) {
         event.stopPropagation();
         profileMenu.classList.toggle("show");
-        notificationMenu.classList.remove("show");
-    });
-
-    notificationButton.addEventListener("click", function(event) {
-        event.stopPropagation();
-        notificationMenu.classList.toggle("show");
-        profileMenu.classList.remove("show");
     });
 
     profileMenu.addEventListener("click", function(event) {
         event.stopPropagation();
     });
 
-    notificationMenu.addEventListener("click", function(event) {
-        event.stopPropagation();
-    });
-
     document.addEventListener("click", function() {
         profileMenu.classList.remove("show");
-        notificationMenu.classList.remove("show");
     });
 
     if (localStorage.getItem("nhimsTheme") === "dark") {
@@ -670,6 +676,7 @@
     }
 
     themeButton.addEventListener("click", function() {
+
         document.body.classList.toggle("dark");
 
         if (document.body.classList.contains("dark")) {
@@ -677,8 +684,11 @@
         } else {
             localStorage.setItem("nhimsTheme", "light");
         }
+
     });
 </script>
+
 {% block extra_js %}{% endblock %}
+
 </body>
 </html>

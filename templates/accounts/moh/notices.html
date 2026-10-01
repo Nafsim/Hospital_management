@@ -1,7 +1,427 @@
 {% extends 'accounts/moh/base.html' %}
+{% load static %}
 
-{% block title %}Notice & Announcements - NHIMS{% endblock %}
+{% block title %}Notices & Announcements - NHIMS{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+    }
+    .page-header h1 {
+        font-size: 1.6rem;
+        font-weight: 700;
+        color: var(--text);
+        margin: 0;
+    }
+    .btn-primary-custom {
+        background: #2563eb;
+        color: white;
+        border: none;
+        padding: 0.65rem 1.3rem;
+        border-radius: 10px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        cursor: pointer;
+        text-decoration: none;
+        box-shadow: 0 4px 12px rgba(37,99,235,0.25);
+    }
+    .btn-primary-custom:hover { background: #1d4ed8; color: white; }
+
+    .table-card {
+        background: var(--white);
+        border-radius: 16px;
+        border: 1px solid var(--border);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+        overflow: hidden;
+    }
+    .table-card table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .table-card th {
+        background: #f8fafc;
+        padding: 14px 18px;
+        text-align: left;
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        border-bottom: 1px solid var(--border);
+    }
+    .table-card td {
+        padding: 15px 18px;
+        font-size: 0.9rem;
+        color: var(--text);
+        border-bottom: 1px solid var(--border);
+        vertical-align: middle;
+    }
+    .table-card tr:last-child td { border-bottom: none; }
+    .table-card tr:hover td { background: #f8fafc; }
+
+    .badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    .badge-general { background: #e0f2fe; color: #0369a1; }
+    .badge-announcement { background: #dbeafe; color: #1d4ed8; }
+    .badge-alert { background: #fee2e2; color: #b91c1c; }
+    .badge-maintenance { background: #fef3c7; color: #b45309; }
+    .badge-policy { background: #ede9fe; color: #6d28d9; }
+
+    .badge-low { background: #f1f5f9; color: #475569; }
+    .badge-medium { background: #e0f2fe; color: #0369a1; }
+    .badge-high { background: #ffedd5; color: #c2410c; }
+    .badge-urgent { background: #fee2e2; color: #b91c1c; }
+
+    .badge-published { background: #d1fae5; color: #047857; }
+    .badge-draft { background: #f1f5f9; color: #64748b; }
+    .badge-archived { background: #fce7f3; color: #9d174d; }
+
+    .action-btns {
+        display: flex;
+        gap: 8px;
+    }
+    .action-btn {
+        width: 34px;
+        height: 34px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        background: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        color: #64748b;
+        transition: all 0.15s;
+    }
+    .action-btn:hover { background: #f1f5f9; }
+    .action-btn.view:hover { color: #2563eb; border-color: #93c5fd; }
+    .action-btn.edit:hover { color: #d97706; border-color: #fcd34d; }
+    .action-btn.delete:hover { color: #dc2626; border-color: #fca5a5; }
+
+    /* Modal */
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(15,23,42,0.4);
+        z-index: 2000;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+    }
+    .modal-overlay.show { display: flex; }
+    .modal {
+        background: var(--white);
+        border-radius: 16px;
+        width: 100%;
+        max-width: 560px;
+        max-height: 90vh;
+        overflow-y: auto;
+        box-shadow: 0 25px 50px rgba(0,0,0,0.2);
+    }
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 18px 22px;
+        border-bottom: 1px solid var(--border);
+    }
+    .modal-header h3 {
+        margin: 0;
+        font-size: 1.15rem;
+        font-weight: 700;
+    }
+    .modal-close {
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: #64748b;
+        padding: 4px;
+        border-radius: 6px;
+    }
+    .modal-close:hover { background: #f1f5f9; }
+    .modal-body { padding: 22px; }
+    .modal-footer {
+        padding: 16px 22px;
+        border-top: 1px solid var(--border);
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+    }
+    .form-group { margin-bottom: 16px; }
+    .form-group label {
+        display: block;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #334155;
+        margin-bottom: 6px;
+    }
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        font-size: 0.9rem;
+        background: var(--page);
+        color: var(--text);
+    }
+    .form-group textarea { min-height: 120px; resize: vertical; }
+    .btn-secondary {
+        background: #f1f5f9;
+        color: #334155;
+        border: none;
+        padding: 0.6rem 1.2rem;
+        border-radius: 10px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+    .btn-danger {
+        background: #dc2626;
+        color: white;
+        border: none;
+        padding: 0.6rem 1.2rem;
+        border-radius: 10px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #94a3b8;
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<h1>Notice & Announcements</h1>
+<div class="page-header">
+    <h1>Notices & Announcements</h1>
+    <button class="btn-primary-custom" onclick="openCreateModal()">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path d="M12 5v14M5 12h14"/>
+        </svg>
+        Add Notice
+    </button>
+</div>
+
+<div class="table-card">
+    <table>
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Type</th>
+                <th>Priority</th>
+                <th>Status</th>
+                <th>Created By</th>
+                <th>Date</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for notice in notices %}
+            <tr>
+                <td style="font-weight:600;">{{ notice.title|truncatechars:45 }}</td>
+                <td><span class="badge badge-{{ notice.notice_type }}">{{ notice.get_notice_type_display }}</span></td>
+                <td><span class="badge badge-{{ notice.priority }}">{{ notice.get_priority_display }}</span></td>
+                <td><span class="badge badge-{{ notice.status }}">{{ notice.get_status_display }}</span></td>
+                <td>{{ notice.created_by.get_full_name|default:notice.created_by.username }}</td>
+                <td>{{ notice.created_at|date:"d M Y" }}</td>
+                <td>
+                    <div class="action-btns">
+                        <button class="action-btn view" title="View" onclick="openViewModal({{ notice.id }}, `{{ notice.title|escapejs }}`, `{{ notice.content|escapejs }}`, `{{ notice.get_notice_type_display }}`, `{{ notice.get_priority_display }}`, `{{ notice.get_status_display }}`, `{{ notice.created_by.get_full_name|default:notice.created_by.username }}`, `{{ notice.created_at|date:'d M Y, H:i' }}`)">
+                            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        </button>
+                        <button class="action-btn edit" title="Edit" onclick="openEditModal({{ notice.id }}, `{{ notice.title|escapejs }}`, `{{ notice.content|escapejs }}`, `{{ notice.notice_type }}`, `{{ notice.priority }}`, `{{ notice.status }}`)">
+                            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        </button>
+                        <button class="action-btn delete" title="Delete" onclick="openDeleteModal({{ notice.id }}, `{{ notice.title|escapejs }}`)">
+                            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="7">
+                    <div class="empty-state">No notices found. Click "Add Notice" to create one.</div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Create / Edit Modal -->
+<div class="modal-overlay" id="formModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 id="formModalTitle">Add Notice</h3>
+            <button class="modal-close" onclick="closeModal('formModal')">
+                <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <form method="post" id="noticeForm">
+            {% csrf_token %}
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Title</label>
+                    <input type="text" name="title" id="formTitle" required>
+                </div>
+                <div class="form-group">
+                    <label>Content</label>
+                    <textarea name="content" id="formContent" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Type</label>
+                    <select name="notice_type" id="formType">
+                        <option value="general">General</option>
+                        <option value="announcement">Announcement</option>
+                        <option value="alert">Alert</option>
+                        <option value="maintenance">Maintenance</option>
+                        <option value="policy">Policy Update</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Priority</label>
+                    <select name="priority" id="formPriority">
+                        <option value="low">Low</option>
+                        <option value="medium" selected>Medium</option>
+                        <option value="high">High</option>
+                        <option value="urgent">Urgent</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Status</label>
+                    <select name="status" id="formStatus">
+                        <option value="published" selected>Published</option>
+                        <option value="draft">Draft</option>
+                        <option value="archived">Archived</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-secondary" onclick="closeModal('formModal')">Cancel</button>
+                <button type="submit" class="btn-primary-custom">Save Notice</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- View Modal -->
+<div class="modal-overlay" id="viewModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 id="viewTitle">Notice Title</h3>
+            <button class="modal-close" onclick="closeModal('viewModal')">
+                <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div style="margin-bottom:14px; display:flex; gap:10px; flex-wrap:wrap;">
+                <span class="badge" id="viewType"></span>
+                <span class="badge" id="viewPriority"></span>
+                <span class="badge" id="viewStatus"></span>
+            </div>
+            <p id="viewContent" style="line-height:1.6; color:var(--text); margin-bottom:18px;"></p>
+            <div style="font-size:0.85rem; color:#64748b;">
+                Created by <strong id="viewAuthor"></strong> on <span id="viewDate"></span>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-secondary" onclick="closeModal('viewModal')">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Modal -->
+<div class="modal-overlay" id="deleteModal">
+    <div class="modal" style="max-width:420px;">
+        <div class="modal-header">
+            <h3>Delete Notice</h3>
+            <button class="modal-close" onclick="closeModal('deleteModal')">
+                <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div class="modal-body">
+            <p>Are you sure you want to delete <strong id="deleteTitle"></strong>?</p>
+            <p style="color:#64748b; font-size:0.9rem; margin-top:8px;">This action cannot be undone.</p>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-secondary" onclick="closeModal('deleteModal')">Cancel</button>
+            <form method="post" id="deleteForm" style="margin:0;">
+                {% csrf_token %}
+                <button type="submit" class="btn-danger">Delete</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function openCreateModal() {
+    document.getElementById('formModalTitle').innerText = 'Add Notice';
+    document.getElementById('noticeForm').action = "{% url 'moh_notice_create' %}";
+    document.getElementById('formTitle').value = '';
+    document.getElementById('formContent').value = '';
+    document.getElementById('formType').value = 'general';
+    document.getElementById('formPriority').value = 'medium';
+    document.getElementById('formStatus').value = 'published';
+    document.getElementById('formModal').classList.add('show');
+}
+
+function openEditModal(id, title, content, type, priority, status) {
+    document.getElementById('formModalTitle').innerText = 'Edit Notice';
+    document.getElementById('noticeForm').action = `/accounts/moh/notices/${id}/edit/`;
+    document.getElementById('formTitle').value = title;
+    document.getElementById('formContent').value = content;
+    document.getElementById('formType').value = type;
+    document.getElementById('formPriority').value = priority;
+    document.getElementById('formStatus').value = status;
+    document.getElementById('formModal').classList.add('show');
+}
+
+function openViewModal(id, title, content, type, priority, status, author, date) {
+    document.getElementById('viewTitle').innerText = title;
+    document.getElementById('viewContent').innerText = content;
+    document.getElementById('viewType').innerText = type;
+    document.getElementById('viewType').className = 'badge badge-' + type.toLowerCase().replace(' ', '');
+    document.getElementById('viewPriority').innerText = priority;
+    document.getElementById('viewPriority').className = 'badge badge-' + priority.toLowerCase();
+    document.getElementById('viewStatus').innerText = status;
+    document.getElementById('viewStatus').className = 'badge badge-' + status.toLowerCase();
+    document.getElementById('viewAuthor').innerText = author;
+    document.getElementById('viewDate').innerText = date;
+    document.getElementById('viewModal').classList.add('show');
+}
+
+function openDeleteModal(id, title) {
+    document.getElementById('deleteTitle').innerText = title;
+    document.getElementById('deleteForm').action = `/accounts/moh/notices/${id}/delete/`;
+    document.getElementById('deleteModal').classList.add('show');
+}
+
+function closeModal(id) {
+    document.getElementById(id).classList.remove('show');
+}
+
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+    overlay.addEventListener('click', function(e) {
+        if (e.target === this) this.classList.remove('show');
+    });
+});
+</script>
 {% endblock %}

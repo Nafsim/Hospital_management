@@ -1,0 +1,54 @@
+{% extends 'accounts/patient/base.html' %}
+
+{% block title %}Patient Dashboard - NHIMS{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Welcome, Patient</h1>
+        <p>Ministry of Health · NHIMS</p>
+    </div>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon">📅</div>
+        <div>
+            <span>Appointments</span>
+            <strong>3</strong>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon">♥</div>
+        <div>
+            <span>Medical Records</span>
+            <strong>8</strong>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon">৳</div>
+        <div>
+            <span>Pending Payments</span>
+            <strong>2</strong>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon">!</div>
+        <div>
+            <span>Notifications</span>
+            <strong>4</strong>
+        </div>
+    </div>
+</div>
+
+<div class="welcome-card">
+    <h2>Welcome to NHIMS</h2>
+    <p>
+        Manage your appointments, doctors, medical records, payments
+        and other health information from your patient portal.
+    </p>
+</div>
+{% endblock %}

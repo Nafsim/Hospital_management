@@ -1,0 +1,55 @@
+{% extends 'accounts/nurse/base.html' %}
+{% load static %}
+
+{% block title %}Nurse Dashboard - NHIMS{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Welcome, Nurse</h1>
+        <p>Ministry of Health · NHIMS</p>
+    </div>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon">♡</div>
+        <div>
+            <span>Today's Patients</span>
+            <strong>24</strong>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon">♥</div>
+        <div>
+            <span>Vital Signs</span>
+            <strong>18</strong>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon">✓</div>
+        <div>
+            <span>Nursing Notes</span>
+            <strong>12</strong>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon">!</div>
+        <div>
+            <span>Notifications</span>
+            <strong>3</strong>
+        </div>
+    </div>
+</div>
+
+<div class="welcome-card">
+    <h2>Welcome to NHIMS</h2>
+    <p>
+        Manage patient vital signs, nursing notes, patients and notifications
+        from your Nurse Dashboard.
+    </p>
+</div>
+{% endblock %}

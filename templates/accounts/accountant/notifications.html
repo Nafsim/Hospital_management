@@ -1,0 +1,25 @@
+{% extends 'accounts/accountant/base.html' %}
+
+{% block title %}Notifications - NHIMS Accountant{% endblock %}
+
+{% block content %}
+<div style="max-width: 1200px;">
+    <div style="margin-bottom: 28px;">
+        <h1 style="font-size: 28px; font-weight: 700; color: #172033; margin-bottom: 8px;">Notifications</h1>
+        <p style="color: #718096; font-size: 15px;">View and manage your notifications</p>
+    </div>
+
+    <div style="background: #fff; border-radius: 12px; padding: 24px; border: 1px solid #e3eaf3;">
+        <div style="text-align: center; padding: 60px 20px;">
+            <div style="width: 80px; height: 80px; background: #f0f7ff; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#0ea5e9" stroke-width="1.8" style="width: 40px; height: 40px;">
+                    <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/>
+                    <path d="M10 21h4"/>
+                </svg>
+            </div>
+            <h3 style="font-size: 20px; font-weight: 600; color: #172033; margin-bottom: 8px;">No Notifications</h3>
+            <p style="color: #718096; font-size: 15px;">You have no new notifications at the moment.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

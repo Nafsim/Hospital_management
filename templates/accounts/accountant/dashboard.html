@@ -1,0 +1,174 @@
+{% extends 'accounts/accountant/base.html' %}
+
+{% block title %}Accountant Dashboard - NHIMS{% endblock %}
+
+{% block content %}
+
+<style>
+.page-header{
+display:flex;
+align-items:center;
+justify-content:space-between;
+margin-bottom:25px
+}
+
+.page-header h1{
+font-size:25px;
+margin-bottom:5px
+}
+
+.page-header p{
+font-size:13px;
+color:var(--muted)
+}
+
+.cards{
+display:grid;
+grid-template-columns:repeat(4,1fr);
+gap:18px;
+margin-bottom:25px
+}
+
+.card{
+background:var(--white);
+border:1px solid var(--border);
+border-radius:15px;
+padding:20px;
+box-shadow:0 5px 18px rgba(20,40,80,.05)
+}
+
+.card-title{
+font-size:13px;
+color:var(--muted);
+margin-bottom:12px
+}
+
+.card-value{
+font-size:25px;
+font-weight:700
+}
+
+.card small{
+display:block;
+margin-top:7px;
+color:#718096;
+font-size:12px
+}
+
+.section{
+background:var(--white);
+border:1px solid var(--border);
+border-radius:15px;
+padding:20px
+}
+
+.section h3{
+font-size:17px;
+margin-bottom:18px
+}
+
+.table{
+width:100%;
+border-collapse:collapse
+}
+
+.table th,.table td{
+padding:12px 10px;
+text-align:left;
+border-bottom:1px solid var(--border);
+font-size:13px
+}
+
+.table th{
+color:var(--muted);
+font-weight:600
+}
+
+.status{
+padding:5px 9px;
+border-radius:20px;
+font-size:11px;
+font-weight:600;
+background:#e0f2fe;
+color:#0369a1
+}
+
+@media(max-width:1000px){
+.cards{grid-template-columns:repeat(2,1fr)}
+}
+</style>
+
+<div class="page-header">
+<div>
+<h1>Accountant Dashboard</h1>
+<p>Financial overview and accounting management</p>
+</div>
+</div>
+
+<div class="cards">
+
+<div class="card">
+<div class="card-title">Total Billing</div>
+<div class="card-value">৳ 125,000</div>
+<small>This Month</small>
+</div>
+
+<div class="card">
+<div class="card-title">Payments Received</div>
+<div class="card-value">৳ 98,500</div>
+<small>This Month</small>
+</div>
+
+<div class="card">
+<div class="card-title">Pending Invoices</div>
+<div class="card-value">24</div>
+<small>Requires attention</small>
+</div>
+
+<div class="card">
+<div class="card-title">Expenses</div>
+<div class="card-value">৳ 42,800</div>
+<small>This Month</small>
+</div>
+
+</div>
+
+<div class="section">
+<h3>Recent Transactions</h3>
+
+<table class="table">
+<thead>
+<tr>
+<th>Transaction</th>
+<th>Type</th>
+<th>Amount</th>
+<th>Status</th>
+</tr>
+</thead>
+
+<tbody>
+<tr>
+<td>Hospital Service Billing</td>
+<td>Billing</td>
+<td>৳ 25,000</td>
+<td><span class="status">Paid</span></td>
+</tr>
+
+<tr>
+<td>Pharmacy Payment</td>
+<td>Payment</td>
+<td>৳ 12,500</td>
+<td><span class="status">Completed</span></td>
+</tr>
+
+<tr>
+<td>Medical Equipment</td>
+<td>Expense</td>
+<td>৳ 18,000</td>
+<td><span class="status">Approved</span></td>
+</tr>
+</tbody>
+</table>
+</div>
+
+{% endblock %}

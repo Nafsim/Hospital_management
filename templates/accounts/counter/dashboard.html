@@ -1,0 +1,378 @@
+{% extends 'accounts/counter/base.html' %}
+
+{% block title %}Reception Dashboard - NHIMS{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+    <div>
+        <h1>Reception Dashboard</h1>
+        <p>Manage patients, appointments and front desk activities</p>
+    </div>
+
+    <a href="{% url 'counter_appointments' %}" class="primary-btn">
+        + New Appointment
+    </a>
+</div>
+
+<div class="stats-grid">
+
+    <div class="stat-card">
+        <div class="stat-icon">♙</div>
+        <div>
+            <span>Total Patients</span>
+            <h2>1,248</h2>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon">▣</div>
+        <div>
+            <span>Today's Appointments</span>
+            <h2>36</h2>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon">⚕</div>
+        <div>
+            <span>Available Doctors</span>
+            <h2>18</h2>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-icon">৳</div>
+        <div>
+            <span>Today's Collection</span>
+            <h2>৳42,500</h2>
+        </div>
+    </div>
+
+</div>
+
+<div class="dashboard-grid">
+
+    <div class="content-card">
+
+        <div class="card-header">
+            <div>
+                <h2>Today's Appointments</h2>
+                <p>Upcoming patient appointments</p>
+            </div>
+
+            <a href="{% url 'counter_appointments' %}" class="view-btn">
+                View All
+            </a>
+        </div>
+
+        <div class="table-container">
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Patient</th>
+                        <th>Doctor</th>
+                        <th>Time</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+
+                    <tr>
+                        <td>Rahim Ahmed</td>
+                        <td>Dr. Hasan</td>
+                        <td>10:00 AM</td>
+                        <td>
+                            <span class="status confirmed">Confirmed</span>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td>Fatema Akter</td>
+                        <td>Dr. Nusrat</td>
+                        <td>11:30 AM</td>
+                        <td>
+                            <span class="status waiting">Waiting</span>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td>Karim Hossain</td>
+                        <td>Dr. Rahman</td>
+                        <td>01:00 PM</td>
+                        <td>
+                            <span class="status confirmed">Confirmed</span>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td>Nusrat Jahan</td>
+                        <td>Dr. Ahmed</td>
+                        <td>03:30 PM</td>
+                        <td>
+                            <span class="status pending">Pending</span>
+                        </td>
+                    </tr>
+
+                </tbody>
+            </table>
+
+        </div>
+
+    </div>
+
+    <div class="content-card">
+
+        <div class="card-header">
+            <div>
+                <h2>Quick Actions</h2>
+                <p>Frequently used reception tasks</p>
+            </div>
+        </div>
+
+        <div class="quick-actions">
+
+            <a href="{% url 'counter_patients' %}">
+                <span>♙</span>
+                Register Patient
+            </a>
+
+            <a href="{% url 'counter_appointments' %}">
+                <span>▣</span>
+                Book Appointment
+            </a>
+
+            <a href="{% url 'counter_doctors' %}">
+                <span>⚕</span>
+                View Doctors
+            </a>
+
+            <a href="{% url 'counter_billing' %}">
+                <span>৳</span>
+                Billing & Payment
+            </a>
+
+        </div>
+
+    </div>
+
+</div>
+
+<style>
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 28px;
+}
+
+.page-header h1 {
+    margin: 0;
+    font-size: 28px;
+    color: #172554;
+}
+
+.page-header p {
+    margin: 6px 0 0;
+    color: #64748b;
+}
+
+.primary-btn,
+.view-btn {
+    text-decoration: none;
+    border-radius: 9px;
+    padding: 11px 18px;
+    font-weight: 600;
+}
+
+.primary-btn {
+    color: white;
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+}
+
+.view-btn {
+    color: #2563eb;
+    background: #eff6ff;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 18px;
+    margin-bottom: 24px;
+}
+
+.stat-card {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    box-shadow: 0 3px 12px rgba(15, 23, 42, .05);
+}
+
+.stat-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: #eff6ff;
+    color: #2563eb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+}
+
+.stat-card span {
+    color: #64748b;
+    font-size: 13px;
+}
+
+.stat-card h2 {
+    margin: 5px 0 0;
+    color: #172554;
+    font-size: 24px;
+}
+
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 22px;
+}
+
+.content-card {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 22px;
+    box-shadow: 0 3px 12px rgba(15, 23, 42, .05);
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 18px;
+}
+
+.card-header h2 {
+    margin: 0;
+    color: #172554;
+    font-size: 19px;
+}
+
+.card-header p {
+    margin: 5px 0 0;
+    color: #64748b;
+    font-size: 13px;
+}
+
+.table-container {
+    overflow-x: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th {
+    text-align: left;
+    background: #f8fafc;
+    color: #475569;
+    font-size: 13px;
+    padding: 13px;
+}
+
+td {
+    padding: 14px 13px;
+    border-bottom: 1px solid #e2e8f0;
+    color: #334155;
+    font-size: 13px;
+}
+
+.status {
+    display: inline-block;
+    padding: 5px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.confirmed {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.waiting {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.pending {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+.quick-actions {
+    display: grid;
+    gap: 12px;
+}
+
+.quick-actions a {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    text-decoration: none;
+    color: #334155;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.quick-actions a:hover {
+    background: #eff6ff;
+    color: #2563eb;
+}
+
+.quick-actions span {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    background: #eff6ff;
+    color: #2563eb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+@media (max-width: 1000px) {
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 600px) {
+    .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+
+{% endblock %}
