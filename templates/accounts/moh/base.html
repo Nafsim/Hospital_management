@@ -555,7 +555,7 @@
                         <div class="notification-item">
                             <span class="notification-item-priority priority-{{ notice.priority }}">{{ notice.get_priority_display }}</span>
                             <div class="notification-item-title">{{ notice.title }}</div>
-                            <div class="notification-item-message">{{ notice.message|truncatewords:15 }}</div>
+                           <div class="notification-item-message">{{ notice.content|truncatewords:15 }}</div>
                             <div class="notification-item-time">{{ notice.created_at|timesince }} ago</div>
                         </div>
                     {% endfor %}

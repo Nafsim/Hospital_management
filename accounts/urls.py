@@ -8,21 +8,19 @@ urlpatterns = [
     path('dashboard/', views.dashboard, name='dashboard'),
     #moh
     path('moh/dashboard/', views.moh_dashboard, name='moh_dashboard'),
-    path('moh/notices/', views.moh_notices, name='moh_notices'),
+    
     # Notices
 path('moh/notices/', views.moh_notices, name='moh_notices'),
 path('moh/notices/create/', views.moh_notice_create, name='moh_notice_create'),
 path('moh/notices/<int:pk>/', views.moh_notice_view, name='moh_notice_view'),
 path('moh/notices/<int:pk>/edit/', views.moh_notice_edit, name='moh_notice_edit'),
 path('moh/notices/<int:pk>/delete/', views.moh_notice_delete, name='moh_notice_delete'),
-    path('moh/hospital-approval/', views.hospital_approval, name='hospital_approval'),
-    path('moh/facilities/', views.moh_facilities, name='moh_facilities'),
-    path('moh/analytics/', views.moh_analytics, name='moh_analytics'),
-    path('moh/configuration/', views.moh_configuration, name='moh_configuration'),
-    path('moh/notifications/', views.moh_notifications, name='moh_notifications'),
+path('moh/hospital-approval/', views.hospital_approval, name='hospital_approval'),
+path('moh/facilities/', views.moh_facilities, name='moh_facilities'),
+path('moh/analytics/', views.moh_analytics, name='moh_analytics'),
+path('moh/configuration/', views.moh_configuration, name='moh_configuration'),
+    
     #hospital admin urls
-path('hospital-admin/', views.hospital_admin_dashboard, name='hospital_admin_dashboard'),
-path('moh/notifications/', views.moh_notifications, name='moh_notifications'),
 path('hospital-admin/', views.hospital_admin_dashboard, name='hospital_admin_dashboard'),
 path('hospital-admin/notices/', views.hospital_admin_notices, name='hospital_admin_notices'),
 path('hospital-admin/doctors/', views.hospital_doctors, name='hospital_doctors'),
@@ -32,6 +30,11 @@ path('hospital-admin/departments/', views.hospital_departments, name='hospital_d
 path('hospital-admin/patients/', views.hospital_patients, name='hospital_patients'),
 path('hospital-admin/documents/', views.hospital_documents, name='hospital_documents'),
 path('hospital-admin/payroll/', views.hospital_payroll, name='hospital_payroll'),
+path(
+    'hospital-admin/payroll/<int:payroll_id>/download/',
+    views.download_payslip,
+    name='download_payslip'
+),
 path('hospital-admin/pharmacy/', views.hospital_pharmacy, name='hospital_pharmacy'),
 path('hospital-admin/blood-bank/', views.hospital_blood_bank, name='hospital_blood_bank'),
 path('hospital-admin/diagnostics/', views.hospital_diagnostics, name='hospital_diagnostics'),
@@ -39,7 +42,7 @@ path('hospital-admin/users-access/', views.hospital_users_access, name='hospital
 path('hospital-admin/facility/', views.hospital_facility, name='hospital_facility'),
 path('hospital-admin/settings/', views.hospital_admin_settings, name='hospital_admin_settings'),
 path('hospital-admin/contact-support/', views.hospital_contact_support, name='hospital_contact_support'),
-path('hospital-admin/notifications/', views.hospital_notifications, name='hospital_notifications'),
+
 #doctors
 path('doctor/', views.doctor_dashboard, name='doctor_dashboard'),
 path('doctor/patient-summary/', views.doctor_patient_summary, name='doctor_patient_summary'),

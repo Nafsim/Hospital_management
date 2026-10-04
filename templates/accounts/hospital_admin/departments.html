@@ -1,0 +1,940 @@
+{% extends "accounts/hospital_admin/base.html" %}
+
+{% load static %}
+
+{% block title %}NHIMS - Departments{% endblock %}
+
+{% block extra_css %}
+
+<style>
+    .page-title {
+        font-size: 1.75rem;
+        font-weight: 700;
+        color: var(--text);
+        margin: 0 0 0.35rem 0;
+    }
+
+    .page-subtitle {
+        color: #64748b;
+        font-size: 0.95rem;
+        margin: 0 0 1.5rem 0;
+    }
+
+    .stat-cards {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1.25rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .stat-card {
+        background: white;
+        border-radius: 16px;
+        padding: 1.4rem 1.5rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border: 1px solid var(--border);
+        transition: all 0.2s ease;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+
+    .stat-card .label {
+        font-size: 0.875rem;
+        color: #64748b;
+        font-weight: 500;
+        margin-bottom: 0.35rem;
+    }
+
+    .stat-card .value {
+        font-size: 1.85rem;
+        font-weight: 700;
+        color: var(--text);
+        line-height: 1.2;
+    }
+
+    .stat-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .stat-icon.blue {
+        background: #dbeafe;
+        color: #2563eb;
+    }
+
+    .stat-icon.green {
+        background: #d1fae5;
+        color: #059669;
+    }
+
+    .stat-icon.red {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+
+    .department-card {
+        background: white;
+        border-radius: 16px;
+        border: 1px solid var(--border);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+        overflow: hidden;
+    }
+
+    .department-header {
+        padding: 1.1rem 1.4rem;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .department-header h2 {
+        font-size: 1.05rem;
+        font-weight: 600;
+        margin: 0;
+        color: var(--text);
+    }
+
+    .add-department-btn {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: linear-gradient(135deg,#0ea5e9,#2563eb);
+        color: white;
+        border: none;
+        padding: 12px 18px;
+        border-radius: 10px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+
+    .add-department-btn svg {
+        width: 18px;
+        height: 18px;
+    }
+
+    .department-table-wrapper {
+        overflow-x: auto;
+    }
+
+    .department-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .department-table th {
+        background: #f8fafc;
+        color: #64748b;
+        font-size: 0.78rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
+        padding: 0.85rem 1.2rem;
+        text-align: left;
+        border-bottom: 1px solid var(--border);
+        white-space: nowrap;
+    }
+
+    .department-table td {
+        padding: 0.95rem 1.2rem;
+        font-size: 0.88rem;
+        color: #334155;
+        border-bottom: 1px solid #f1f5f9;
+        vertical-align: middle;
+    }
+
+    .department-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .department-table tbody tr {
+        transition: background 0.15s ease;
+    }
+
+    .department-table tbody tr:hover {
+        background: #f8fafc;
+    }
+
+    .department-name {
+        font-weight: 600;
+        color: #1e293b;
+    }
+
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.3rem 0.65rem;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+
+    .status-active {
+        background: #d1fae5;
+        color: #047857;
+    }
+
+    .status-inactive {
+        background: #fee2e2;
+        color: #b91c1c;
+    }
+
+    .action-buttons {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .action-btn {
+        width: 34px;
+        height: 34px;
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+        background: white;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .action-btn.view {
+        color: #2563eb;
+    }
+
+    .action-btn.edit {
+        color: #059669;
+    }
+
+    .action-btn.delete {
+        color: #dc2626;
+    }
+
+    .action-btn:hover {
+        transform: translateY(-1px);
+    }
+
+    .action-btn.view:hover {
+        background: #eff6ff;
+        border-color: #93c5fd;
+    }
+
+    .action-btn.edit:hover {
+        background: #ecfdf5;
+        border-color: #86efac;
+    }
+
+    .action-btn.delete:hover {
+        background: #fef2f2;
+        border-color: #fca5a5;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 3rem 1rem;
+        color: #64748b;
+    }
+
+    .empty-state svg {
+        margin-bottom: 0.75rem;
+        color: #94a3b8;
+    }
+
+    .empty-state h3 {
+        margin: 0 0 0.35rem 0;
+        font-size: 1rem;
+        color: #475569;
+    }
+
+    .empty-state p {
+        margin: 0;
+        font-size: 0.85rem;
+    }
+
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.5);
+        z-index: 9999;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+    }
+
+    .modal-overlay.show {
+        display: flex;
+    }
+
+    .modal {
+        background: white;
+        width: 100%;
+        max-width: 500px;
+        border-radius: 16px;
+        box-shadow: 0 20px 50px rgba(0,0,0,0.2);
+        overflow: hidden;
+    }
+
+    .modal-header {
+        padding: 1.1rem 1.3rem;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .modal-header h3 {
+        margin: 0;
+        font-size: 1.05rem;
+        font-weight: 600;
+        color: #1e293b;
+    }
+
+    .modal-close {
+        width: 32px;
+        height: 32px;
+        border: none;
+        background: #f1f5f9;
+        border-radius: 8px;
+        color: #64748b;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-close:hover {
+        background: #e2e8f0;
+        color: #1e293b;
+    }
+
+    .modal-body {
+        padding: 1.3rem;
+    }
+
+    .form-group {
+        margin-bottom: 1rem;
+    }
+
+    .form-group:last-child {
+        margin-bottom: 0;
+    }
+
+    .form-label {
+        display: block;
+        font-size: 0.84rem;
+        font-weight: 600;
+        color: #334155;
+        margin-bottom: 0.4rem;
+    }
+
+    .form-control {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 0.7rem 0.8rem;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        font-size: 0.88rem;
+        color: #1e293b;
+        background: white;
+        outline: none;
+        transition: all 0.2s ease;
+    }
+
+    .form-control:focus {
+        border-color: #60a5fa;
+        box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+    }
+
+    .status-check {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.85rem;
+        color: #475569;
+        font-weight: 500;
+    }
+
+    .status-check input {
+        width: 16px;
+        height: 16px;
+        accent-color: #2563eb;
+    }
+
+    .modal-footer {
+        padding: 1rem 1.3rem;
+        border-top: 1px solid var(--border);
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+    }
+
+    .btn-cancel,
+    .btn-save,
+    .btn-delete {
+        padding: 0.6rem 1rem;
+        border-radius: 8px;
+        font-size: 0.84rem;
+        font-weight: 600;
+        cursor: pointer;
+        border: 1px solid transparent;
+    }
+
+    .btn-cancel {
+        background: white;
+        color: #475569;
+        border-color: #cbd5e1;
+    }
+
+    .btn-cancel:hover {
+        background: #f8fafc;
+    }
+
+    .btn-save {
+        background: #2563eb;
+        color: white;
+    }
+
+    .btn-save:hover {
+        background: #1d4ed8;
+    }
+
+    .btn-delete {
+        background: #dc2626;
+        color: white;
+    }
+
+    .btn-delete:hover {
+        background: #b91c1c;
+    }
+
+    .view-info {
+        display: grid;
+        gap: 0.8rem;
+    }
+
+    .view-item {
+        background: #f8fafc;
+        border-radius: 10px;
+        padding: 0.8rem 0.9rem;
+    }
+
+    .view-item .view-label {
+        display: block;
+        font-size: 0.75rem;
+        color: #64748b;
+        margin-bottom: 0.2rem;
+    }
+
+    .view-item .view-value {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: #1e293b;
+    }
+
+    @media (max-width: 900px) {
+        .stat-cards {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    @media (max-width: 640px) {
+        .stat-cards {
+            grid-template-columns: 1fr;
+        }
+
+        .department-header {
+            align-items: flex-start;
+            flex-direction: column;
+        }
+
+        .add-department-btn {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+</style>
+
+{% endblock %}
+
+{% block content %}
+
+<h1 class="page-title">Departments</h1>
+
+<p class="page-subtitle">
+    {% if hospital %}
+        Manage departments for {{ hospital.name }}
+    {% else %}
+        Manage hospital departments
+    {% endif %}
+</p>
+
+<div class="stat-cards">
+
+    <div class="stat-card">
+        <div>
+            <div class="label">All Departments</div>
+            <div class="value">{{ total_departments|default:0 }}</div>
+        </div>
+
+        <div class="stat-icon blue">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M3 21h18"/>
+                <path d="M5 21V5a2 2 0 012-2h10a2 2 0 012 2v16"/>
+                <path d="M9 7h2"/>
+                <path d="M13 7h2"/>
+                <path d="M9 11h2"/>
+                <path d="M13 11h2"/>
+                <path d="M9 15h2"/>
+                <path d="M13 15h2"/>
+            </svg>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div>
+            <div class="label">Active Departments</div>
+            <div class="value">{{ active_departments|default:0 }}</div>
+        </div>
+
+        <div class="stat-icon green">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M22 11.08V12a10 10 0 11-5.93-9.14"/>
+                <path d="M22 4L12 14.01l-3-3"/>
+            </svg>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div>
+            <div class="label">Inactive Departments</div>
+            <div class="value">{{ inactive_departments|default:0 }}</div>
+        </div>
+
+        <div class="stat-icon red">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="9"/>
+                <path d="M15 9l-6 6"/>
+                <path d="M9 9l6 6"/>
+            </svg>
+        </div>
+    </div>
+
+</div>
+
+<div class="department-card">
+
+    <div class="department-header">
+        <h2>All Departments</h2>
+
+        <button type="button" class="add-department-btn" onclick="openCreateModal()">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M12 5v14"/>
+                <path d="M5 12h14"/>
+            </svg>
+            Add Department
+        </button>
+    </div>
+
+    <div class="department-table-wrapper">
+
+        <table class="department-table">
+
+            <thead>
+                <tr>
+                    <th>Department</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+
+            <tbody>
+
+                {% for department in departments %}
+
+                <tr>
+
+                    <td class="department-name">
+                        {{ department.get_name_display }}
+                    </td>
+
+                    <td>
+                        {% if department.is_active %}
+                            <span class="status-badge status-active">Active</span>
+                        {% else %}
+                            <span class="status-badge status-inactive">Inactive</span>
+                        {% endif %}
+                    </td>
+
+                    <td>
+
+                        <div class="action-buttons">
+
+                            <button
+                                type="button"
+                                class="action-btn view"
+                                title="View"
+                                onclick="openViewModal(
+                                    '{{ department.get_name_display|escapejs }}',
+                                    '{% if department.is_active %}Active{% else %}Inactive{% endif %}'
+                                )">
+
+                                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/>
+                                    <circle cx="12" cy="12" r="3"/>
+                                </svg>
+
+                            </button>
+
+                            <button
+                                type="button"
+                                class="action-btn edit"
+                                title="Edit"
+                                onclick="openEditModal(
+                                    '{{ department.id }}',
+                                    '{{ department.name }}',
+                                    {% if department.is_active %}true{% else %}false{% endif %}
+                                )">
+
+                                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path d="M12 20h9"/>
+                                    <path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/>
+                                </svg>
+
+                            </button>
+
+                            <button
+                                type="button"
+                                class="action-btn delete"
+                                title="Delete"
+                                onclick="openDeleteModal(
+                                    '{{ department.id }}',
+                                    '{{ department.get_name_display|escapejs }}'
+                                )">
+
+                                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path d="M3 6h18"/>
+                                    <path d="M8 6V4h8v2"/>
+                                    <path d="M19 6l-1 14H6L5 6"/>
+                                    <path d="M10 11v5"/>
+                                    <path d="M14 11v5"/>
+                                </svg>
+
+                            </button>
+
+                        </div>
+
+                    </td>
+
+                </tr>
+
+                {% empty %}
+
+                <tr>
+
+                    <td colspan="3">
+
+                        <div class="empty-state">
+
+                            <svg width="42" height="42" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                <path d="M3 21h18"/>
+                                <path d="M5 21V5a2 2 0 012-2h10a2 2 0 012 2v16"/>
+                                <path d="M9 7h2"/>
+                                <path d="M13 7h2"/>
+                                <path d="M9 11h2"/>
+                                <path d="M13 11h2"/>
+                            </svg>
+
+                            <h3>No Departments Found</h3>
+
+                            <p>Add a department to get started.</p>
+
+                        </div>
+
+                    </td>
+
+                </tr>
+
+                {% endfor %}
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</div>
+
+<div class="modal-overlay" id="departmentModal">
+
+    <div class="modal">
+
+        <form method="post">
+
+            {% csrf_token %}
+
+            <input type="hidden" name="action" id="formAction" value="create">
+            <input type="hidden" name="department_id" id="departmentId">
+
+            <div class="modal-header">
+
+                <h3 id="modalTitle">Add Department</h3>
+
+                <button type="button" class="modal-close" onclick="closeModal('departmentModal')">
+
+                    <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path d="M18 6L6 18"/>
+                        <path d="M6 6l12 12"/>
+                    </svg>
+
+                </button>
+
+            </div>
+
+            <div class="modal-body">
+
+                <div class="form-group">
+
+                    <label class="form-label">Department</label>
+
+                    <select name="name" id="departmentName" class="form-control" required>
+
+                        <option value="">Select Department</option>
+
+                        {% for value, label in department_choices %}
+                            <option value="{{ value }}">{{ label }}</option>
+                        {% endfor %}
+
+                    </select>
+
+                </div>
+
+                <div class="form-group">
+
+                    <label class="status-check">
+
+                        <input type="checkbox" name="is_active" id="departmentStatus" checked>
+
+                        Active Department
+
+                    </label>
+
+                </div>
+
+            </div>
+
+            <div class="modal-footer">
+
+                <button type="button" class="btn-cancel" onclick="closeModal('departmentModal')">
+                    Cancel
+                </button>
+
+                <button type="submit" class="btn-save">
+                    Save Department
+                </button>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
+<div class="modal-overlay" id="viewModal">
+
+    <div class="modal">
+
+        <div class="modal-header">
+
+            <h3>Department Details</h3>
+
+            <button type="button" class="modal-close" onclick="closeModal('viewModal')">
+
+                <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M18 6L6 18"/>
+                    <path d="M6 6l12 12"/>
+                </svg>
+
+            </button>
+
+        </div>
+
+        <div class="modal-body">
+
+            <div class="view-info">
+
+                <div class="view-item">
+
+                    <span class="view-label">Department</span>
+
+                    <span class="view-value" id="viewName"></span>
+
+                </div>
+
+                <div class="view-item">
+
+                    <span class="view-label">Status</span>
+
+                    <span class="view-value" id="viewStatus"></span>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="modal-footer">
+
+            <button type="button" class="btn-cancel" onclick="closeModal('viewModal')">
+                Close
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+<div class="modal-overlay" id="deleteModal">
+
+    <div class="modal">
+
+        <form method="post">
+
+            {% csrf_token %}
+
+            <input type="hidden" name="action" value="delete">
+            <input type="hidden" name="department_id" id="deleteDepartmentId">
+
+            <div class="modal-header">
+
+                <h3>Delete Department</h3>
+
+                <button type="button" class="modal-close" onclick="closeModal('deleteModal')">
+
+                    <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path d="M18 6L6 18"/>
+                        <path d="M6 6l12 12"/>
+                    </svg>
+
+                </button>
+
+            </div>
+
+            <div class="modal-body">
+
+                <p style="margin:0;color:#475569;font-size:0.9rem;line-height:1.6;">
+
+                    Are you sure you want to delete
+
+                    <strong id="deleteDepartmentName"></strong>?
+
+                </p>
+
+            </div>
+
+            <div class="modal-footer">
+
+                <button type="button" class="btn-cancel" onclick="closeModal('deleteModal')">
+                    Cancel
+                </button>
+
+                <button type="submit" class="btn-delete">
+                    Delete
+                </button>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
+<script>
+
+function openCreateModal() {
+
+    document.getElementById('modalTitle').textContent = 'Add Department';
+
+    document.getElementById('formAction').value = 'create';
+
+    document.getElementById('departmentId').value = '';
+
+    document.getElementById('departmentName').value = '';
+
+    document.getElementById('departmentStatus').checked = true;
+
+    document.getElementById('departmentModal').classList.add('show');
+
+}
+
+function openEditModal(id, name, active) {
+
+    document.getElementById('modalTitle').textContent = 'Edit Department';
+
+    document.getElementById('formAction').value = 'edit';
+
+    document.getElementById('departmentId').value = id;
+
+    document.getElementById('departmentName').value = name;
+
+    document.getElementById('departmentStatus').checked = active;
+
+    document.getElementById('departmentModal').classList.add('show');
+
+}
+
+function openViewModal(name, status) {
+
+    document.getElementById('viewName').textContent = name;
+
+    document.getElementById('viewStatus').textContent = status;
+
+    document.getElementById('viewModal').classList.add('show');
+
+}
+
+function openDeleteModal(id, name) {
+
+    document.getElementById('deleteDepartmentId').value = id;
+
+    document.getElementById('deleteDepartmentName').textContent = name;
+
+    document.getElementById('deleteModal').classList.add('show');
+
+}
+
+function closeModal(id) {
+
+    document.getElementById(id).classList.remove('show');
+
+}
+
+window.addEventListener('click', function(event) {
+
+    if (event.target.classList.contains('modal-overlay')) {
+
+        event.target.classList.remove('show');
+
+    }
+
+});
+
+</script>
+
+{% endblock %}

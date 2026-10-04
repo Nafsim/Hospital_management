@@ -1,0 +1,293 @@
+{% extends 'accounts/hospital_admin/base.html' %}
+{% load static %}
+
+{% block title %}Hospital Profile - NHIMS{% endblock %}
+
+{% block extra_css %}
+<style>
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+    }
+    .page-header h1 {
+        font-size: 1.6rem;
+        font-weight: 700;
+        color: var(--text);
+        margin: 0;
+    }
+    .btn-edit {
+        background: #2563eb;
+        color: white;
+        border: none;
+        padding: 0.6rem 1.2rem;
+        border-radius: 10px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .btn-edit:hover { background: #1d4ed8; }
+    .btn-save {
+        background: #059669;
+        color: white;
+        border: none;
+        padding: 0.65rem 1.4rem;
+        border-radius: 10px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        cursor: pointer;
+    }
+    .btn-cancel {
+        background: #f1f5f9;
+        color: #334155;
+        border: none;
+        padding: 0.65rem 1.4rem;
+        border-radius: 10px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        cursor: pointer;
+        margin-right: 10px;
+    }
+
+    .profile-card {
+        background: var(--white);
+        border-radius: 16px;
+        border: 1px solid var(--border);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+        padding: 2rem;
+        width: 100%;
+    }
+    .profile-card h2 {
+        font-size: 1.2rem;
+        font-weight: 600;
+        margin: 0 0 1.5rem 0;
+        color: var(--text);
+    }
+
+    .info-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.4rem 2rem;
+    }
+    .info-item label {
+        display: block;
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: #64748b;
+        margin-bottom: 5px;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+    }
+    .info-item .value {
+        font-size: 1rem;
+        font-weight: 500;
+        color: var(--text);
+        padding: 10px 0;
+        border-bottom: 1px solid #f1f5f9;
+    }
+    .info-item.full { grid-column: 1 / -1; }
+
+    .form-group { margin-bottom: 1.15rem; }
+    .form-group label {
+        display: block;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #334155;
+        margin-bottom: 6px;
+    }
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        width: 100%;
+        padding: 11px 14px;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        font-size: 0.95rem;
+        background: var(--page);
+        color: var(--text);
+    }
+    .form-group textarea { min-height: 90px; resize: vertical; }
+    .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.2rem;
+    }
+
+    .badge-active {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.78rem;
+        font-weight: 600;
+        background: #d1fae5;
+        color: #047857;
+    }
+    .badge-inactive {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.78rem;
+        font-weight: 600;
+        background: #fee2e2;
+        color: #b91c1c;
+    }
+
+    .section-title {
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: #0f172a;
+        margin: 1.6rem 0 1rem;
+        padding-bottom: 6px;
+        border-bottom: 1px solid var(--border);
+    }
+
+    #viewMode { display: block; }
+    #editMode { display: none; }
+
+    @media (max-width: 700px) {
+        .info-grid, .form-row { grid-template-columns: 1fr; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Hospital Profile</h1>
+    <button type="button" class="btn-edit" id="editBtn" onclick="toggleEdit(true)">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+            <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+        </svg>
+        Edit Profile
+    </button>
+</div>
+
+<div class="profile-card">
+    <!-- VIEW MODE -->
+    <div id="viewMode">
+        <h2>{{ hospital.name }}</h2>
+        <div class="info-grid">
+            <div class="info-item">
+                <label>Registration No / Code</label>
+                <div class="value">{{ hospital.code }}</div>
+            </div>
+            <div class="info-item">
+                <label>Status</label>
+                <div class="value">
+                    {% if hospital.is_active %}
+                        <span class="badge-active">Active</span>
+                    {% else %}
+                        <span class="badge-inactive">Inactive</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="info-item">
+                <label>Facility Type</label>
+                <div class="value">{{ hospital.get_facility_type_display|default:"Hospital" }}</div>
+            </div>
+            <div class="info-item">
+                <label>City</label>
+                <div class="value">{{ hospital.city|default:"—" }}</div>
+            </div>
+            <div class="info-item">
+                <label>Phone</label>
+                <div class="value">{{ hospital.phone|default:"—" }}</div>
+            </div>
+            <div class="info-item">
+                <label>Email</label>
+                <div class="value">{{ hospital.email|default:"—" }}</div>
+            </div>
+            <div class="info-item full">
+                <label>Address</label>
+                <div class="value">{{ hospital.address|default:"—" }}</div>
+            </div>
+            <div class="info-item">
+                <label>Registered On</label>
+                <div class="value">{{ hospital.created_at|date:"d M Y" }}</div>
+            </div>
+            <div class="info-item">
+                <label>Admin Account</label>
+                <div class="value">{{ request.user.email }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- EDIT MODE -->
+    <div id="editMode">
+        <h2>Edit Hospital Profile</h2>
+        <form method="post">
+            {% csrf_token %}
+
+            <div class="section-title">Hospital Details</div>
+            <div class="form-group">
+                <label>Hospital Name *</label>
+                <input type="text" name="name" value="{{ hospital.name }}" required>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Registration No / Code *</label>
+                    <input type="text" name="code" value="{{ hospital.code }}" required>
+                </div>
+                <div class="form-group">
+                    <label>Facility Type</label>
+                    <select name="facility_type">
+                        <option value="hospital" {% if hospital.facility_type == 'hospital' %}selected{% endif %}>Hospital</option>
+                        <option value="clinic" {% if hospital.facility_type == 'clinic' %}selected{% endif %}>Clinic</option>
+                        <option value="lab" {% if hospital.facility_type == 'lab' %}selected{% endif %}>Lab</option>
+                        <option value="specialty" {% if hospital.facility_type == 'specialty' %}selected{% endif %}>Specialty</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>City</label>
+                    <input type="text" name="city" value="{{ hospital.city }}">
+                </div>
+                <div class="form-group">
+                    <label>Phone</label>
+                    <input type="text" name="phone" value="{{ hospital.phone }}">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Email</label>
+                <input type="email" name="email" value="{{ hospital.email }}">
+            </div>
+            <div class="form-group">
+                <label>Address *</label>
+                <textarea name="address" required>{{ hospital.address }}</textarea>
+            </div>
+
+            <div class="section-title">Change Admin Password</div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>New Password</label>
+                    <input type="password" name="new_password" placeholder="Leave blank to keep current password">
+                </div>
+                <div class="form-group">
+                    <label>Confirm New Password</label>
+                    <input type="password" name="confirm_password" placeholder="Confirm new password">
+                </div>
+            </div>
+
+            <div style="margin-top: 1.5rem;">
+                <button type="button" class="btn-cancel" onclick="toggleEdit(false)">Cancel</button>
+                <button type="submit" class="btn-save">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleEdit(show) {
+    document.getElementById('viewMode').style.display = show ? 'none' : 'block';
+    document.getElementById('editMode').style.display = show ? 'block' : 'none';
+    document.getElementById('editBtn').style.display = show ? 'none' : 'inline-flex';
+}
+</script>
+{% endblock %}

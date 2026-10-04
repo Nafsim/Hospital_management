@@ -32,6 +32,7 @@ class Staff(models.Model):
         related_name='staff_members'
     )
     employee_id = models.CharField(max_length=20, unique=True)
+    license = models.CharField(max_length=50, unique=True, null=True, blank=True)
     department = models.CharField(max_length=50, choices=DEPARTMENT_CHOICES)
     designation = models.CharField(max_length=100)
     date_of_joining = models.DateField()
@@ -41,6 +42,8 @@ class Staff(models.Model):
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    city = models.CharField(max_length=100, blank=True)
+    national_id = models.CharField(max_length=30, unique=True, blank=True, null=True)
 
     def __str__(self):
         return f"{self.employee_id} - {self.user.get_full_name()}"
