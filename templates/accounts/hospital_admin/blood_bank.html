@@ -1,0 +1,422 @@
+{% extends "accounts/hospital_admin/base.html" %}
+{% load static %}
+
+{% block title %}NHIMS - Blood Bank{% endblock %}
+
+{% block extra_css %}
+<style>
+.blood-page{padding:18px 20px}
+.page-title{font-size:1.65rem;font-weight:700;color:var(--text);margin:0 0 .3rem}
+.page-subtitle{color:#64748b;font-size:.92rem;margin:0 0 1.25rem}
+.blood-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+.add-btn{display:flex;align-items:center;gap:8px;background:linear-gradient(135deg,#dc2626,#b91c1c);color:#fff;border:0;padding:11px 16px;border-radius:9px;font-size:13.5px;font-weight:600;cursor:pointer}
+.add-btn:hover{transform:translateY(-1px);box-shadow:0 5px 14px rgba(220,38,38,.25)}
+.stat-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
+.stat-card{background:#fff;border-radius:14px;padding:18px 20px;box-shadow:0 1px 3px rgba(0,0,0,.06);display:flex;justify-content:space-between;align-items:center;border:1px solid var(--border);transition:all .2s ease;cursor:pointer;min-height:100px}
+.stat-card:hover{transform:translateY(-3px);box-shadow:0 6px 16px rgba(15,23,42,.1);border-color:#fecaca}
+.stat-card .label{font-size:.84rem;color:#64748b;font-weight:500;margin-bottom:5px}
+.stat-card .value{font-size:1.85rem;font-weight:700;color:var(--text);line-height:1.15}
+.stat-icon{width:46px;height:46px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.stat-icon.red{background:#fee2e2;color:#dc2626}
+.stat-icon.green{background:#d1fae5;color:#059669}
+.stat-icon.orange{background:#ffedd5;color:#ea580c}
+.stat-icon.purple{background:#ede9fe;color:#7c3aed}
+.blood-card{background:#fff;border-radius:14px;border:1px solid var(--border);box-shadow:0 1px 3px rgba(0,0,0,.06);overflow:hidden}
+.blood-header{padding:15px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:12px}
+.blood-header h2{font-size:1rem;font-weight:600;margin:0;color:var(--text)}
+.table-tools{display:flex;gap:8px}
+.search-box,.filter-box{height:36px;border:1px solid #cbd5e1;border-radius:8px;padding:0 11px;font-size:13px;color:#334155;background:#fff;outline:none}
+.search-box{width:200px}
+.search-box:focus,.filter-box:focus{border-color:#f87171}
+.table-wrapper{overflow-x:auto}
+.blood-table{width:100%;border-collapse:collapse}
+.blood-table th{background:#f8fafc;color:#64748b;font-size:.76rem;font-weight:600;text-transform:uppercase;letter-spacing:.02em;padding:.8rem .9rem;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
+.blood-table td{padding:.85rem .9rem;font-size:.87rem;color:#334155;border-bottom:1px solid #f1f5f9;vertical-align:middle}
+.blood-table tbody tr{transition:background .15s ease}
+.blood-table tbody tr:hover{background:#f8fafc}
+.blood-group{font-weight:700;color:#dc2626;font-size:.95rem}
+.stock-good{font-weight:700;color:#059669}
+.stock-low{font-weight:700;color:#ea580c}
+.stock-out{font-weight:700;color:#dc2626}
+.status-badge{display:inline-flex;align-items:center;padding:.28rem .6rem;border-radius:999px;font-size:.73rem;font-weight:600}
+.status-available{background:#d1fae5;color:#047857}
+.status-low{background:#ffedd5;color:#c2410c}
+.status-out{background:#fee2e2;color:#b91c1c}
+.action-buttons{display:flex;align-items:center;gap:5px}
+.action-btn{width:32px;height:32px;border-radius:7px;border:1px solid #e2e8f0;background:#fff;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s ease}
+.action-btn.view{color:#2563eb}
+.action-btn.edit{color:#059669}
+.action-btn.delete{color:#dc2626}
+.action-btn:hover{transform:translateY(-1px)}
+.action-btn.view:hover{background:#eff6ff;border-color:#93c5fd}
+.action-btn.edit:hover{background:#ecfdf5;border-color:#86efac}
+.action-btn.delete:hover{background:#fef2f2;border-color:#fca5a5}
+.empty-state{text-align:center;padding:40px 16px;color:#64748b}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:9999;align-items:center;justify-content:center;padding:16px}
+.modal-overlay.show{display:flex}
+.modal{background:#fff;width:100%;max-width:560px;border-radius:14px;box-shadow:0 20px 50px rgba(0,0,0,.2);overflow:hidden;max-height:90vh;overflow-y:auto}
+.modal-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.modal-header h3{margin:0;font-size:1rem;font-weight:600;color:#1e293b}
+.modal-close{width:30px;height:30px;border:0;background:#f1f5f9;border-radius:7px;color:#64748b;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.modal-body{padding:18px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-group{display:flex;flex-direction:column;gap:5px}
+.form-group.full{grid-column:1/-1}
+.form-group label{font-size:12.5px;font-weight:600;color:#475569}
+.form-group input,.form-group select,.form-group textarea{height:38px;border:1px solid #cbd5e1;border-radius:7px;padding:0 10px;font-size:13px;outline:none;color:#334155}
+.form-group textarea{height:70px;padding:8px 10px;resize:vertical}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:#f87171}
+.modal-footer{padding:12px 18px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px}
+.btn-cancel,.btn-save,.btn-delete{padding:8px 14px;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer}
+.btn-cancel{background:#fff;color:#475569;border:1px solid #cbd5e1}
+.btn-save{background:#dc2626;color:#fff;border:1px solid #dc2626}
+.btn-delete{background:#dc2626;color:#fff;border:1px solid #dc2626}
+.view-modal{max-width:380px}
+.view-info{display:grid;gap:8px}
+.view-item{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#f8fafc;border-radius:8px;border:1px solid #f1f5f9}
+.view-label{font-size:12px;color:#64748b;font-weight:500}
+.view-value{font-size:13.5px;font-weight:600;color:#1e293b;text-align:right}
+@media(max-width:1000px){.stat-cards{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:650px){.blood-page{padding:14px}.blood-top{flex-direction:column;align-items:flex-start}.stat-cards{grid-template-columns:1fr}.blood-header{flex-direction:column;align-items:flex-start}.table-tools{width:100%;flex-direction:column}.search-box{width:auto}.form-grid{grid-template-columns:1fr}}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="blood-page">
+    <div class="blood-top">
+        <div>
+            <h1 class="page-title">Blood Bank</h1>
+            <p class="page-subtitle">Manage blood inventory, units and stock levels</p>
+        </div>
+        <button type="button" class="add-btn" onclick="openAddModal()">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M12 5v14"/><path d="M5 12h14"/>
+            </svg>
+            Add Blood Unit
+        </button>
+    </div>
+
+    <div class="stat-cards">
+        <div class="stat-card" onclick="filterStock('all')">
+            <div>
+                <div class="label">Total Bags</div>
+                <div class="value">{{ total_units }}</div>
+            </div>
+            <div class="stat-icon red">
+                <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M12 2C8 7 4 10 4 14a8 8 0 0016 0c0-4-4-7-8-12z"/>
+                </svg>
+            </div>
+        </div>
+        <div class="stat-card" onclick="filterStock('available')">
+            <div>
+                <div class="label">Total Units</div>
+                <div class="value">{{ total_stock }}</div>
+            </div>
+            <div class="stat-icon green">
+                <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M20 7l-8 8-4-4"/><path d="M4 17h16"/>
+                </svg>
+            </div>
+        </div>
+        <div class="stat-card" onclick="filterStock('low')">
+            <div>
+                <div class="label">Low Stock</div>
+                <div class="value">{{ low_stock }}</div>
+            </div>
+            <div class="stat-icon orange">
+                <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 3.6L2.5 17a2 2 0 001.7 3h15.6a2 2 0 001.7-3l-7.8-13.4a2 2 0 00-3.4 0z"/>
+                </svg>
+            </div>
+        </div>
+        <div class="stat-card" onclick="filterStock('out')">
+            <div>
+                <div class="label">Out of Stock</div>
+                <div class="value">{{ out_of_stock }}</div>
+            </div>
+            <div class="stat-icon purple">
+                <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="9"/><path d="M8 8l8 8"/><path d="M16 8l-8 8"/>
+                </svg>
+            </div>
+        </div>
+    </div>
+
+    <div class="blood-card">
+        <div class="blood-header">
+            <h2>Blood Inventory</h2>
+            <div class="table-tools">
+                <input type="text" id="bloodSearch" class="search-box" placeholder="Search blood group...">
+                <select id="stockFilter" class="filter-box">
+                    <option value="all">All Stock</option>
+                    <option value="available">Available</option>
+                    <option value="low">Low Stock</option>
+                    <option value="out">Out of Stock</option>
+                </select>
+            </div>
+        </div>
+        <div class="table-wrapper">
+            <table class="blood-table" id="bloodTable">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Blood Group</th>
+                        <th>Component</th>
+                        <th>Units</th>
+                        <th>Bag No.</th>
+                        <th>Expiry Date</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for blood in blood_units %}
+                    <tr data-status="{% if blood.units == 0 %}out{% elif blood.units <= blood.reorder_level %}low{% else %}available{% endif %}">
+                        <td>{{ blood.id }}</td>
+                        <td class="blood-group">{{ blood.blood_group }}</td>
+                        <td>{{ blood.get_component_display }}</td>
+                        <td class="{% if blood.units == 0 %}stock-out{% elif blood.units <= blood.reorder_level %}stock-low{% else %}stock-good{% endif %}">{{ blood.units }}</td>
+                        <td>{{ blood.bag_number|default:"—" }}</td>
+                        <td>{{ blood.expiry_date|date:"d M Y"|default:"—" }}</td>
+                        <td>
+                            {% if blood.units == 0 %}
+                            <span class="status-badge status-out">Out of Stock</span>
+                            {% elif blood.units <= blood.reorder_level %}
+                            <span class="status-badge status-low">Low Stock</span>
+                            {% else %}
+                            <span class="status-badge status-available">Available</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="action-buttons">
+                                <button type="button" class="action-btn view" title="View" onclick="openViewModal('{{ blood.blood_group }}','{{ blood.get_component_display|escapejs }}','{{ blood.units }}','{{ blood.bag_number|default:"—"|escapejs }}','{{ blood.expiry_date|date:"d M Y"|default:"—"|escapejs }}','{{ blood.donor_name|default:"—"|escapejs }}','{{ blood.collection_date|date:"d M Y"|default:"—"|escapejs }}','{{ blood.notes|default:"—"|escapejs }}')">
+                                    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/>
+                                    </svg>
+                                </button>
+                                <button type="button" class="action-btn edit" title="Edit" onclick="openEditModal('{{ blood.id }}','{{ blood.blood_group }}','{{ blood.component }}','{{ blood.units }}','{{ blood.reorder_level }}','{{ blood.expiry_date|date:"Y-m-d"|default:"" }}','{{ blood.bag_number|escapejs }}','{{ blood.donor_name|escapejs }}','{{ blood.collection_date|date:"Y-m-d"|default:"" }}','{{ blood.notes|escapejs }}')">
+                                    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                        <path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L8 18l-4 1 1-4z"/>
+                                    </svg>
+                                </button>
+                                <button type="button" class="action-btn delete" title="Delete" onclick="openDeleteModal('{{ blood.id }}','{{ blood.blood_group }} - {{ blood.get_component_display|escapejs }}')">
+                                    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                        <path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 15H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8">
+                            <div class="empty-state">
+                                <h3>No Blood Units Found</h3>
+                                <p>Add blood units to start managing blood bank inventory.</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="bloodModal">
+    <div class="modal">
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" id="bloodAction" value="create">
+            <input type="hidden" name="blood_id" id="bloodId">
+            <div class="modal-header">
+                <h3 id="bloodModalTitle">Add Blood Unit</h3>
+                <button type="button" class="modal-close" onclick="closeModal('bloodModal')">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path d="M18 6L6 18"/><path d="M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Blood Group</label>
+                        <select name="blood_group" id="bloodGroup" required>
+                            <option value="">Select Group</option>
+                            {% for value,label in blood_group_choices %}
+                            <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Component</label>
+                        <select name="component" id="bloodComponent" required>
+                            {% for value,label in component_choices %}
+                            <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Units</label>
+                        <input type="number" name="units" id="bloodUnits" min="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Reorder Level</label>
+                        <input type="number" name="reorder_level" id="bloodReorder" min="0" value="5">
+                    </div>
+                    <div class="form-group">
+                        <label>Bag Number</label>
+                        <input type="text" name="bag_number" id="bloodBag">
+                    </div>
+                    <div class="form-group">
+                        <label>Expiry Date</label>
+                        <input type="date" name="expiry_date" id="bloodExpiry">
+                    </div>
+                    <div class="form-group">
+                        <label>Donor Name</label>
+                        <input type="text" name="donor_name" id="bloodDonor">
+                    </div>
+                    <div class="form-group">
+                        <label>Collection Date</label>
+                        <input type="date" name="collection_date" id="bloodCollection">
+                    </div>
+                    <div class="form-group full">
+                        <label>Notes</label>
+                        <textarea name="notes" id="bloodNotes"></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" onclick="closeModal('bloodModal')">Cancel</button>
+                <button type="submit" class="btn-save">Save Blood Unit</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal-overlay" id="viewModal">
+    <div class="modal view-modal">
+        <div class="modal-header">
+            <h3>Blood Unit Details</h3>
+            <button type="button" class="modal-close" onclick="closeModal('viewModal')">
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M18 6L6 18"/><path d="M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="view-info">
+                <div class="view-item"><span class="view-label">Blood Group</span><span class="view-value" id="viewGroup"></span></div>
+                <div class="view-item"><span class="view-label">Component</span><span class="view-value" id="viewComponent"></span></div>
+                <div class="view-item"><span class="view-label">Units</span><span class="view-value" id="viewUnits"></span></div>
+                <div class="view-item"><span class="view-label">Bag Number</span><span class="view-value" id="viewBag"></span></div>
+                <div class="view-item"><span class="view-label">Expiry Date</span><span class="view-value" id="viewExpiry"></span></div>
+                <div class="view-item"><span class="view-label">Donor Name</span><span class="view-value" id="viewDonor"></span></div>
+                <div class="view-item"><span class="view-label">Collection Date</span><span class="view-value" id="viewCollection"></span></div>
+                <div class="view-item"><span class="view-label">Notes</span><span class="view-value" id="viewNotes"></span></div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-cancel" onclick="closeModal('viewModal')">Close</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="deleteModal">
+    <div class="modal" style="max-width:380px">
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="delete">
+            <input type="hidden" name="blood_id" id="deleteBloodId">
+            <div class="modal-header">
+                <h3>Delete Blood Unit</h3>
+                <button type="button" class="modal-close" onclick="closeModal('deleteModal')">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path d="M18 6L6 18"/><path d="M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p style="margin:0;color:#475569;font-size:.88rem;line-height:1.55">Are you sure you want to delete <strong id="deleteBloodName"></strong>?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" onclick="closeModal('deleteModal')">Cancel</button>
+                <button type="submit" class="btn-delete">Delete</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openAddModal(){
+    document.getElementById('bloodAction').value='create';
+    document.getElementById('bloodId').value='';
+    document.getElementById('bloodModalTitle').textContent='Add Blood Unit';
+    document.getElementById('bloodGroup').value='';
+    document.getElementById('bloodComponent').value='whole';
+    document.getElementById('bloodUnits').value='0';
+    document.getElementById('bloodReorder').value='5';
+    document.getElementById('bloodBag').value='';
+    document.getElementById('bloodExpiry').value='';
+    document.getElementById('bloodDonor').value='';
+    document.getElementById('bloodCollection').value='';
+    document.getElementById('bloodNotes').value='';
+    document.getElementById('bloodModal').classList.add('show');
+}
+function openEditModal(id,group,component,units,reorder,expiry,bag,donor,collection,notes){
+    document.getElementById('bloodAction').value='edit';
+    document.getElementById('bloodId').value=id;
+    document.getElementById('bloodModalTitle').textContent='Edit Blood Unit';
+    document.getElementById('bloodGroup').value=group;
+    document.getElementById('bloodComponent').value=component;
+    document.getElementById('bloodUnits').value=units;
+    document.getElementById('bloodReorder').value=reorder;
+    document.getElementById('bloodExpiry').value=expiry;
+    document.getElementById('bloodBag').value=bag;
+    document.getElementById('bloodDonor').value=donor;
+    document.getElementById('bloodCollection').value=collection;
+    document.getElementById('bloodNotes').value=notes;
+    document.getElementById('bloodModal').classList.add('show');
+}
+function openViewModal(group,component,units,bag,expiry,donor,collection,notes){
+    document.getElementById('viewGroup').textContent=group;
+    document.getElementById('viewComponent').textContent=component;
+    document.getElementById('viewUnits').textContent=units;
+    document.getElementById('viewBag').textContent=bag;
+    document.getElementById('viewExpiry').textContent=expiry;
+    document.getElementById('viewDonor').textContent=donor;
+    document.getElementById('viewCollection').textContent=collection;
+    document.getElementById('viewNotes').textContent=notes;
+    document.getElementById('viewModal').classList.add('show');
+}
+function openDeleteModal(id,name){
+    document.getElementById('deleteBloodId').value=id;
+    document.getElementById('deleteBloodName').textContent=name;
+    document.getElementById('deleteModal').classList.add('show');
+}
+function closeModal(id){
+    document.getElementById(id).classList.remove('show');
+}
+function filterStock(value){
+    document.getElementById('stockFilter').value=value;
+    filterTable();
+}
+function filterTable(){
+    const search=document.getElementById('bloodSearch').value.toLowerCase();
+    const filter=document.getElementById('stockFilter').value;
+    document.querySelectorAll('#bloodTable tbody tr').forEach(row=>{
+        const text=row.innerText.toLowerCase();
+        const status=row.dataset.status;
+        row.style.display=text.includes(search)&&(filter==='all'||status===filter)?'':'none';
+    });
+}
+document.getElementById('bloodSearch').addEventListener('input',filterTable);
+document.getElementById('stockFilter').addEventListener('change',filterTable);
+window.addEventListener('click',function(event){
+    if(event.target.classList.contains('modal-overlay')){
+        event.target.classList.remove('show');
+    }
+});
+</script>
+{% endblock %}

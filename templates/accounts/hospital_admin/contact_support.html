@@ -1,0 +1,141 @@
+
+{% extends "accounts/hospital_admin/base.html" %}
+{% load static %}
+
+{% block title %}NHIMS - Contact & Support{% endblock %}
+
+{% block extra_css %}
+<style>
+.page-title{font-size:1.75rem;font-weight:700;color:var(--text);margin:0 0 .35rem}
+.page-subtitle{color:#64748b;font-size:.95rem;margin:0 0 1.5rem}
+.contact-card{background:white;border-radius:16px;border:1px solid var(--border);box-shadow:0 1px 3px rgba(0,0,0,.06);overflow:hidden;margin-bottom:1.5rem}
+.contact-header{padding:1.1rem 1.4rem;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px}
+.contact-header-icon{width:40px;height:40px;border-radius:11px;background:#dbeafe;color:#2563eb;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.contact-header h2{font-size:1.05rem;font-weight:600;margin:0;color:var(--text)}
+.contact-header p{font-size:.8rem;color:#64748b;margin:3px 0 0}
+.contact-body{padding:1.2rem 1.4rem}
+.info-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.info-item{background:#f8fafc;border-radius:10px;padding:.9rem 1rem;border:1px solid #f1f5f9}
+.info-label{font-size:.75rem;color:#64748b;margin-bottom:.3rem}
+.info-value{font-size:.9rem;font-weight:600;color:#1e293b;word-break:break-word}
+.form-card{background:white;border-radius:16px;border:1px solid var(--border);box-shadow:0 1px 3px rgba(0,0,0,.06);overflow:hidden}
+.form-header{padding:1.1rem 1.4rem;border-bottom:1px solid var(--border)}
+.form-header h2{font-size:1.05rem;font-weight:600;margin:0;color:var(--text)}
+.form-body{padding:1.3rem 1.4rem}
+.form-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1rem}
+.form-group{margin-bottom:.2rem}
+.form-group.full{grid-column:1/-1}
+.form-label{display:block;font-size:.84rem;font-weight:600;color:#334155;margin-bottom:.4rem}
+.form-control{width:100%;box-sizing:border-box;padding:.7rem .8rem;border:1px solid #cbd5e1;border-radius:8px;font-size:.88rem;color:#1e293b;background:white;outline:none;transition:all .2s ease}
+textarea.form-control{min-height:85px;resize:vertical;font-family:inherit}
+.form-control:focus{border-color:#60a5fa;box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+.form-footer{padding:1rem 1.4rem;border-top:1px solid var(--border);display:flex;justify-content:flex-end}
+.btn-save{display:flex;align-items:center;gap:8px;background:linear-gradient(135deg,#0ea5e9,#2563eb);color:white;border:none;padding:11px 18px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer}
+.btn-save:hover{transform:translateY(-1px);box-shadow:0 5px 14px rgba(37,99,235,.22)}
+@media(max-width:900px){.info-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:640px){.info-grid,.form-grid{grid-template-columns:1fr}}
+</style>
+{% endblock %}
+
+{% block content %}
+
+<h1 class="page-title">Contact & Support</h1>
+<p class="page-subtitle">Manage hospital contact information and NHIMS support</p>
+
+<div class="contact-card">
+    <div class="contact-header">
+        <div class="contact-header-icon">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M3 21h18"/>
+                <path d="M5 21V5a2 2 0 012-2h10a2 2 0 012 2v16"/>
+                <path d="M9 7h2"/>
+                <path d="M13 7h2"/>
+                <path d="M9 11h2"/>
+                <path d="M13 11h2"/>
+                <path d="M9 15h2"/>
+                <path d="M13 15h2"/>
+            </svg>
+        </div>
+        <div>
+            <h2>Hospital Contact Information</h2>
+            <p>Current contact information for your hospital</p>
+        </div>
+    </div>
+
+    <div class="contact-body">
+        <div class="info-grid">
+            <div class="info-item">
+                <div class="info-label">Hospital Name</div>
+                <div class="info-value">{{ hospital.name|default:"Not Available" }}</div>
+            </div>
+
+            <div class="info-item">
+                <div class="info-label">Phone Number</div>
+                <div class="info-value">{{ hospital.phone|default:"Not Available" }}</div>
+            </div>
+
+            <div class="info-item">
+                <div class="info-label">Email Address</div>
+                <div class="info-value">{{ hospital.email|default:"Not Available" }}</div>
+            </div>
+
+            <div class="info-item">
+                <div class="info-label">Address</div>
+                <div class="info-value">{{ hospital.address|default:"Not Available" }}</div>
+            </div>
+
+            <div class="info-item">
+                <div class="info-label">Emergency Contact</div>
+                <div class="info-value">{{ hospital.phone|default:"Not Available" }}</div>
+            </div>
+
+            <div class="info-item">
+                <div class="info-label">Support Hours</div>
+                <div class="info-value">24 Hours / 7 Days</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="form-card">
+    <div class="form-header">
+        <h2>Update Hospital Contact Information</h2>
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="update">
+
+        <div class="form-body">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="form-label">Phone Number</label>
+                    <input type="text" name="phone" class="form-control" value="{{ hospital.phone|default:'' }}" placeholder="+8801XXXXXXXXX">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Email Address</label>
+                    <input type="email" name="email" class="form-control" value="{{ hospital.email|default:'' }}" placeholder="hospital@example.com">
+                </div>
+
+                <div class="form-group full">
+                    <label class="form-label">Hospital Address</label>
+                    <textarea name="address" class="form-control" placeholder="Enter hospital address">{{ hospital.address|default:'' }}</textarea>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-footer">
+            <button type="submit" class="btn-save">
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/>
+                    <path d="M17 21v-8H7v8"/>
+                    <path d="M7 3v5h8"/>
+                </svg>
+                Save Changes
+            </button>
+        </div>
+    </form>
+</div>
+
+{% endblock %}

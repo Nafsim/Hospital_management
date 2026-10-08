@@ -4,10 +4,11 @@ from django.contrib.auth import login, authenticate
 from django.contrib import messages
 from .forms import LoginForm, HospitalCreationForm
 import calendar
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from django.apps import apps
 from patients.models import Patient, Visit
 from staff.models import Staff
+from .models import Medicine
 from hospitals.models import Hospital
 from django.utils import timezone
 from datetime import timedelta
@@ -23,7 +24,13 @@ from .models import Department
 from .models import HospitalDocument, Payroll  
 from django.http import HttpResponse
 from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import A4
+from reportlab.lib.pagesizes import A4 
+from django.db import models
+from .models import Blood
+from .models import DiagnosticTest 
+from .models import Facility, MOHJoinRequest
+from django.contrib import messages
+from django.shortcuts import get_object_or_404
 def login_view(request):
     if request.user.is_authenticated:
         return redirect('dashboard')
@@ -53,6 +60,8 @@ def login_view(request):
                 return redirect('bloodbank_dashboard')
             elif user.role == 'accountant':
                 return redirect('accountant_dashboard')
+            elif user.role == 'pharmacy':
+                return redirect('pharmacy_dashboard')
 
             return redirect('login')
 
@@ -92,6 +101,9 @@ def dashboard(request):
 
     elif request.user.role == 'accountant':
         return redirect('accountant_dashboard')
+
+    elif request.user.role == 'pharmacy':
+        return redirect('pharmacy_dashboard')
 
     return redirect('login')
 #MOH 
@@ -746,11 +758,11 @@ User = get_user_model()
 def hospital_staff(request):
     if not request.user.is_authenticated:
         return redirect('login')
-
     if request.user.role != 'hospital_admin':
         return redirect('dashboard')
 
     hospital = request.user.hospital
+    staff_filter = request.GET.get('staff_filter', 'all')
 
     if request.method == 'POST':
         action = request.POST.get('action')
@@ -777,11 +789,8 @@ def hospital_staff(request):
                 'Laboratory': 'lab',
                 'Counter / Reception': 'counter',
                 'Blood Bank': 'bloodbank',
-                'Pharmacy': 'pharmacy',
-                'Medical Records': 'medical_records',
-                'HR / Administration': 'admin'
+                'Pharmacy': 'pharmacy',          # ← added
             }
-
             role = role_map.get(department, 'nurse')
 
             if User.objects.filter(email=email).exists():
@@ -810,86 +819,46 @@ def hospital_staff(request):
                 national_id=national_id,
                 is_active=is_active
             )
-
             return redirect('hospital_staff')
 
         if action == 'delete' and staff_id:
-            staff_member = Staff.objects.get(
-                id=staff_id,
-                hospital=hospital
-            )
-
+            staff_member = Staff.objects.get(id=staff_id, hospital=hospital)
             user = staff_member.user
             staff_member.delete()
-
             if user:
                 user.delete()
-
             return redirect('hospital_staff')
 
-    staff = Staff.objects.filter(
-        hospital=hospital
-    ).select_related('user')
+    # Base queryset
+    staff = Staff.objects.filter(hospital=hospital).select_related('user')
 
-    staff_filter = request.GET.get('staff_filter', 'all')
-
+    # Filtering
     if staff_filter == 'doctor':
-        staff = staff.filter(
-            user__role='doctor'
-        )
-
+        staff = staff.filter(user__role='doctor')
     elif staff_filter == 'nurse':
-        staff = staff.filter(
-            user__role='nurse'
-        )
-
+        staff = staff.filter(user__role='nurse')
     elif staff_filter == 'accountant':
-        staff = staff.filter(
-            user__role='accountant'
-        )
-
+        staff = staff.filter(user__role='accountant')
     elif staff_filter == 'laboratory':
-        staff = staff.filter(
-            user__role='lab'
-        )
-
+        staff = staff.filter(user__role='lab')
     elif staff_filter == 'counter':
-        staff = staff.filter(
-            user__role='counter'
-        )
-
+        staff = staff.filter(user__role='counter')
     elif staff_filter == 'blood':
-        staff = staff.filter(
-            user__role='bloodbank'
-        )
-
+        staff = staff.filter(user__role='bloodbank')
     elif staff_filter == 'pharmacy':
-        staff = staff.filter(
-            user__role='pharmacy'
-        )
-
+        staff = staff.filter(user__role='pharmacy')         
     elif staff_filter == 'medical':
-        staff = staff.filter(
-            department__icontains='Medical Records'
-        )
-
+        staff = staff.filter(department='Medical Records')
     elif staff_filter == 'administration':
-        staff = staff.filter(
-            department__icontains='Administration'
-        )
+        staff = staff.filter(department='HR / Administration')
+    # else: staff_filter == 'all' → show everything
 
     context = {
         'staff': staff,
         'staff_filter': staff_filter,
         'hospital': hospital
     }
-
-    return render(
-        request,
-        'accounts/hospital_admin/staff.html',
-        context
-    )
-
+    return render(request, 'accounts/hospital_admin/staff.html', context)
 def hospital_profile(request):
     if not request.user.is_authenticated:
         return redirect('login')
@@ -1272,56 +1241,416 @@ def download_payslip(request, payroll_id):
 def hospital_pharmacy(request):
     if not request.user.is_authenticated:
         return redirect('login')
+
     if request.user.role != 'hospital_admin':
         return redirect('dashboard')
-    return render(request, 'accounts/hospital_admin/pharmacy.html')
+
+    hospital = request.user.hospital
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        medicine_id = request.POST.get('medicine_id')
+
+        if action == 'create':
+            Medicine.objects.create(
+                hospital=hospital,
+                name=request.POST.get('name', '').strip(),
+                category=request.POST.get('category', ''),
+                strength=request.POST.get('strength', '').strip(),
+                stock=int(request.POST.get('stock') or 0),
+                unit=request.POST.get('unit', ''),
+                reorder_level=int(request.POST.get('reorder_level') or 20),
+                expiry_date=request.POST.get('expiry_date') or None,
+                batch_number=request.POST.get('batch_number', '').strip(),
+                supplier=request.POST.get('supplier', '').strip(),
+                price=request.POST.get('price') or 0
+            )
+            return redirect('hospital_pharmacy')
+
+        if action == 'edit' and medicine_id:
+            medicine = Medicine.objects.get(
+                id=medicine_id,
+                hospital=hospital
+            )
+
+            medicine.name = request.POST.get('name', '').strip()
+            medicine.category = request.POST.get('category', '')
+            medicine.strength = request.POST.get('strength', '').strip()
+            medicine.stock = int(request.POST.get('stock') or 0)
+            medicine.unit = request.POST.get('unit', '')
+            medicine.reorder_level = int(request.POST.get('reorder_level') or 20)
+            medicine.expiry_date = request.POST.get('expiry_date') or None
+            medicine.batch_number = request.POST.get('batch_number', '').strip()
+            medicine.supplier = request.POST.get('supplier', '').strip()
+            medicine.price = request.POST.get('price') or 0
+            medicine.save()
+
+            return redirect('hospital_pharmacy')
+
+        if action == 'delete' and medicine_id:
+            Medicine.objects.filter(
+                id=medicine_id,
+                hospital=hospital
+            ).delete()
+
+            return redirect('hospital_pharmacy')
+
+    medicines = Medicine.objects.filter(
+        hospital=hospital
+    )
+
+    total_medicines = medicines.count()
+    total_stock = sum(m.stock for m in medicines)
+    low_stock = medicines.filter(
+        stock__gt=0,
+        stock__lte=models.F('reorder_level')
+    ).count()
+    out_of_stock = medicines.filter(stock=0).count()
+
+    today = date.today()
+    expiry_limit = today + timedelta(days=30)
+
+    expiring_soon = medicines.filter(
+        expiry_date__isnull=False,
+        expiry_date__gte=today,
+        expiry_date__lte=expiry_limit
+    ).count()
+
+    context = {
+        'hospital': hospital,
+        'medicines': medicines,
+        'total_medicines': total_medicines,
+        'total_stock': total_stock,
+        'low_stock': low_stock,
+        'out_of_stock': out_of_stock,
+        'expiring_soon': expiring_soon,
+        'category_choices': Medicine.CATEGORY_CHOICES,
+        'unit_choices': Medicine.UNIT_CHOICES
+    }
+
+    return render(
+        request,
+        'accounts/hospital_admin/pharmacy.html',
+        context
+    )
 
 def hospital_blood_bank(request):
     if not request.user.is_authenticated:
         return redirect('login')
+
     if request.user.role != 'hospital_admin':
         return redirect('dashboard')
-    return render(request, 'accounts/hospital_admin/blood_bank.html')
 
+    hospital = request.user.hospital
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        blood_id = request.POST.get('blood_id')
+
+        if action == 'create':
+            Blood.objects.create(
+                hospital=hospital,
+                blood_group=request.POST.get('blood_group', ''),
+                component=request.POST.get('component', 'whole'),
+                units=int(request.POST.get('units') or 0),
+                reorder_level=int(request.POST.get('reorder_level') or 5),
+                expiry_date=request.POST.get('expiry_date') or None,
+                bag_number=request.POST.get('bag_number', '').strip(),
+                donor_name=request.POST.get('donor_name', '').strip(),
+                collection_date=request.POST.get('collection_date') or None,
+                notes=request.POST.get('notes', '').strip()
+            )
+            return redirect('hospital_blood_bank')
+
+        if action == 'edit' and blood_id:
+            blood = Blood.objects.get(id=blood_id, hospital=hospital)
+            blood.blood_group = request.POST.get('blood_group', '')
+            blood.component = request.POST.get('component', 'whole')
+            blood.units = int(request.POST.get('units') or 0)
+            blood.reorder_level = int(request.POST.get('reorder_level') or 5)
+            blood.expiry_date = request.POST.get('expiry_date') or None
+            blood.bag_number = request.POST.get('bag_number', '').strip()
+            blood.donor_name = request.POST.get('donor_name', '').strip()
+            blood.collection_date = request.POST.get('collection_date') or None
+            blood.notes = request.POST.get('notes', '').strip()
+            blood.save()
+            return redirect('hospital_blood_bank')
+
+        if action == 'delete' and blood_id:
+            Blood.objects.filter(id=blood_id, hospital=hospital).delete()
+            return redirect('hospital_blood_bank')
+
+    blood_units = Blood.objects.filter(hospital=hospital)
+
+    total_units = blood_units.count()
+    total_stock = sum(b.units for b in blood_units)
+    low_stock = blood_units.filter(units__gt=0, units__lte=models.F('reorder_level')).count()
+    out_of_stock = blood_units.filter(units=0).count()
+
+    today = date.today()
+    expiry_limit = today + timedelta(days=14)
+
+    expiring_soon = blood_units.filter(
+        expiry_date__isnull=False,
+        expiry_date__gte=today,
+        expiry_date__lte=expiry_limit
+    ).count()
+
+    context = {
+        'hospital': hospital,
+        'blood_units': blood_units,
+        'total_units': total_units,
+        'total_stock': total_stock,
+        'low_stock': low_stock,
+        'out_of_stock': out_of_stock,
+        'expiring_soon': expiring_soon,
+        'blood_group_choices': Blood.BLOOD_GROUP_CHOICES,
+        'component_choices': Blood.COMPONENT_CHOICES,
+    }
+
+    return render(request, 'accounts/hospital_admin/blood_bank.html', context)
 def hospital_diagnostics(request):
     if not request.user.is_authenticated:
         return redirect('login')
+
     if request.user.role != 'hospital_admin':
         return redirect('dashboard')
-    return render(request, 'accounts/hospital_admin/diagnostics.html')
+
+    hospital = request.user.hospital
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        test_id = request.POST.get('test_id')
+
+        if action == 'create':
+            DiagnosticTest.objects.create(
+                hospital=hospital,
+                name=request.POST.get('name', '').strip(),
+                category=request.POST.get('category', 'blood'),
+                sample_type=request.POST.get('sample_type', 'blood'),
+                price=request.POST.get('price') or 0,
+                report_time=request.POST.get('report_time', '').strip(),
+                description=request.POST.get('description', '').strip(),
+                is_active=request.POST.get('is_active') == 'on'
+            )
+            return redirect('hospital_diagnostics')
+
+        if action == 'edit' and test_id:
+            test = DiagnosticTest.objects.get(id=test_id, hospital=hospital)
+            test.name = request.POST.get('name', '').strip()
+            test.category = request.POST.get('category', 'blood')
+            test.sample_type = request.POST.get('sample_type', 'blood')
+            test.price = request.POST.get('price') or 0
+            test.report_time = request.POST.get('report_time', '').strip()
+            test.description = request.POST.get('description', '').strip()
+            test.is_active = request.POST.get('is_active') == 'on'
+            test.save()
+            return redirect('hospital_diagnostics')
+
+        if action == 'delete' and test_id:
+            DiagnosticTest.objects.filter(id=test_id, hospital=hospital).delete()
+            return redirect('hospital_diagnostics')
+
+    tests = DiagnosticTest.objects.filter(hospital=hospital)
+
+    total_tests = tests.count()
+    active_tests = tests.filter(is_active=True).count()
+    inactive_tests = tests.filter(is_active=False).count()
+    categories_count = tests.values('category').distinct().count()
+
+    context = {
+        'hospital': hospital,
+        'tests': tests,
+        'total_tests': total_tests,
+        'active_tests': active_tests,
+        'inactive_tests': inactive_tests,
+        'categories_count': categories_count,
+        'category_choices': DiagnosticTest.CATEGORY_CHOICES,
+        'sample_choices': DiagnosticTest.SAMPLE_CHOICES,
+    }
+
+    return render(request, 'accounts/hospital_admin/diagnostics.html', context)
+
+
+User = get_user_model()
 
 def hospital_users_access(request):
     if not request.user.is_authenticated:
         return redirect('login')
+
     if request.user.role != 'hospital_admin':
         return redirect('dashboard')
+
     hospital = request.user.hospital
-    from django.contrib.auth import get_user_model
-    User = get_user_model()
-    users = User.objects.filter(hospital=hospital) if hospital else []
-    context = {'users': users}
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        user_id = request.POST.get('user_id')
+
+        if action == 'toggle' and user_id:
+            user = get_object_or_404(User, id=user_id, hospital=hospital)
+            field = request.POST.get('field')
+
+            if field in ['pharmacy_access', 'blood_bank_access', 'diagnostics_access', 'patients_access', 'staff_access']:
+                current = getattr(user, field)
+                setattr(user, field, not current)
+                user.save()
+            return redirect('hospital_users_access')
+
+        if action == 'toggle_active' and user_id:
+            user = get_object_or_404(User, id=user_id, hospital=hospital)
+            user.is_active = not user.is_active
+            user.save()
+            return redirect('hospital_users_access')
+
+    users = User.objects.filter(hospital=hospital).order_by('-date_joined')
+
+    total_users = users.count()
+    active_users = users.filter(is_active=True).count()
+    inactive_users = users.filter(is_active=False).count()
+    staff_count = users.exclude(role='hospital_admin').count()
+
+    context = {
+        'hospital': hospital,
+        'users': users,
+        'total_users': total_users,
+        'active_users': active_users,
+        'inactive_users': inactive_users,
+        'staff_count': staff_count,
+    }
+
     return render(request, 'accounts/hospital_admin/users_access.html', context)
+from .models import Facility, MOHJoinRequest
+from django.shortcuts import get_object_or_404
+from django.contrib import messages
 
 def hospital_facility(request):
     if not request.user.is_authenticated:
         return redirect('login')
     if request.user.role != 'hospital_admin':
         return redirect('dashboard')
-    return render(request, 'accounts/hospital_admin/facility.html')
+
+    hospital = request.user.hospital
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action == 'create':
+            Facility.objects.create(
+                hospital=hospital,
+                name=request.POST.get('name', '').strip(),
+                facility_type=request.POST.get('facility_type', 'ward'),
+                capacity=int(request.POST.get('capacity') or 0),
+                status=request.POST.get('status', 'active'),
+                location=request.POST.get('location', '').strip(),
+                description=request.POST.get('description', '').strip()
+            )
+            return redirect('hospital_facility')
+
+        if action == 'edit':
+            facility = get_object_or_404(Facility, id=request.POST.get('facility_id'), hospital=hospital)
+            facility.name = request.POST.get('name', '').strip()
+            facility.facility_type = request.POST.get('facility_type', 'ward')
+            facility.capacity = int(request.POST.get('capacity') or 0)
+            facility.status = request.POST.get('status', 'active')
+            facility.location = request.POST.get('location', '').strip()
+            facility.description = request.POST.get('description', '').strip()
+            facility.save()
+            return redirect('hospital_facility')
+
+        if action == 'delete':
+            Facility.objects.filter(id=request.POST.get('facility_id'), hospital=hospital).delete()
+            return redirect('hospital_facility')
+
+        if action == 'request':
+            MOHJoinRequest.objects.create(
+                hospital=hospital,
+                requested_by=request.user,
+                hospital_name=request.POST.get('hospital_name', '').strip(),
+                registration_number=request.POST.get('registration_number', '').strip(),
+                location=request.POST.get('location', '').strip(),
+                contact_person=request.POST.get('contact_person', '').strip(),
+                contact_phone=request.POST.get('contact_phone', '').strip(),
+                contact_email=request.POST.get('contact_email', '').strip(),
+                reason=request.POST.get('reason', '').strip()
+            )
+            messages.success(request, 'Your request to join MOH has been submitted successfully.')
+            return redirect('hospital_facility')
+
+    facilities = Facility.objects.filter(hospital=hospital)
+
+    context = {
+        'hospital': hospital,
+        'facilities': facilities,
+        'total': facilities.count(),
+        'active': facilities.filter(status='active').count(),
+        'inactive': facilities.filter(status='inactive').count(),
+        'maintenance': facilities.filter(status='maintenance').count(),
+        'type_choices': Facility.TYPE_CHOICES,
+        'status_choices': Facility.STATUS_CHOICES,
+    }
+    return render(request, 'accounts/hospital_admin/facility.html', context)
+
+from .models import SystemSettings
+from django.contrib import messages
 
 def hospital_admin_settings(request):
     if not request.user.is_authenticated:
         return redirect('login')
     if request.user.role != 'hospital_admin':
         return redirect('dashboard')
-    return render(request, 'accounts/hospital_admin/settings.html')
+
+    hospital = request.user.hospital
+    settings = SystemSettings.load()
+
+    if request.method == 'POST':
+        # Update Hospital Profile (per hospital)
+        hospital.name = request.POST.get('hospital_name', '').strip()
+        hospital.email = request.POST.get('hospital_email', '').strip()
+        hospital.phone = request.POST.get('hospital_phone', '').strip()
+        hospital.address = request.POST.get('hospital_address', '').strip()
+        hospital.save()
+
+        # Update Global Preferences
+        settings.timezone = request.POST.get('timezone', 'Asia/Dhaka')
+        settings.currency = request.POST.get('currency', 'BDT')
+        settings.date_format = request.POST.get('date_format', 'DD-MM-YYYY')
+        settings.maintenance_mode = request.POST.get('maintenance_mode') == 'on'
+        settings.save()
+
+        messages.success(request, 'Settings updated successfully.')
+        return redirect('hospital_admin_settings')
+
+    context = {
+        'hospital': hospital,
+        'settings': settings,
+    }
+    return render(request, 'accounts/hospital_admin/settings.html', context)
 
 def hospital_contact_support(request):
     if not request.user.is_authenticated:
         return redirect('login')
     if request.user.role != 'hospital_admin':
         return redirect('dashboard')
-    return render(request, 'accounts/hospital_admin/contact_support.html')
+
+    hospital = request.user.hospital
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action == 'update':
+            hospital.phone = request.POST.get('phone', '').strip()
+            hospital.email = request.POST.get('email', '').strip()
+            hospital.address = request.POST.get('address', '').strip()
+            hospital.save()
+            messages.success(request, 'Contact information updated successfully.')
+            return redirect('hospital_contact_support')
+
+    return render(
+        request,
+        'accounts/hospital_admin/contact_support.html',
+        {'hospital': hospital}
+    )
 
 
 #doctors
@@ -1796,3 +2125,19 @@ def accountant_profile(request):
     if request.user.role != 'accountant':
         return redirect('dashboard')
     return render(request, 'accounts/accountant/profile.html')
+
+
+# Pharmacy
+def pharmacy_dashboard(request):
+    if not request.user.is_authenticated:
+        return redirect('login')
+    if request.user.role != 'pharmacy':
+        return redirect('dashboard')
+
+    hospital = request.user.hospital
+    context = {
+        'hospital': hospital,
+        'patients_count': Patient.objects.filter(hospital=hospital).count() if hospital else 0,
+        'staff_count': Staff.objects.filter(hospital=hospital).count() if hospital else 0,
+    }
+    return render(request, 'accounts/pharmacy/dashboard.html', context)

@@ -1,0 +1,423 @@
+{% extends "accounts/hospital_admin/base.html" %}
+{% load static %}
+
+{% block title %}NHIMS - Facility Management{% endblock %}
+
+{% block extra_css %}
+<style>
+.facility-page{padding:14px 12px}
+.page-title{font-size:1.65rem;font-weight:700;color:var(--text);margin:0 0 .25rem}
+.page-subtitle{color:#64748b;font-size:.9rem;margin:0 0 1.1rem}
+.facility-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px;flex-wrap:wrap}
+.btn-group{display:flex;gap:8px}
+.add-btn,.request-btn{display:flex;align-items:center;gap:6px;border:0;padding:9px 14px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;color:#fff}
+.add-btn{background:linear-gradient(135deg,#0ea5e9,#2563eb)}
+.request-btn{background:linear-gradient(135deg,#7c3aed,#6d28d9)}
+.add-btn:hover,.request-btn:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,.15)}
+.stat-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px}
+.stat-card{background:#fff;border-radius:12px;padding:15px 16px;box-shadow:0 1px 3px rgba(0,0,0,.05);display:flex;justify-content:space-between;align-items:center;border:1px solid var(--border);min-height:90px;transition:all .2s}
+.stat-card:hover{transform:translateY(-2px);box-shadow:0 5px 14px rgba(15,23,42,.09)}
+.stat-card .label{font-size:.8rem;color:#64748b;font-weight:500;margin-bottom:3px}
+.stat-card .value{font-size:1.6rem;font-weight:700;color:var(--text);line-height:1.1}
+.stat-icon{width:40px;height:40px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.stat-icon.blue{background:#dbeafe;color:#2563eb}
+.stat-icon.green{background:#d1fae5;color:#059669}
+.stat-icon.orange{background:#ffedd5;color:#ea580c}
+.stat-icon.red{background:#fee2e2;color:#dc2626}
+.facility-card{background:#fff;border-radius:12px;border:1px solid var(--border);box-shadow:0 1px 3px rgba(0,0,0,.05);overflow:hidden}
+.facility-header{padding:12px 14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.facility-header h2{font-size:.95rem;font-weight:600;margin:0;color:var(--text)}
+.search-box{height:34px;border:1px solid #cbd5e1;border-radius:7px;padding:0 11px;font-size:13px;color:#334155;background:#fff;outline:none;width:190px}
+.search-box:focus{border-color:#60a5fa}
+.table-wrapper{overflow-x:auto}
+.facility-table{width:100%;border-collapse:collapse}
+.facility-table th{background:#f8fafc;color:#64748b;font-size:.74rem;font-weight:600;text-transform:uppercase;padding:.7rem .8rem;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
+.facility-table td{padding:.75rem .8rem;font-size:.85rem;color:#334155;border-bottom:1px solid #f1f5f9;vertical-align:middle}
+.facility-table tbody tr:hover{background:#f8fafc}
+.name-col{font-weight:600;color:#1e293b}
+.status-badge{display:inline-flex;padding:.24rem .55rem;border-radius:999px;font-size:.71rem;font-weight:600}
+.status-active{background:#d1fae5;color:#047857}
+.status-inactive{background:#fee2e2;color:#b91c1c}
+.status-maintenance{background:#ffedd5;color:#c2410c}
+.action-buttons{display:flex;gap:4px}
+.action-btn{width:30px;height:30px;border-radius:6px;border:1px solid #e2e8f0;background:#fff;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s}
+.action-btn.view{color:#2563eb}
+.action-btn.edit{color:#059669}
+.action-btn.delete{color:#dc2626}
+.action-btn:hover{transform:translateY(-1px)}
+.empty-state{text-align:center;padding:36px 14px;color:#64748b}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:9999;align-items:center;justify-content:center;padding:14px}
+.modal-overlay.show{display:flex}
+.modal{background:#fff;width:100%;max-width:520px;border-radius:12px;box-shadow:0 18px 45px rgba(0,0,0,.18);overflow:hidden;max-height:90vh;overflow-y:auto}
+.modal-header{padding:13px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.modal-header h3{margin:0;font-size:.97rem;font-weight:600}
+.modal-close{width:28px;height:28px;border:0;background:#f1f5f9;border-radius:6px;color:#64748b;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.modal-body{padding:16px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.form-group{display:flex;flex-direction:column;gap:4px}
+.form-group.full{grid-column:1/-1}
+.form-group label{font-size:12px;font-weight:600;color:#475569}
+.form-group input,.form-group select,.form-group textarea{height:36px;border:1px solid #cbd5e1;border-radius:6px;padding:0 10px;font-size:13px;outline:none}
+.form-group textarea{height:72px;padding:8px 10px;resize:vertical}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:#60a5fa}
+.modal-footer{padding:11px 16px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:7px}
+.btn-cancel,.btn-save,.btn-request,.btn-delete{padding:7px 13px;border-radius:6px;font-size:12.5px;font-weight:600;cursor:pointer}
+.btn-cancel{background:#fff;color:#475569;border:1px solid #cbd5e1}
+.btn-save{background:#2563eb;color:#fff;border:1px solid #2563eb}
+.btn-request{background:#7c3aed;color:#fff;border:1px solid #7c3aed}
+.btn-delete{background:#dc2626;color:#fff;border:1px solid #dc2626}
+.view-modal{max-width:370px}
+.view-info{display:grid;gap:7px}
+.view-item{display:flex;justify-content:space-between;align-items:center;padding:9px 11px;background:#f8fafc;border-radius:7px;border:1px solid #f1f5f9}
+.view-label{font-size:12px;color:#64748b;font-weight:500}
+.view-value{font-size:13px;font-weight:600;color:#1e293b;text-align:right}
+.info-box{background:#f1f5f9;border:1px solid #e2e8f0;border-radius:8px;padding:12px 14px;margin-bottom:14px}
+.info-box .info-row{display:flex;justify-content:space-between;margin-bottom:6px;font-size:13px}
+.info-box .info-row:last-child{margin-bottom:0}
+.info-box .info-label{color:#64748b;font-weight:500}
+.info-box .info-value{color:#1e293b;font-weight:600}
+@media(max-width:900px){.stat-cards{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:600px){.stat-cards{grid-template-columns:1fr}.facility-page{padding:12px 10px}.form-grid{grid-template-columns:1fr}}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="facility-page">
+    <div class="facility-top">
+        <div>
+            <h1 class="page-title">Facility Management</h1>
+            <p class="page-subtitle">Manage hospital facilities and request new ones from MOH</p>
+        </div>
+        <div class="btn-group">
+            <button type="button" class="request-btn" onclick="openRequestModal()">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+                Request MOH
+            </button>
+            <button type="button" class="add-btn" onclick="openAddModal()">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+                Add Facility
+            </button>
+        </div>
+    </div>
+
+    <div class="stat-cards">
+        <div class="stat-card">
+            <div>
+                <div class="label">Total Facilities</div>
+                <div class="value">{{ total }}</div>
+            </div>
+            <div class="stat-icon blue">
+                <svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 21h18"/><path d="M5 21V7l7-4 7 4v14"/><path d="M9 21v-6h6v6"/></svg>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div>
+                <div class="label">Active</div>
+                <div class="value">{{ active }}</div>
+            </div>
+            <div class="stat-icon green">
+                <svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 7l-8 8-4-4"/></svg>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div>
+                <div class="label">Inactive</div>
+                <div class="value">{{ inactive }}</div>
+            </div>
+            <div class="stat-icon orange">
+                <svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 8l8 8"/><path d="M16 8l-8 8"/></svg>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div>
+                <div class="label">Maintenance</div>
+                <div class="value">{{ maintenance }}</div>
+            </div>
+            <div class="stat-icon red">
+                <svg width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
+            </div>
+        </div>
+    </div>
+
+    <div class="facility-card">
+        <div class="facility-header">
+            <h2>Facilities</h2>
+            <input type="text" id="facilitySearch" class="search-box" placeholder="Search facility...">
+        </div>
+        <div class="table-wrapper">
+            <table class="facility-table" id="facilityTable">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Type</th>
+                        <th>Capacity</th>
+                        <th>Location</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for f in facilities %}
+                    <tr>
+                        <td>{{ f.id }}</td>
+                        <td class="name-col">{{ f.name }}</td>
+                        <td>{{ f.get_facility_type_display }}</td>
+                        <td>{{ f.capacity }}</td>
+                        <td>{{ f.location|default:"—" }}</td>
+                        <td><span class="status-badge status-{{ f.status }}">{{ f.get_status_display }}</span></td>
+                        <td>
+                            <div class="action-buttons">
+                                <button type="button" class="action-btn view" title="View" onclick="openViewModal('{{ f.name|escapejs }}','{{ f.get_facility_type_display|escapejs }}','{{ f.capacity }}','{{ f.location|default:"—"|escapejs }}','{{ f.get_status_display }}','{{ f.description|default:"—"|escapejs }}')">
+                                    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
+                                </button>
+                                <button type="button" class="action-btn edit" title="Edit" onclick="openEditModal('{{ f.id }}','{{ f.name|escapejs }}','{{ f.facility_type }}','{{ f.capacity }}','{{ f.status }}','{{ f.location|escapejs }}','{{ f.description|escapejs }}')">
+                                    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L8 18l-4 1 1-4z"/></svg>
+                                </button>
+                                <button type="button" class="action-btn delete" title="Delete" onclick="openDeleteModal('{{ f.id }}','{{ f.name|escapejs }}')">
+                                    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 15H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7">
+                            <div class="empty-state">
+                                <h3>No Facilities Found</h3>
+                                <p>Add a facility or request one from MOH.</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Add / Edit Modal -->
+<div class="modal-overlay" id="facilityModal">
+    <div class="modal">
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" id="facilityAction" value="create">
+            <input type="hidden" name="facility_id" id="facilityId">
+            <div class="modal-header">
+                <h3 id="facilityModalTitle">Add Facility</h3>
+                <button type="button" class="modal-close" onclick="closeModal('facilityModal')">
+                    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-grid">
+                    <div class="form-group full">
+                        <label>Facility Name</label>
+                        <input type="text" name="name" id="facilityName" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Type</label>
+                        <select name="facility_type" id="facilityType" required>
+                            {% for value,label in type_choices %}
+                            <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Capacity</label>
+                        <input type="number" name="capacity" id="facilityCapacity" min="0" value="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Status</label>
+                        <select name="status" id="facilityStatus">
+                            {% for value,label in status_choices %}
+                            <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Location</label>
+                        <input type="text" name="location" id="facilityLocation">
+                    </div>
+                    <div class="form-group full">
+                        <label>Description</label>
+                        <textarea name="description" id="facilityDesc"></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" onclick="closeModal('facilityModal')">Cancel</button>
+                <button type="submit" class="btn-save">Save Facility</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Request MOH Modal -->
+<div class="modal-overlay" id="requestModal">
+    <div class="modal">
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="request">
+            <div class="modal-header">
+                <h3>Request to Join MOH</h3>
+                <button type="button" class="modal-close" onclick="closeModal('requestModal')">
+                    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="info-box">
+                    <div class="info-row">
+                        <span class="info-label">Hospital ID</span>
+                        <span class="info-value">{{ hospital.id }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Current Hospital Name</span>
+                        <span class="info-value">{{ hospital.name }}</span>
+                    </div>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group full">
+                        <label>Hospital Name</label>
+                        <input type="text" name="hospital_name" value="{{ hospital.name }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Registration Number</label>
+                        <input type="text" name="registration_number" required placeholder="Hospital Registration No.">
+                    </div>
+                    <div class="form-group">
+                        <label>Location / Address</label>
+                        <input type="text" name="location" required placeholder="Full address">
+                    </div>
+                    <div class="form-group">
+                        <label>Contact Person</label>
+                        <input type="text" name="contact_person" value="{{ request.user.get_full_name }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Contact Phone</label>
+                        <input type="text" name="contact_phone" value="{{ request.user.phone|default:'' }}" required>
+                    </div>
+                    <div class="form-group full">
+                        <label>Contact Email</label>
+                        <input type="email" name="contact_email" value="{{ request.user.email }}" required>
+                    </div>
+                    <div class="form-group full">
+                        <label>Reason / Additional Note</label>
+                        <textarea name="reason" placeholder="Any additional information for MOH..."></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" onclick="closeModal('requestModal')">Cancel</button>
+                <button type="submit" class="btn-request">Submit Request to MOH</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- View Modal -->
+<div class="modal-overlay" id="viewModal">
+    <div class="modal view-modal">
+        <div class="modal-header">
+            <h3>Facility Details</h3>
+            <button type="button" class="modal-close" onclick="closeModal('viewModal')">
+                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="view-info">
+                <div class="view-item"><span class="view-label">Name</span><span class="view-value" id="viewName"></span></div>
+                <div class="view-item"><span class="view-label">Type</span><span class="view-value" id="viewType"></span></div>
+                <div class="view-item"><span class="view-label">Capacity</span><span class="view-value" id="viewCapacity"></span></div>
+                <div class="view-item"><span class="view-label">Location</span><span class="view-value" id="viewLocation"></span></div>
+                <div class="view-item"><span class="view-label">Status</span><span class="view-value" id="viewStatus"></span></div>
+                <div class="view-item"><span class="view-label">Description</span><span class="view-value" id="viewDesc"></span></div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-cancel" onclick="closeModal('viewModal')">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Modal -->
+<div class="modal-overlay" id="deleteModal">
+    <div class="modal" style="max-width:360px">
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="delete">
+            <input type="hidden" name="facility_id" id="deleteFacilityId">
+            <div class="modal-header">
+                <h3>Delete Facility</h3>
+                <button type="button" class="modal-close" onclick="closeModal('deleteModal')">
+                    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p style="margin:0;color:#475569;font-size:.86rem;line-height:1.5">Are you sure you want to delete <strong id="deleteFacilityName"></strong>?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" onclick="closeModal('deleteModal')">Cancel</button>
+                <button type="submit" class="btn-delete">Delete</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openAddModal(){
+    document.getElementById('facilityAction').value='create';
+    document.getElementById('facilityId').value='';
+    document.getElementById('facilityModalTitle').textContent='Add Facility';
+    document.getElementById('facilityName').value='';
+    document.getElementById('facilityType').value='ward';
+    document.getElementById('facilityCapacity').value='0';
+    document.getElementById('facilityStatus').value='active';
+    document.getElementById('facilityLocation').value='';
+    document.getElementById('facilityDesc').value='';
+    document.getElementById('facilityModal').classList.add('show');
+}
+function openEditModal(id,name,type,capacity,status,location,desc){
+    document.getElementById('facilityAction').value='edit';
+    document.getElementById('facilityId').value=id;
+    document.getElementById('facilityModalTitle').textContent='Edit Facility';
+    document.getElementById('facilityName').value=name;
+    document.getElementById('facilityType').value=type;
+    document.getElementById('facilityCapacity').value=capacity;
+    document.getElementById('facilityStatus').value=status;
+    document.getElementById('facilityLocation').value=location;
+    document.getElementById('facilityDesc').value=desc;
+    document.getElementById('facilityModal').classList.add('show');
+}
+function openRequestModal(){
+    document.getElementById('requestModal').classList.add('show');
+}
+function openViewModal(name,type,capacity,location,status,desc){
+    document.getElementById('viewName').textContent=name;
+    document.getElementById('viewType').textContent=type;
+    document.getElementById('viewCapacity').textContent=capacity;
+    document.getElementById('viewLocation').textContent=location;
+    document.getElementById('viewStatus').textContent=status;
+    document.getElementById('viewDesc').textContent=desc;
+    document.getElementById('viewModal').classList.add('show');
+}
+function openDeleteModal(id,name){
+    document.getElementById('deleteFacilityId').value=id;
+    document.getElementById('deleteFacilityName').textContent=name;
+    document.getElementById('deleteModal').classList.add('show');
+}
+function closeModal(id){
+    document.getElementById(id).classList.remove('show');
+}
+document.getElementById('facilitySearch').addEventListener('input',function(){
+    const s=this.value.toLowerCase();
+    document.querySelectorAll('#facilityTable tbody tr').forEach(r=>{
+        r.style.display=r.innerText.toLowerCase().includes(s)?'':'none';
+    });
+});
+window.addEventListener('click',function(e){
+    if(e.target.classList.contains('modal-overlay')) e.target.classList.remove('show');
+});
+</script>
+{% endblock %}

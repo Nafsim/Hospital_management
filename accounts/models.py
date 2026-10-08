@@ -15,6 +15,7 @@ class User(AbstractUser):
         ('counter', 'Counter / Reception'),
         ('bloodbank', 'Blood Bank Staff'),
         ('accountant', 'Accountant'),
+        ('pharmacy', 'Pharmacy'),
     )
 
     email = models.EmailField(unique=True)
@@ -28,6 +29,12 @@ class User(AbstractUser):
     )
     phone = models.CharField(max_length=15, blank=True, null=True)
     is_active = models.BooleanField(default=True)
+    pharmacy_access = models.BooleanField(default=False)
+    blood_bank_access = models.BooleanField(default=False)
+    diagnostics_access = models.BooleanField(default=False)
+    patients_access = models.BooleanField(default=False)
+    staff_access = models.BooleanField(default=False)
+
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username', 'role']
@@ -263,3 +270,249 @@ class Payroll(models.Model):
 
     def __str__(self):
         return f"{self.staff} - {self.salary_month.strftime('%B %Y')}"    
+class Medicine(models.Model):
+    CATEGORY_CHOICES = (
+        ('tablet', 'Tablet'),
+        ('capsule', 'Capsule'),
+        ('syrup', 'Syrup'),
+        ('injection', 'Injection'),
+        ('cream', 'Cream'),
+        ('ointment', 'Ointment'),
+        ('drops', 'Drops'),
+        ('inhaler', 'Inhaler'),
+        ('other', 'Other'),
+    )
+
+    UNIT_CHOICES = (
+        ('tablet', 'Tablet'),
+        ('capsule', 'Capsule'),
+        ('bottle', 'Bottle'),
+        ('vial', 'Vial'),
+        ('tube', 'Tube'),
+        ('box', 'Box'),
+        ('piece', 'Piece'),
+    )
+
+    hospital = models.ForeignKey(
+        'hospitals.Hospital',
+        on_delete=models.CASCADE,
+        related_name='medicines'
+    )
+    name = models.CharField(max_length=150)
+    category = models.CharField(max_length=30, choices=CATEGORY_CHOICES)
+    strength = models.CharField(max_length=50, blank=True)
+    stock = models.PositiveIntegerField(default=0)
+    unit = models.CharField(max_length=30, choices=UNIT_CHOICES)
+    reorder_level = models.PositiveIntegerField(default=20)
+    expiry_date = models.DateField(null=True, blank=True)
+    batch_number = models.CharField(max_length=50, blank=True)
+    supplier = models.CharField(max_length=150, blank=True)
+    price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+class Blood(models.Model):
+    BLOOD_GROUP_CHOICES = [
+        ('A+', 'A+'),
+        ('A-', 'A-'),
+        ('B+', 'B+'),
+        ('B-', 'B-'),
+        ('AB+', 'AB+'),
+        ('AB-', 'AB-'),
+        ('O+', 'O+'),
+        ('O-', 'O-'),
+    ]
+
+    COMPONENT_CHOICES = [
+        ('whole', 'Whole Blood'),
+        ('rbc', 'Red Blood Cells'),
+        ('plasma', 'Plasma'),
+        ('platelets', 'Platelets'),
+        ('cryo', 'Cryoprecipitate'),
+    ]
+
+    hospital = models.ForeignKey(
+        'hospitals.Hospital',
+        on_delete=models.CASCADE,
+        related_name='blood_units'
+    )
+    blood_group = models.CharField(max_length=5, choices=BLOOD_GROUP_CHOICES)
+    component = models.CharField(max_length=20, choices=COMPONENT_CHOICES, default='whole')
+    units = models.PositiveIntegerField(default=0)
+    reorder_level = models.PositiveIntegerField(default=5)
+    expiry_date = models.DateField(null=True, blank=True)
+    bag_number = models.CharField(max_length=50, blank=True)
+    donor_name = models.CharField(max_length=100, blank=True)
+    collection_date = models.DateField(null=True, blank=True)
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['blood_group', 'component']
+
+    def __str__(self):
+        return f"{self.blood_group} - {self.get_component_display()} ({self.units} units)"    
+
+class DiagnosticTest(models.Model):
+    CATEGORY_CHOICES = [
+        ('blood', 'Blood Test'),
+        ('urine', 'Urine Test'),
+        ('imaging', 'Imaging'),
+        ('pathology', 'Pathology'),
+        ('microbiology', 'Microbiology'),
+        ('cardiology', 'Cardiology'),
+        ('other', 'Other'),
+    ]
+
+    SAMPLE_CHOICES = [
+        ('blood', 'Blood'),
+        ('urine', 'Urine'),
+        ('stool', 'Stool'),
+        ('swab', 'Swab'),
+        ('tissue', 'Tissue'),
+        ('none', 'None'),
+    ]
+
+    hospital = models.ForeignKey(
+        'hospitals.Hospital',
+        on_delete=models.CASCADE,
+        related_name='diagnostic_tests'
+    )
+    name = models.CharField(max_length=150)
+    category = models.CharField(max_length=30, choices=CATEGORY_CHOICES, default='blood')
+    sample_type = models.CharField(max_length=20, choices=SAMPLE_CHOICES, default='blood')
+    price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    report_time = models.CharField(max_length=50, blank=True, help_text="e.g. 24 hours, 2 days")
+    description = models.TextField(blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+
+
+class Facility(models.Model):
+    TYPE_CHOICES = [
+        ('ward', 'Ward'),
+        ('icu', 'ICU'),
+        ('ot', 'Operation Theater'),
+        ('lab', 'Laboratory'),
+        ('pharmacy', 'Pharmacy'),
+        ('blood_bank', 'Blood Bank'),
+        ('emergency', 'Emergency'),
+        ('opd', 'OPD'),
+        ('radiology', 'Radiology'),
+        ('other', 'Other'),
+    ]
+
+    STATUS_CHOICES = [
+        ('active', 'Active'),
+        ('inactive', 'Inactive'),
+        ('maintenance', 'Under Maintenance'),
+    ]
+
+    hospital = models.ForeignKey(
+        'hospitals.Hospital',
+        on_delete=models.CASCADE,
+        related_name='facilities'
+    )
+    name = models.CharField(max_length=150)
+    facility_type = models.CharField(max_length=30, choices=TYPE_CHOICES, default='ward')
+    capacity = models.PositiveIntegerField(default=0)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
+    location = models.CharField(max_length=100, blank=True)
+    description = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['name']
+        verbose_name_plural = "Facilities"
+
+    def __str__(self):
+        return f"{self.name} ({self.get_facility_type_display()})"
+
+
+class MOHJoinRequest(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    ]
+
+    hospital = models.ForeignKey(
+        'hospitals.Hospital',
+        on_delete=models.CASCADE,
+        related_name='moh_join_requests'
+    )
+    requested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True
+    )
+    hospital_name = models.CharField(max_length=200)
+    registration_number = models.CharField(max_length=100)
+    location = models.CharField(max_length=255)
+    contact_person = models.CharField(max_length=150)
+    contact_phone = models.CharField(max_length=20)
+    contact_email = models.EmailField()
+    reason = models.TextField(blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    moh_note = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.hospital_name} - {self.get_status_display()}"
+
+class EmergencyContact(models.Model):
+    RELATION_CHOICES = [
+        ('spouse', 'Spouse'),
+        ('father', 'Father'),
+        ('mother', 'Mother'),
+        ('brother', 'Brother'),
+        ('sister', 'Sister'),
+        ('son', 'Son'),
+        ('daughter', 'Daughter'),
+        ('friend', 'Friend'),
+        ('colleague', 'Colleague'),
+        ('other', 'Other'),
+    ]
+
+    hospital = models.ForeignKey(
+        'hospitals.Hospital',
+        on_delete=models.CASCADE,
+        related_name='emergency_contacts'
+    )
+    staff = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='emergency_contacts'
+    )
+    contact_name = models.CharField(max_length=150)
+    relation = models.CharField(max_length=20, choices=RELATION_CHOICES, default='other')
+    phone = models.CharField(max_length=20)
+    email = models.EmailField(blank=True)
+    is_primary = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-is_primary', 'contact_name']
+
+    def __str__(self):
+        return f"{self.contact_name} ({self.get_relation_display()})"

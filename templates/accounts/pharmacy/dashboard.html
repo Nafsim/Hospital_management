@@ -1,0 +1,77 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pharmacy Dashboard - NHIMS</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: "Segoe UI", Arial, sans-serif;
+            color: #172033;
+            background: #f5f8fc;
+        }
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 18px 32px;
+            color: #fff;
+            background: linear-gradient(135deg, #1e3a5f, #1d4f7a);
+        }
+        .brand { display: flex; align-items: center; gap: 12px; }
+        .brand img { width: 48px; height: 48px; object-fit: contain; background: #fff; border-radius: 10px; }
+        .brand h1 { margin: 0; font-size: 20px; }
+        .brand p { margin: 3px 0 0; color: #cbd9ea; font-size: 13px; }
+        .logout {
+            padding: 9px 16px;
+            color: #1e3a5f;
+            background: #fff;
+            border: 0;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        main { max-width: 1100px; margin: 0 auto; padding: 36px 24px; }
+        h2 { margin: 0 0 8px; font-size: 28px; }
+        .welcome { color: #64748b; margin: 0 0 28px; }
+        .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+        .card {
+            padding: 24px;
+            background: #fff;
+            border: 1px solid #e3eaf3;
+            border-radius: 14px;
+            box-shadow: 0 5px 18px rgba(20, 40, 80, .05);
+        }
+        .card span { color: #718096; font-size: 13px; }
+        .card strong { display: block; margin-top: 10px; font-size: 28px; color: #075985; }
+        @media (max-width: 700px) { .cards { grid-template-columns: 1fr; } header { padding: 16px 20px; } }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="brand">
+            <img src="{% static 'images/image2.png' %}" alt="NHIMS Logo">
+            <div><h1>NHIMS Pharmacy</h1><p>Pharmacy Staff Portal</p></div>
+        </div>
+        <form method="post" action="{% url 'logout' %}">
+            {% csrf_token %}
+            <button class="logout" type="submit">Sign out</button>
+        </form>
+    </header>
+    <main>
+        <h2>Pharmacy Dashboard</h2>
+        <p class="welcome">
+            Welcome, {{ request.user.get_full_name|default:request.user.email }}.
+            {% if hospital %}You are working at {{ hospital.name }}.{% endif %}
+        </p>
+        <div class="cards">
+            <div class="card"><span>Hospital Patients</span><strong>{{ patients_count }}</strong></div>
+            <div class="card"><span>Hospital Staff</span><strong>{{ staff_count }}</strong></div>
+            <div class="card"><span>Role</span><strong>Pharmacy</strong></div>
+        </div>
+    </main>
+</body>
+</html>

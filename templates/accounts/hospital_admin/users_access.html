@@ -1,0 +1,334 @@
+{% extends "accounts/hospital_admin/base.html" %}
+{% load static %}
+
+{% block title %}NHIMS - User Access{% endblock %}
+
+{% block extra_css %}
+<style>
+.access-page{padding:18px 20px}
+.page-title{font-size:1.65rem;font-weight:700;color:var(--text);margin:0 0 .3rem}
+.page-subtitle{color:#64748b;font-size:.92rem;margin:0 0 1.25rem}
+.access-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+.stat-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
+.stat-card{background:#fff;border-radius:14px;padding:18px 20px;box-shadow:0 1px 3px rgba(0,0,0,.06);display:flex;justify-content:space-between;align-items:center;border:1px solid var(--border);transition:all .2s ease;min-height:100px}
+.stat-card:hover{transform:translateY(-3px);box-shadow:0 6px 16px rgba(15,23,42,.1)}
+.stat-card .label{font-size:.84rem;color:#64748b;font-weight:500;margin-bottom:5px}
+.stat-card .value{font-size:1.85rem;font-weight:700;color:var(--text);line-height:1.15}
+.stat-icon{width:46px;height:46px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.stat-icon.blue{background:#dbeafe;color:#2563eb}
+.stat-icon.green{background:#d1fae5;color:#059669}
+.stat-icon.orange{background:#ffedd5;color:#ea580c}
+.stat-icon.purple{background:#ede9fe;color:#7c3aed}
+.access-card{background:#fff;border-radius:14px;border:1px solid var(--border);box-shadow:0 1px 3px rgba(0,0,0,.06);overflow:hidden}
+.access-header{padding:15px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:12px}
+.access-header h2{font-size:1rem;font-weight:600;margin:0;color:var(--text)}
+.table-tools{display:flex;gap:8px}
+.search-box{height:36px;border:1px solid #cbd5e1;border-radius:8px;padding:0 11px;font-size:13px;color:#334155;background:#fff;outline:none;width:220px}
+.search-box:focus{border-color:#60a5fa}
+.table-wrapper{overflow-x:auto}
+.access-table{width:100%;border-collapse:collapse}
+.access-table th{background:#f8fafc;color:#64748b;font-size:.74rem;font-weight:600;text-transform:uppercase;letter-spacing:.02em;padding:.75rem .8rem;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
+.access-table td{padding:.8rem .8rem;font-size:.86rem;color:#334155;border-bottom:1px solid #f1f5f9;vertical-align:middle}
+.access-table tbody tr{transition:background .15s ease}
+.access-table tbody tr:hover{background:#f8fafc}
+.user-name{font-weight:600;color:#1e293b}
+.role-badge{display:inline-flex;padding:.25rem .55rem;border-radius:999px;font-size:.72rem;font-weight:600}
+.role-admin{background:#dbeafe;color:#1d4ed8}
+.role-staff{background:#f3e8ff;color:#7c3aed}
+.role-other{background:#f1f5f9;color:#475569}
+.status-badge{display:inline-flex;align-items:center;padding:.25rem .55rem;border-radius:999px;font-size:.72rem;font-weight:600}
+.status-active{background:#d1fae5;color:#047857}
+.status-inactive{background:#fee2e2;color:#b91c1c}
+.access-icons{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.access-btn{width:30px;height:30px;border-radius:7px;border:1px solid #e2e8f0;background:#fff;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s ease}
+.access-btn.granted{color:#2563eb;border-color:#93c5fd;background:#eff6ff}
+.access-btn.denied{color:#94a3b8;border-color:#e2e8f0}
+.access-btn:hover{transform:translateY(-1px)}
+.action-buttons{display:flex;align-items:center;gap:5px}
+.action-btn{width:32px;height:32px;border-radius:7px;border:1px solid #e2e8f0;background:#fff;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s ease}
+.action-btn.view{color:#2563eb}
+.action-btn:hover{transform:translateY(-1px)}
+.action-btn.view:hover{background:#eff6ff;border-color:#93c5fd}
+.empty-state{text-align:center;padding:40px 16px;color:#64748b}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:9999;align-items:center;justify-content:center;padding:16px}
+.modal-overlay.show{display:flex}
+.modal{background:#fff;width:100%;max-width:420px;border-radius:14px;box-shadow:0 20px 50px rgba(0,0,0,.2);overflow:hidden;max-height:90vh;overflow-y:auto}
+.modal-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.modal-header h3{margin:0;font-size:1rem;font-weight:600;color:#1e293b}
+.modal-close{width:30px;height:30px;border:0;background:#f1f5f9;border-radius:7px;color:#64748b;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.modal-body{padding:18px}
+.view-info{display:grid;gap:8px}
+.view-item{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#f8fafc;border-radius:8px;border:1px solid #f1f5f9}
+.view-label{font-size:12px;color:#64748b;font-weight:500}
+.view-value{font-size:13.5px;font-weight:600;color:#1e293b;text-align:right}
+.modal-footer{padding:12px 18px;border-top:1px solid var(--border);display:flex;justify-content:flex-end}
+.btn-cancel{padding:8px 14px;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;background:#fff;color:#475569;border:1px solid #cbd5e1}
+@media(max-width:1000px){.stat-cards{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:650px){.access-page{padding:14px}.stat-cards{grid-template-columns:1fr}.access-header{flex-direction:column;align-items:flex-start}.search-box{width:100%}}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="access-page">
+    <div class="access-top">
+        <div>
+            <h1 class="page-title">User & Employee Access</h1>
+            <p class="page-subtitle">Manage module access for hospital users and staff</p>
+        </div>
+    </div>
+
+    <div class="stat-cards">
+        <div class="stat-card">
+            <div>
+                <div class="label">Total Users</div>
+                <div class="value">{{ total_users }}</div>
+            </div>
+            <div class="stat-icon blue">
+                <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/>
+                </svg>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div>
+                <div class="label">Active Users</div>
+                <div class="value">{{ active_users }}</div>
+            </div>
+            <div class="stat-icon green">
+                <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M20 7l-8 8-4-4"/><path d="M4 17h16"/>
+                </svg>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div>
+                <div class="label">Inactive Users</div>
+                <div class="value">{{ inactive_users }}</div>
+            </div>
+            <div class="stat-icon orange">
+                <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="9"/><path d="M8 8l8 8"/><path d="M16 8l-8 8"/>
+                </svg>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div>
+                <div class="label">Staff Members</div>
+                <div class="value">{{ staff_count }}</div>
+            </div>
+            <div class="stat-icon purple">
+                <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/>
+                </svg>
+            </div>
+        </div>
+    </div>
+
+    <div class="access-card">
+        <div class="access-header">
+            <h2>Users List</h2>
+            <div class="table-tools">
+                <input type="text" id="userSearch" class="search-box" placeholder="Search user...">
+            </div>
+        </div>
+        <div class="table-wrapper">
+            <table class="access-table" id="userTable">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Email / Username</th>
+                        <th>Role</th>
+                        <th>Status</th>
+                        <th>Pharmacy</th>
+                        <th>Blood Bank</th>
+                        <th>Diagnostics</th>
+                        <th>Patients</th>
+                        <th>Staff</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                    <tr>
+                        <td>{{ user.id }}</td>
+                        <td class="user-name">{{ user.get_full_name|default:user.username }}</td>
+                        <td>{{ user.email|default:user.username }}</td>
+                        <td>
+                            {% if user.role == 'hospital_admin' %}
+                            <span class="role-badge role-admin">Admin</span>
+                            {% elif user.role == 'staff' %}
+                            <span class="role-badge role-staff">Staff</span>
+                            {% else %}
+                            <span class="role-badge role-other">{{ user.role|default:"User" }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if user.is_active %}
+                            <span class="status-badge status-active">Active</span>
+                            {% else %}
+                            <span class="status-badge status-inactive">Inactive</span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Pharmacy Access -->
+                        <td>
+                            <form method="post" style="display:inline">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="toggle">
+                                <input type="hidden" name="user_id" value="{{ user.id }}">
+                                <input type="hidden" name="field" value="pharmacy_access">
+                                <button type="submit" class="access-btn {% if user.pharmacy_access %}granted{% else %}denied{% endif %}" title="{% if user.pharmacy_access %}Revoke{% else %}Grant{% endif %} Pharmacy">
+                                    {% if user.pharmacy_access %}
+                                    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>
+                                    {% else %}
+                                    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
+                                    {% endif %}
+                                </button>
+                            </form>
+                        </td>
+
+                        <!-- Blood Bank Access -->
+                        <td>
+                            <form method="post" style="display:inline">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="toggle">
+                                <input type="hidden" name="user_id" value="{{ user.id }}">
+                                <input type="hidden" name="field" value="blood_bank_access">
+                                <button type="submit" class="access-btn {% if user.blood_bank_access %}granted{% else %}denied{% endif %}" title="{% if user.blood_bank_access %}Revoke{% else %}Grant{% endif %} Blood Bank">
+                                    {% if user.blood_bank_access %}
+                                    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>
+                                    {% else %}
+                                    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
+                                    {% endif %}
+                                </button>
+                            </form>
+                        </td>
+
+                        <!-- Diagnostics Access -->
+                        <td>
+                            <form method="post" style="display:inline">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="toggle">
+                                <input type="hidden" name="user_id" value="{{ user.id }}">
+                                <input type="hidden" name="field" value="diagnostics_access">
+                                <button type="submit" class="access-btn {% if user.diagnostics_access %}granted{% else %}denied{% endif %}" title="{% if user.diagnostics_access %}Revoke{% else %}Grant{% endif %} Diagnostics">
+                                    {% if user.diagnostics_access %}
+                                    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>
+                                    {% else %}
+                                    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
+                                    {% endif %}
+                                </button>
+                            </form>
+                        </td>
+
+                        <!-- Patients Access -->
+                        <td>
+                            <form method="post" style="display:inline">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="toggle">
+                                <input type="hidden" name="user_id" value="{{ user.id }}">
+                                <input type="hidden" name="field" value="patients_access">
+                                <button type="submit" class="access-btn {% if user.patients_access %}granted{% else %}denied{% endif %}" title="{% if user.patients_access %}Revoke{% else %}Grant{% endif %} Patients">
+                                    {% if user.patients_access %}
+                                    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>
+                                    {% else %}
+                                    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
+                                    {% endif %}
+                                </button>
+                            </form>
+                        </td>
+
+                        <!-- Staff Access -->
+                        <td>
+                            <form method="post" style="display:inline">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="toggle">
+                                <input type="hidden" name="user_id" value="{{ user.id }}">
+                                <input type="hidden" name="field" value="staff_access">
+                                <button type="submit" class="access-btn {% if user.staff_access %}granted{% else %}denied{% endif %}" title="{% if user.staff_access %}Revoke{% else %}Grant{% endif %} Staff">
+                                    {% if user.staff_access %}
+                                    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>
+                                    {% else %}
+                                    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
+                                    {% endif %}
+                                </button>
+                            </form>
+                        </td>
+
+                        <td>
+                            <div class="action-buttons">
+                                <button type="button" class="action-btn view" title="View Details" onclick="openViewModal('{{ user.get_full_name|default:user.username|escapejs }}','{{ user.email|default:user.username|escapejs }}','{{ user.role|default:"User"|escapejs }}','{% if user.is_active %}Active{% else %}Inactive{% endif %}','{{ user.date_joined|date:"d M Y" }}')">
+                                    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="11">
+                            <div class="empty-state">
+                                <h3>No Users Found</h3>
+                                <p>No users or employees are registered under this hospital.</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="viewModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>User Details</h3>
+            <button type="button" class="modal-close" onclick="closeModal('viewModal')">
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M18 6L6 18"/><path d="M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="view-info">
+                <div class="view-item"><span class="view-label">Full Name</span><span class="view-value" id="viewName"></span></div>
+                <div class="view-item"><span class="view-label">Email / Username</span><span class="view-value" id="viewEmail"></span></div>
+                <div class="view-item"><span class="view-label">Role</span><span class="view-value" id="viewRole"></span></div>
+                <div class="view-item"><span class="view-label">Status</span><span class="view-value" id="viewStatus"></span></div>
+                <div class="view-item"><span class="view-label">Joined Date</span><span class="view-value" id="viewJoined"></span></div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-cancel" onclick="closeModal('viewModal')">Close</button>
+        </div>
+    </div>
+</div>
+
+<script>
+function openViewModal(name,email,role,status,joined){
+    document.getElementById('viewName').textContent=name;
+    document.getElementById('viewEmail').textContent=email;
+    document.getElementById('viewRole').textContent=role;
+    document.getElementById('viewStatus').textContent=status;
+    document.getElementById('viewJoined').textContent=joined;
+    document.getElementById('viewModal').classList.add('show');
+}
+function closeModal(id){
+    document.getElementById(id).classList.remove('show');
+}
+document.getElementById('userSearch').addEventListener('input',function(){
+    const search=this.value.toLowerCase();
+    document.querySelectorAll('#userTable tbody tr').forEach(row=>{
+        row.style.display=row.innerText.toLowerCase().includes(search)?'':'none';
+    });
+});
+window.addEventListener('click',function(event){
+    if(event.target.classList.contains('modal-overlay')){
+        event.target.classList.remove('show');
+    }
+});
+</script>
+{% endblock %}

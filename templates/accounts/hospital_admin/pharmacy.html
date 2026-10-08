@@ -1,0 +1,432 @@
+{% extends "accounts/hospital_admin/base.html" %}
+{% load static %}
+
+{% block title %}NHIMS - Pharmacy{% endblock %}
+
+{% block extra_css %}
+<style>
+.pharmacy-page{padding:18px 20px}
+.page-title{font-size:1.65rem;font-weight:700;color:var(--text);margin:0 0 .3rem}
+.page-subtitle{color:#64748b;font-size:.92rem;margin:0 0 1.25rem}
+.pharmacy-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+.add-btn{display:flex;align-items:center;gap:8px;background:linear-gradient(135deg,#0ea5e9,#2563eb);color:#fff;border:0;padding:11px 16px;border-radius:9px;font-size:13.5px;font-weight:600;cursor:pointer}
+.add-btn:hover{transform:translateY(-1px);box-shadow:0 5px 14px rgba(37,99,235,.22)}
+.stat-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px}
+.stat-card{background:#fff;border-radius:14px;padding:18px 20px;box-shadow:0 1px 3px rgba(0,0,0,.06);display:flex;justify-content:space-between;align-items:center;border:1px solid var(--border);transition:all .2s ease;cursor:pointer;min-height:100px}
+.stat-card:hover{transform:translateY(-3px);box-shadow:0 6px 16px rgba(15,23,42,.1);border-color:#bfdbfe}
+.stat-card .label{font-size:.84rem;color:#64748b;font-weight:500;margin-bottom:5px}
+.stat-card .value{font-size:1.85rem;font-weight:700;color:var(--text);line-height:1.15}
+.stat-icon{width:46px;height:46px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.stat-icon.blue{background:#dbeafe;color:#2563eb}
+.stat-icon.green{background:#d1fae5;color:#059669}
+.stat-icon.orange{background:#ffedd5;color:#ea580c}
+.stat-icon.red{background:#fee2e2;color:#dc2626}
+.pharmacy-card{background:#fff;border-radius:14px;border:1px solid var(--border);box-shadow:0 1px 3px rgba(0,0,0,.06);overflow:hidden}
+.pharmacy-header{padding:15px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:12px}
+.pharmacy-header h2{font-size:1rem;font-weight:600;margin:0;color:var(--text)}
+.table-tools{display:flex;gap:8px}
+.search-box,.filter-box{height:36px;border:1px solid #cbd5e1;border-radius:8px;padding:0 11px;font-size:13px;color:#334155;background:#fff;outline:none}
+.search-box{width:200px}
+.search-box:focus,.filter-box:focus{border-color:#60a5fa}
+.table-wrapper{overflow-x:auto}
+.pharmacy-table{width:100%;border-collapse:collapse}
+.pharmacy-table th{background:#f8fafc;color:#64748b;font-size:.76rem;font-weight:600;text-transform:uppercase;letter-spacing:.02em;padding:.8rem .9rem;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
+.pharmacy-table td{padding:.85rem .9rem;font-size:.87rem;color:#334155;border-bottom:1px solid #f1f5f9;vertical-align:middle}
+.pharmacy-table tbody tr{transition:background .15s ease}
+.pharmacy-table tbody tr:hover{background:#f8fafc}
+.medicine-name{font-weight:600;color:#1e293b}
+.stock-good{font-weight:700;color:#059669}
+.stock-low{font-weight:700;color:#ea580c}
+.stock-out{font-weight:700;color:#dc2626}
+.status-badge{display:inline-flex;align-items:center;padding:.28rem .6rem;border-radius:999px;font-size:.73rem;font-weight:600}
+.status-available{background:#d1fae5;color:#047857}
+.status-low{background:#ffedd5;color:#c2410c}
+.status-out{background:#fee2e2;color:#b91c1c}
+.action-buttons{display:flex;align-items:center;gap:5px}
+.action-btn{width:32px;height:32px;border-radius:7px;border:1px solid #e2e8f0;background:#fff;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s ease}
+.action-btn.view{color:#2563eb}
+.action-btn.edit{color:#059669}
+.action-btn.delete{color:#dc2626}
+.action-btn:hover{transform:translateY(-1px)}
+.action-btn.view:hover{background:#eff6ff;border-color:#93c5fd}
+.action-btn.edit:hover{background:#ecfdf5;border-color:#86efac}
+.action-btn.delete:hover{background:#fef2f2;border-color:#fca5a5}
+.empty-state{text-align:center;padding:40px 16px;color:#64748b}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:9999;align-items:center;justify-content:center;padding:16px}
+.modal-overlay.show{display:flex}
+.modal{background:#fff;width:100%;max-width:560px;border-radius:14px;box-shadow:0 20px 50px rgba(0,0,0,.2);overflow:hidden;max-height:90vh;overflow-y:auto}
+.modal-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.modal-header h3{margin:0;font-size:1rem;font-weight:600;color:#1e293b}
+.modal-close{width:30px;height:30px;border:0;background:#f1f5f9;border-radius:7px;color:#64748b;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.modal-body{padding:18px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-group{display:flex;flex-direction:column;gap:5px}
+.form-group.full{grid-column:1/-1}
+.form-group label{font-size:12.5px;font-weight:600;color:#475569}
+.form-group input,.form-group select{height:38px;border:1px solid #cbd5e1;border-radius:7px;padding:0 10px;font-size:13px;outline:none;color:#334155}
+.form-group input:focus,.form-group select:focus{border-color:#60a5fa}
+.modal-footer{padding:12px 18px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px}
+.btn-cancel,.btn-save,.btn-delete{padding:8px 14px;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer}
+.btn-cancel{background:#fff;color:#475569;border:1px solid #cbd5e1}
+.btn-save{background:#2563eb;color:#fff;border:1px solid #2563eb}
+.btn-delete{background:#dc2626;color:#fff;border:1px solid #dc2626}
+.view-modal{max-width:380px}
+.view-info{display:grid;gap:8px}
+.view-item{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#f8fafc;border-radius:8px;border:1px solid #f1f5f9}
+.view-label{font-size:12px;color:#64748b;font-weight:500}
+.view-value{font-size:13.5px;font-weight:600;color:#1e293b;text-align:right}
+@media(max-width:1000px){.stat-cards{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:650px){.pharmacy-page{padding:14px}.pharmacy-top{flex-direction:column;align-items:flex-start}.stat-cards{grid-template-columns:1fr}.pharmacy-header{flex-direction:column;align-items:flex-start}.table-tools{width:100%;flex-direction:column}.search-box{width:auto}.form-grid{grid-template-columns:1fr}}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="pharmacy-page">
+    <div class="pharmacy-top">
+        <div>
+            <h1 class="page-title">Pharmacy</h1>
+            <p class="page-subtitle">Manage medicines, stock levels and pharmacy inventory</p>
+        </div>
+        <button type="button" class="add-btn" onclick="openAddModal()">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M12 5v14"/><path d="M5 12h14"/>
+            </svg>
+            Add Medicine
+        </button>
+    </div>
+
+    <div class="stat-cards">
+        <div class="stat-card" onclick="filterStock('all')">
+            <div>
+                <div class="label">Total Medicines</div>
+                <div class="value">{{ total_medicines }}</div>
+            </div>
+            <div class="stat-icon blue">
+                <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M9 3h6v4H9z"/><path d="M6 7h12v14H6z"/><path d="M9 11h6"/><path d="M9 15h6"/>
+                </svg>
+            </div>
+        </div>
+        <div class="stat-card" onclick="filterStock('available')">
+            <div>
+                <div class="label">Total Stock</div>
+                <div class="value">{{ total_stock }}</div>
+            </div>
+            <div class="stat-icon green">
+                <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M20 7l-8 8-4-4"/><path d="M4 17h16"/>
+                </svg>
+            </div>
+        </div>
+        <div class="stat-card" onclick="filterStock('low')">
+            <div>
+                <div class="label">Low Stock</div>
+                <div class="value">{{ low_stock }}</div>
+            </div>
+            <div class="stat-icon orange">
+                <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.3 3.6L2.5 17a2 2 0 001.7 3h15.6a2 2 0 001.7-3l-7.8-13.4a2 2 0 00-3.4 0z"/>
+                </svg>
+            </div>
+        </div>
+        <div class="stat-card" onclick="filterStock('out')">
+            <div>
+                <div class="label">Out of Stock</div>
+                <div class="value">{{ out_of_stock }}</div>
+            </div>
+            <div class="stat-icon red">
+                <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="9"/><path d="M8 8l8 8"/><path d="M16 8l-8 8"/>
+                </svg>
+            </div>
+        </div>
+    </div>
+
+    <div class="pharmacy-card">
+        <div class="pharmacy-header">
+            <h2>Medicine Stock</h2>
+            <div class="table-tools">
+                <input type="text" id="medicineSearch" class="search-box" placeholder="Search medicine...">
+                <select id="stockFilter" class="filter-box">
+                    <option value="all">All Stock</option>
+                    <option value="available">Available</option>
+                    <option value="low">Low Stock</option>
+                    <option value="out">Out of Stock</option>
+                </select>
+            </div>
+        </div>
+        <div class="table-wrapper">
+            <table class="pharmacy-table" id="medicineTable">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Medicine</th>
+                        <th>Category</th>
+                        <th>Strength</th>
+                        <th>Stock</th>
+                        <th>Unit</th>
+                        <th>Expiry Date</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for medicine in medicines %}
+                    <tr data-status="{% if medicine.stock == 0 %}out{% elif medicine.stock <= medicine.reorder_level %}low{% else %}available{% endif %}">
+                        <td>{{ medicine.id }}</td>
+                        <td class="medicine-name">{{ medicine.name }}</td>
+                        <td>{{ medicine.get_category_display }}</td>
+                        <td>{{ medicine.strength|default:"—" }}</td>
+                        <td class="{% if medicine.stock == 0 %}stock-out{% elif medicine.stock <= medicine.reorder_level %}stock-low{% else %}stock-good{% endif %}">{{ medicine.stock }}</td>
+                        <td>{{ medicine.get_unit_display }}</td>
+                        <td>{{ medicine.expiry_date|date:"d M Y"|default:"—" }}</td>
+                        <td>
+                            {% if medicine.stock == 0 %}
+                            <span class="status-badge status-out">Out of Stock</span>
+                            {% elif medicine.stock <= medicine.reorder_level %}
+                            <span class="status-badge status-low">Low Stock</span>
+                            {% else %}
+                            <span class="status-badge status-available">Available</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="action-buttons">
+                                <button type="button" class="action-btn view" title="View" onclick="openViewModal('{{ medicine.name|escapejs }}','{{ medicine.get_category_display|escapejs }}','{{ medicine.strength|default:"—"|escapejs }}','{{ medicine.stock }}','{{ medicine.get_unit_display|escapejs }}','{{ medicine.expiry_date|date:"d M Y"|default:"—"|escapejs }}','{{ medicine.batch_number|default:"—"|escapejs }}','{{ medicine.supplier|default:"—"|escapejs }}','{{ medicine.price }}')">
+                                    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/>
+                                    </svg>
+                                </button>
+                                <button type="button" class="action-btn edit" title="Edit" onclick="openEditModal('{{ medicine.id }}','{{ medicine.name|escapejs }}','{{ medicine.category }}','{{ medicine.strength|escapejs }}','{{ medicine.stock }}','{{ medicine.unit }}','{{ medicine.reorder_level }}','{{ medicine.expiry_date|date:"Y-m-d"|default:"" }}','{{ medicine.batch_number|escapejs }}','{{ medicine.supplier|escapejs }}','{{ medicine.price }}')">
+                                    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                        <path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L8 18l-4 1 1-4z"/>
+                                    </svg>
+                                </button>
+                                <button type="button" class="action-btn delete" title="Delete" onclick="openDeleteModal('{{ medicine.id }}','{{ medicine.name|escapejs }}')">
+                                    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                        <path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 15H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="9">
+                            <div class="empty-state">
+                                <h3>No Medicines Found</h3>
+                                <p>Add medicines to start managing pharmacy stock.</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="medicineModal">
+    <div class="modal">
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" id="medicineAction" value="create">
+            <input type="hidden" name="medicine_id" id="medicineId">
+            <div class="modal-header">
+                <h3 id="medicineModalTitle">Add Medicine</h3>
+                <button type="button" class="modal-close" onclick="closeModal('medicineModal')">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path d="M18 6L6 18"/><path d="M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Medicine Name</label>
+                        <input type="text" name="name" id="medicineName" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Category</label>
+                        <select name="category" id="medicineCategory" required>
+                            <option value="">Select Category</option>
+                            {% for value,label in category_choices %}
+                            <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Strength</label>
+                        <input type="text" name="strength" id="medicineStrength" placeholder="e.g. 500 mg">
+                    </div>
+                    <div class="form-group">
+                        <label>Stock</label>
+                        <input type="number" name="stock" id="medicineStock" min="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Unit</label>
+                        <select name="unit" id="medicineUnit" required>
+                            <option value="">Select Unit</option>
+                            {% for value,label in unit_choices %}
+                            <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Reorder Level</label>
+                        <input type="number" name="reorder_level" id="medicineReorder" min="0" value="20">
+                    </div>
+                    <div class="form-group">
+                        <label>Expiry Date</label>
+                        <input type="date" name="expiry_date" id="medicineExpiry">
+                    </div>
+                    <div class="form-group">
+                        <label>Batch Number</label>
+                        <input type="text" name="batch_number" id="medicineBatch">
+                    </div>
+                    <div class="form-group">
+                        <label>Supplier</label>
+                        <input type="text" name="supplier" id="medicineSupplier">
+                    </div>
+                    <div class="form-group">
+                        <label>Price</label>
+                        <input type="number" name="price" id="medicinePrice" min="0" step="0.01" value="0">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" onclick="closeModal('medicineModal')">Cancel</button>
+                <button type="submit" class="btn-save">Save Medicine</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal-overlay" id="viewModal">
+    <div class="modal view-modal">
+        <div class="modal-header">
+            <h3>Medicine Details</h3>
+            <button type="button" class="modal-close" onclick="closeModal('viewModal')">
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M18 6L6 18"/><path d="M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="view-info">
+                <div class="view-item"><span class="view-label">Medicine</span><span class="view-value" id="viewName"></span></div>
+                <div class="view-item"><span class="view-label">Category</span><span class="view-value" id="viewCategory"></span></div>
+                <div class="view-item"><span class="view-label">Strength</span><span class="view-value" id="viewStrength"></span></div>
+                <div class="view-item"><span class="view-label">Stock</span><span class="view-value" id="viewStock"></span></div>
+                <div class="view-item"><span class="view-label">Unit</span><span class="view-value" id="viewUnit"></span></div>
+                <div class="view-item"><span class="view-label">Expiry Date</span><span class="view-value" id="viewExpiry"></span></div>
+                <div class="view-item"><span class="view-label">Batch Number</span><span class="view-value" id="viewBatch"></span></div>
+                <div class="view-item"><span class="view-label">Supplier</span><span class="view-value" id="viewSupplier"></span></div>
+                <div class="view-item"><span class="view-label">Price</span><span class="view-value" id="viewPrice"></span></div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-cancel" onclick="closeModal('viewModal')">Close</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="deleteModal">
+    <div class="modal" style="max-width:380px">
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="delete">
+            <input type="hidden" name="medicine_id" id="deleteMedicineId">
+            <div class="modal-header">
+                <h3>Delete Medicine</h3>
+                <button type="button" class="modal-close" onclick="closeModal('deleteModal')">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path d="M18 6L6 18"/><path d="M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p style="margin:0;color:#475569;font-size:.88rem;line-height:1.55">Are you sure you want to delete <strong id="deleteMedicineName"></strong>?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" onclick="closeModal('deleteModal')">Cancel</button>
+                <button type="submit" class="btn-delete">Delete</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openAddModal(){
+    document.getElementById('medicineAction').value='create';
+    document.getElementById('medicineId').value='';
+    document.getElementById('medicineModalTitle').textContent='Add Medicine';
+    document.getElementById('medicineName').value='';
+    document.getElementById('medicineCategory').value='';
+    document.getElementById('medicineStrength').value='';
+    document.getElementById('medicineStock').value='0';
+    document.getElementById('medicineUnit').value='';
+    document.getElementById('medicineReorder').value='20';
+    document.getElementById('medicineExpiry').value='';
+    document.getElementById('medicineBatch').value='';
+    document.getElementById('medicineSupplier').value='';
+    document.getElementById('medicinePrice').value='0';
+    document.getElementById('medicineModal').classList.add('show');
+}
+function openEditModal(id,name,category,strength,stock,unit,reorder,expiry,batch,supplier,price){
+    document.getElementById('medicineAction').value='edit';
+    document.getElementById('medicineId').value=id;
+    document.getElementById('medicineModalTitle').textContent='Edit Medicine';
+    document.getElementById('medicineName').value=name;
+    document.getElementById('medicineCategory').value=category;
+    document.getElementById('medicineStrength').value=strength;
+    document.getElementById('medicineStock').value=stock;
+    document.getElementById('medicineUnit').value=unit;
+    document.getElementById('medicineReorder').value=reorder;
+    document.getElementById('medicineExpiry').value=expiry;
+    document.getElementById('medicineBatch').value=batch;
+    document.getElementById('medicineSupplier').value=supplier;
+    document.getElementById('medicinePrice').value=price;
+    document.getElementById('medicineModal').classList.add('show');
+}
+function openViewModal(name,category,strength,stock,unit,expiry,batch,supplier,price){
+    document.getElementById('viewName').textContent=name;
+    document.getElementById('viewCategory').textContent=category;
+    document.getElementById('viewStrength').textContent=strength;
+    document.getElementById('viewStock').textContent=stock;
+    document.getElementById('viewUnit').textContent=unit;
+    document.getElementById('viewExpiry').textContent=expiry;
+    document.getElementById('viewBatch').textContent=batch;
+    document.getElementById('viewSupplier').textContent=supplier;
+    document.getElementById('viewPrice').textContent=price;
+    document.getElementById('viewModal').classList.add('show');
+}
+function openDeleteModal(id,name){
+    document.getElementById('deleteMedicineId').value=id;
+    document.getElementById('deleteMedicineName').textContent=name;
+    document.getElementById('deleteModal').classList.add('show');
+}
+function closeModal(id){
+    document.getElementById(id).classList.remove('show');
+}
+function filterStock(value){
+    document.getElementById('stockFilter').value=value;
+    filterTable();
+}
+function filterTable(){
+    const search=document.getElementById('medicineSearch').value.toLowerCase();
+    const filter=document.getElementById('stockFilter').value;
+    document.querySelectorAll('#medicineTable tbody tr').forEach(row=>{
+        const text=row.innerText.toLowerCase();
+        const status=row.dataset.status;
+        row.style.display=text.includes(search)&&(filter==='all'||status===filter)?'':'none';
+    });
+}
+document.getElementById('medicineSearch').addEventListener('input',filterTable);
+document.getElementById('stockFilter').addEventListener('change',filterTable);
+window.addEventListener('click',function(event){
+    if(event.target.classList.contains('modal-overlay')){
+        event.target.classList.remove('show');
+    }
+});
+</script>
+{% endblock %}

@@ -106,4 +106,6 @@ path('accountant/reports/', views.accountant_reports, name='accountant_reports')
 path('accountant/notices/', views.accountant_notices, name='accountant_notices'),
 path('accountant/notifications/', views.accountant_notifications, name='accountant_notifications'),
 path('accountant/profile/', views.accountant_profile, name='accountant_profile'),
+# pharmacy
+path('pharmacy/dashboard/', views.pharmacy_dashboard, name='pharmacy_dashboard'),
 ]
