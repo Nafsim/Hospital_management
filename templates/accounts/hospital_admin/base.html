@@ -470,12 +470,12 @@
 </aside>
 <main class="main">
     <header class="topbar">
-        <form class="search-box" method="get" action="{% url 'hospital_admin_dashboard' %}">
+        <form class="search-box" method="get" action="{% url 'hospital_staff' %}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                 <circle cx="11" cy="11" r="7"/>
                 <path d="m20 20-4-4"/>
             </svg>
-            <input type="text" name="q" value="{{ request.GET.q }}" placeholder="Search doctor, staff, nurse...">
+            <input type="text" name="search" value="{{ request.GET.search }}" placeholder="Search doctor, staff, nurse...">
         </form>
         <div class="top-actions">
             <a href="{% url 'hospital_doctors' %}" class="icon-btn" title="Add Doctor">

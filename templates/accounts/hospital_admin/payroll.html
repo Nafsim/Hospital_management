@@ -19,8 +19,14 @@
 .payroll-card{background:#fff;border-radius:16px;border:1px solid var(--border);box-shadow:0 1px 3px rgba(0,0,0,.06);overflow:hidden;margin-bottom:1.5rem}
 .payroll-header{padding:1.1rem 1.4rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:1rem}
 .payroll-header h2{font-size:1.05rem;font-weight:600;margin:0;color:var(--text)}
-.export-btn{display:flex;align-items:center;gap:6px;background:#fff;color:#2563eb;border:1px solid #2563eb;padding:9px 13px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s ease;text-decoration:none}
-.export-btn:hover{background:#eff6ff;border-color:#1d4ed8;color:#1d4ed8;transform:translateY(-1px);box-shadow:0 3px 8px rgba(37,99,235,.18)}
+.export-btn{display:flex;align-items:center;gap:8px;background:#fff;color:#1e293b;border:1px solid #cbd5e1;padding:12px 18px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s ease;text-decoration:none}
+.export-btn:hover{background:#f8fafc;border-color:#94a3b8;transform:translateY(-1px)}
+.export-dropdown{display:none;position:absolute;top:100%;right:0;margin-top:5px;background:#fff;border:1px solid #cbd5e1;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,.1);min-width:160px;max-height:300px;overflow-y:auto;z-index:100}
+.export-dropdown.show{display:block}
+.export-dropdown a{display:block;padding:10px 16px;color:#1e293b;text-decoration:none;font-size:13px;transition:background .15s ease}
+.export-dropdown a:hover{background:#f8fafc;color:#2563eb}
+.export-dropdown::-webkit-scrollbar{width:6px}
+.export-dropdown::-webkit-scrollbar-thumb{background:rgba(0,0,0,.2);border-radius:10px}
 .add-payroll-btn{display:flex;align-items:center;gap:8px;background:linear-gradient(135deg,#0ea5e9,#2563eb);color:#fff;border:none;padding:12px 18px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s ease}
 .add-payroll-btn:hover{transform:translateY(-1px);box-shadow:0 4px 10px rgba(37,99,235,.2)}
 .payroll-table-wrapper{overflow-x:auto}
@@ -156,14 +162,34 @@ Manage staff salaries and payroll
 <div class="payroll-header">
 <h2>Salary Records</h2>
 <div style="display:flex;gap:10px;align-items:center">
-<a href="{% url 'export_payroll' %}" class="export-btn">
+<div style="position:relative">
+<button type="button" class="export-btn" id="exportDropdownBtn" onclick="toggleExportDropdown()">
 <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
 <polyline points="7 10 12 15 17 10"/>
 <line x1="12" y1="15" x2="12" y2="3"/>
 </svg>
 Export
-</a>
+</button>
+<div class="export-dropdown" id="exportDropdown">
+<a href="{% url 'export_payroll' %}?department=all">All</a>
+<a href="{% url 'export_payroll' %}?department=Doctor">Doctor</a>
+<a href="{% url 'export_payroll' %}?department=Nurse">Nurse</a>
+<a href="{% url 'export_payroll' %}?department=Staff">Staff</a>
+<a href="{% url 'export_payroll' %}?department=Diagnostic">Diagnostic</a>
+<a href="{% url 'export_payroll' %}?department=Blood Bank">Blood Bank</a>
+<a href="{% url 'export_payroll' %}?department=Accountant">Accountant</a>
+<a href="{% url 'export_payroll' %}?department=Desk Management">Desk Management</a>
+<a href="{% url 'export_payroll' %}?department=Pharmacy">Pharmacy</a>
+<a href="{% url 'export_payroll' %}?department=Counter">Counter</a>
+<a href="{% url 'export_payroll' %}?department=Laboratory">Laboratory</a>
+<a href="{% url 'export_payroll' %}?department=Radiology">Radiology</a>
+<a href="{% url 'export_payroll' %}?department=Administration">Administration</a>
+<a href="{% url 'export_payroll' %}?department=Maintenance">Maintenance</a>
+<a href="{% url 'export_payroll' %}?department=Security">Security</a>
+<a href="{% url 'export_payroll' %}?department=Housekeeping">Housekeeping</a>
+</div>
+</div>
 <button type="button" class="add-payroll-btn" onclick="openCreateModal()">
 <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
 <path d="M12 5v14"/>
@@ -470,6 +496,19 @@ document.getElementById('viewAmount').textContent=amount;
 document.getElementById('viewStatus').textContent=status;
 document.getElementById('viewModal').classList.add('show');
 }
+
+function toggleExportDropdown(){
+const dropdown=document.getElementById('exportDropdown');
+dropdown.classList.toggle('show');
+}
+
+document.addEventListener('click',function(event){
+const dropdown=document.getElementById('exportDropdown');
+const button=document.getElementById('exportDropdownBtn');
+if(!button.contains(event.target)&&!dropdown.contains(event.target)){
+dropdown.classList.remove('show');
+}
+});
 
 function openDeleteModal(id,name){
 document.getElementById('deletePayrollId').value=id;

@@ -57,7 +57,6 @@ path('nurse/dashboard/', views.nurse_dashboard, name='nurse_dashboard'),
 path('nurse/vital-signs/', views.nurse_vital_signs, name='nurse_vital_signs'),
 path('nurse/nursing-notes/', views.nurse_notes, name='nurse_notes'),
 path('nurse/patients/', views.nurse_patients, name='nurse_patients'),
-path('nurse/notifications/', views.nurse_notifications, name='nurse_notifications'),
 path('nurse/profile/', views.nurse_profile, name='nurse_profile'),
 #patient
 path('patient/dashboard/', views.patient_dashboard, name='patient_dashboard'),

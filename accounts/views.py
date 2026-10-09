@@ -764,6 +764,7 @@ def hospital_staff(request):
 
     hospital = request.user.hospital
     staff_filter = request.GET.get('staff_filter', 'all')
+    search = request.GET.get('search', '').strip()
 
     if request.method == 'POST':
         action = request.POST.get('action')
@@ -833,6 +834,16 @@ def hospital_staff(request):
     # Base queryset
     staff = Staff.objects.filter(hospital=hospital).select_related('user')
 
+    # Search functionality
+    if search:
+        staff = staff.filter(
+            models.Q(user__first_name__icontains=search) |
+            models.Q(user__last_name__icontains=search) |
+            models.Q(user__email__icontains=search) |
+            models.Q(employee_id__icontains=search) |
+            models.Q(department__icontains=search)
+        )
+
     # Filtering
     if staff_filter == 'doctor':
         staff = staff.filter(user__role='doctor')
@@ -857,7 +868,8 @@ def hospital_staff(request):
     context = {
         'staff': staff,
         'staff_filter': staff_filter,
-        'hospital': hospital
+        'hospital': hospital,
+        'search': search
     }
     return render(request, 'accounts/hospital_admin/staff.html', context)
 def hospital_profile(request):
@@ -1181,7 +1193,11 @@ def export_payroll(request):
 
     hospital = request.user.hospital
 
+    department = request.GET.get('department', 'all')
     payroll = Payroll.objects.filter(hospital=hospital).order_by('-salary_month')
+
+    if department != 'all':
+        payroll = payroll.filter(staff__department=department)
 
     response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = 'attachment; filename="payroll_export.pdf"'
@@ -2247,13 +2263,31 @@ def nurse_dashboard(request):
         return redirect('login')
     if request.user.role != 'nurse':
         return redirect('dashboard')
+
     hospital = request.user.hospital
+    today = timezone.now().date()
+
+    total_patients = 0
+    today_patients = 0
+    male_patients = 0
+    female_patients = 0
+
+    if hospital:
+        patients = Patient.objects.filter(hospital=hospital)
+        total_patients = patients.count()
+        today_patients = patients.filter(created_at__date=today).count()
+        male_patients = patients.filter(gender__iexact='male').count()
+        female_patients = patients.filter(gender__iexact='female').count()
+
     context = {
         'hospital': hospital,
-        'patients_count': Patient.objects.filter(hospital=hospital).count() if hospital else 0,
+        'total_patients': total_patients,
+        'today_patients': today_patients,
+        'male_patients': male_patients,
+        'female_patients': female_patients,
+        'user': request.user,
     }
     return render(request, 'accounts/nurse/dashboard.html', context)
-
 def nurse_vital_signs(request):
     if not request.user.is_authenticated:
         return redirect('login')
@@ -2284,12 +2318,7 @@ def nurse_patients(request):
     context = {'patients': patients}
     return render(request, 'accounts/nurse/patients.html', context)
 
-def nurse_notifications(request):
-    if not request.user.is_authenticated:
-        return redirect('login')
-    if request.user.role != 'nurse':
-        return redirect('dashboard')
-    return render(request, 'accounts/nurse/notifications.html')
+
 
 def nurse_profile(request):
     if not request.user.is_authenticated:

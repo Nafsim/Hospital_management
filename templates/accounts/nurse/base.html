@@ -5,35 +5,29 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}NHIMS - Nurse{% endblock %}</title>
-
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
-
         :root {
             --sidebar-top: #1e3a5f;
             --sidebar-middle: #1d4f7a;
             --sidebar-bottom: #17365d;
             --sidebar-text: #cbd9ea;
             --sidebar-muted: #8299b6;
-
             --active-start: #dbeafe;
             --active-end: #bfdbfe;
             --active-text: #075985;
-
             --blue: #0ea5e9;
             --blue-dark: #2563eb;
-
             --text: #172033;
             --muted: #718096;
             --border: #e3eaf3;
             --page: #f5f8fc;
             --white: #ffffff;
         }
-
         body.dark {
             --text: #e7edf7;
             --muted: #9eabc0;
@@ -41,15 +35,12 @@
             --page: #101827;
             --white: #182235;
         }
-
         body {
             font-family: "Segoe UI", Arial, sans-serif;
             background: var(--page);
             color: var(--text);
         }
-
         /* SIDEBAR */
-
         .sidebar {
             width: 265px;
             height: 100vh;
@@ -58,17 +49,14 @@
             top: 0;
             overflow-y: auto;
             z-index: 1000;
-
             background: linear-gradient(
                 180deg,
                 var(--sidebar-top) 0%,
                 var(--sidebar-middle) 48%,
                 var(--sidebar-bottom) 100%
             );
-
             box-shadow: 5px 0 20px rgba(15,45,80,.08);
         }
-
         .brand {
             min-height: 105px;
             display: flex;
@@ -77,7 +65,6 @@
             padding: 17px 18px;
             border-bottom: 1px solid rgba(255,255,255,.10);
         }
-
         .brand-logo {
             width: 78px;
             height: 70px;
@@ -85,33 +72,27 @@
             display: flex;
             align-items: center;
             justify-content: center;
-
             background: #ffffff;
             border-radius: 14px;
         }
-
         .brand-logo img {
             width: 67px;
             max-height: 60px;
             object-fit: contain;
         }
-
         .brand-text h3 {
             color: #ffffff;
             font-size: 18px;
             font-weight: 700;
             margin-bottom: 4px;
         }
-
         .brand-text p {
             color: #c8d8ea;
             font-size: 12px;
         }
-
         .menu {
             padding: 24px 12px 30px;
         }
-
         .menu-title {
             color: var(--sidebar-muted);
             font-size: 11px;
@@ -119,376 +100,350 @@
             letter-spacing: 1px;
             margin: 0 12px 10px;
         }
-
         .menu-item {
             min-height: 52px;
             display: flex;
             align-items: center;
             gap: 14px;
-
             padding: 10px 15px;
             margin-bottom: 7px;
-
             border-radius: 12px;
-
             color: var(--sidebar-text);
             text-decoration: none;
-
             font-size: 15px;
             font-weight: 500;
-
             transition: .2s ease;
         }
-
         .menu-item:hover {
             color: #ffffff;
             background: rgba(255,255,255,.09);
         }
-
         .menu-item.active {
             color: var(--active-text);
             font-weight: 700;
-
             background: linear-gradient(
                 135deg,
                 var(--active-start),
                 var(--active-end)
             );
-
             box-shadow: 0 7px 20px rgba(96,165,250,.18);
         }
-
         .menu-item svg {
             width: 22px;
             height: 22px;
             flex-shrink: 0;
         }
-
         /* MAIN */
-
         .main {
             min-height: 100vh;
             margin-left: 265px;
         }
-
         /* TOPBAR */
-
         .topbar {
             height: 82px;
-
             position: sticky;
             top: 0;
             z-index: 900;
-
             display: flex;
             align-items: center;
-
             padding: 0 28px;
-
             background: var(--white);
             border-bottom: 1px solid var(--border);
         }
-
         .search-box {
             width: 420px;
             height: 46px;
-
             display: flex;
             align-items: center;
             gap: 10px;
-
             padding: 0 15px;
-
             border: 1px solid var(--border);
             border-radius: 12px;
-
             background: var(--page);
         }
-
         .search-box svg {
             width: 21px;
             height: 21px;
             color: var(--muted);
         }
-
         .search-box input {
             width: 100%;
             border: none;
             outline: none;
             background: transparent;
-
             color: var(--text);
             font-size: 14px;
         }
-
         .search-box input::placeholder {
             color: #8997aa;
         }
-
         /* ACTIONS */
-
         .top-actions {
             margin-left: auto;
-
             display: flex;
             align-items: center;
             gap: 10px;
         }
-
         .icon-btn {
             width: 43px;
             height: 43px;
-
             display: flex;
             align-items: center;
             justify-content: center;
-
             position: relative;
-
             border: 1px solid var(--border);
             border-radius: 11px;
-
             background: var(--white);
             color: #7185a0;
-
             cursor: pointer;
             text-decoration: none;
+            transition: .2s ease;
         }
-
         .icon-btn:hover {
             color: #1684d9;
             border-color: #a9cdfd;
             background: #f0f7ff;
         }
-
         .icon-btn svg {
             width: 20px;
             height: 20px;
         }
-
+        /* NOTIFICATION DOT + MENU (same as hospital admin) */
         .notification-dot {
             position: absolute;
             top: 8px;
             right: 8px;
-
             width: 8px;
             height: 8px;
-
             border: 2px solid var(--white);
             border-radius: 50%;
-
             background: #0ea5e9;
         }
-
+        .notification-menu {
+            display: none;
+            position: absolute;
+            top: 58px;
+            right: 60px;
+            width: 320px;
+            max-height: 400px;
+            overflow-y: auto;
+            background: var(--white);
+            border: 1px solid var(--border);
+            border-radius: 15px;
+            box-shadow: 0 16px 40px rgba(20,40,80,.18);
+            z-index: 1000;
+        }
+        .notification-menu.show {
+            display: block;
+        }
+        .notification-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 18px;
+            border-bottom: 1px solid var(--border);
+        }
+        .notification-header h3 {
+            font-size: 15px;
+            font-weight: 700;
+            margin: 0;
+            color: var(--text);
+        }
+        .notification-item {
+            padding: 14px 18px;
+            border-bottom: 1px solid var(--border);
+            cursor: pointer;
+        }
+        .notification-item:hover {
+            background: var(--page);
+        }
+        .notification-item-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            color: var(--text);
+        }
+        .notification-item-message {
+            font-size: 13px;
+            color: var(--muted);
+            margin-bottom: 6px;
+            line-height: 1.4;
+        }
+        .notification-item-time {
+            font-size: 12px;
+            color: #8997aa;
+        }
+        .notification-item-priority {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+        .priority-urgent { background: #fee2e2; color: #dc2626; }
+        .priority-high { background: #ffedd5; color: #ea580c; }
+        .priority-medium { background: #dbeafe; color: #2563eb; }
+        .priority-low { background: #f1f5f9; color: #64748b; }
+        .notification-empty {
+            padding: 40px 20px;
+            text-align: center;
+            color: var(--muted);
+            font-size: 14px;
+        }
         /* PROFILE */
-
         .profile-wrap {
             position: relative;
             margin-left: 5px;
         }
-
         .profile-btn {
             width: 47px;
             height: 47px;
-
             border: none;
             border-radius: 50%;
-
             background: linear-gradient(
                 135deg,
                 #0ea5e9,
                 #2563eb
             );
-
             color: #ffffff;
-
             font-size: 15px;
             font-weight: 700;
-
             cursor: pointer;
         }
-
         .profile-menu {
             display: none;
-
             position: absolute;
             right: 0;
             top: 58px;
-
             width: 270px;
-
             overflow: hidden;
-
             background: var(--white);
             border: 1px solid var(--border);
             border-radius: 15px;
-
             box-shadow: 0 16px 40px rgba(20,40,80,.18);
         }
-
         .profile-menu.show {
             display: block;
         }
-
         .profile-head {
             display: flex;
             align-items: center;
             gap: 12px;
-
             padding: 18px;
             border-bottom: 1px solid var(--border);
         }
-
         .profile-mini-avatar {
             width: 43px;
             height: 43px;
-
             display: flex;
             align-items: center;
             justify-content: center;
-
             border-radius: 50%;
-
             background: linear-gradient(
                 135deg,
                 #0ea5e9,
                 #2563eb
             );
-
             color: white;
             font-weight: 700;
         }
-
         .profile-info strong {
             display: block;
             color: var(--text);
             font-size: 15px;
         }
-
         .profile-info span {
             display: block;
             margin-top: 3px;
             color: var(--muted);
             font-size: 13px;
         }
-
         .profile-link,
         .logout-button {
             width: 100%;
             min-height: 52px;
-
             display: flex;
             align-items: center;
             gap: 12px;
-
             padding: 0 18px;
-
             border: 0;
             border-bottom: 1px solid var(--border);
-
             background: var(--white);
-
             color: var(--text);
-
             text-decoration: none;
             font-family: inherit;
             font-size: 14px;
-
             cursor: pointer;
             text-align: left;
         }
-
         .profile-link:hover,
         .logout-button:hover {
             background: var(--page);
         }
-
         .profile-link svg,
         .logout-button svg {
             width: 20px;
             height: 20px;
         }
-
         .logout-button {
             color: #dc2626;
             border-bottom: 0;
         }
-
         /* CONTENT */
-
         .content {
             padding: 28px;
         }
-
         @media (max-width: 950px) {
             .sidebar {
                 width: 225px;
             }
-
             .main {
                 margin-left: 225px;
             }
-
             .search-box {
                 width: 300px;
             }
         }
     </style>
-
     {% block extra_css %}{% endblock %}
 </head>
-
 <body>
-
 <aside class="sidebar">
-
     <div class="brand">
-
         <div class="brand-logo">
             <img src="{% static 'images/image2.png' %}" alt="NHIMS Logo">
         </div>
-
         <div class="brand-text">
             <h3>NHIMS</h3>
             <p>Nursing Portal</p>
         </div>
-
     </div>
-
     <nav class="menu">
-
         <div class="menu-title">MAIN</div>
-
         <!-- Dashboard -->
         <a href="{% url 'nurse_dashboard' %}"
            class="menu-item {% if request.resolver_match.url_name == 'nurse_dashboard' %}active{% endif %}">
-
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                 <rect x="3" y="3" width="7" height="7" rx="1"/>
                 <rect x="14" y="3" width="7" height="7" rx="1"/>
                 <rect x="3" y="14" width="7" height="7" rx="1"/>
                 <rect x="14" y="14" width="7" height="7" rx="1"/>
             </svg>
-
             <span>Dashboard</span>
         </a>
-
         <!-- Vital Signs -->
         <a href="{% url 'nurse_vital_signs' %}"
            class="menu-item {% if request.resolver_match.url_name == 'nurse_vital_signs' %}active{% endif %}">
-
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                 <path d="M3 12h4l2-5 4 10 2-5h6"/>
                 <path d="M12 21s-7-4.5-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 11c0 5.5-7 10-7 10z"/>
             </svg>
-
             <span>Vital Signs</span>
         </a>
-
         <!-- Nursing Notes -->
         <a href="{% url 'nurse_notes' %}"
            class="menu-item {% if request.resolver_match.url_name == 'nurse_notes' %}active{% endif %}">
-
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                 <path d="M5 3h11l3 3v15H5z"/>
                 <path d="M16 3v4h4"/>
@@ -496,126 +451,99 @@
                 <path d="M8 15h8"/>
                 <path d="M8 19h5"/>
             </svg>
-
             <span>Nursing Notes</span>
         </a>
-
         <!-- Patients -->
         <a href="{% url 'nurse_patients' %}"
            class="menu-item {% if request.resolver_match.url_name == 'nurse_patients' %}active{% endif %}">
-
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                 <circle cx="9" cy="8" r="3"/>
                 <path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/>
                 <circle cx="17" cy="9" r="2.5"/>
                 <path d="M15 15c3.5 0 6 2.2 6 5"/>
             </svg>
-
             <span>Patients</span>
         </a>
-
         <div class="menu-title" style="margin-top:25px;">SYSTEM</div>
-
-        <!-- Notifications -->
-        <a href="{% url 'nurse_notifications' %}"
-           class="menu-item {% if request.resolver_match.url_name == 'nurse_notifications' %}active{% endif %}">
-
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/>
-                <path d="M10 21h4"/>
-            </svg>
-
-            <span>Notifications</span>
-        </a>
-
         <!-- My Profile -->
         <a href="{% url 'nurse_profile' %}"
            class="menu-item {% if request.resolver_match.url_name == 'nurse_profile' %}active{% endif %}">
-
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                 <circle cx="12" cy="8" r="3"/>
                 <path d="M5 21c0-4 3-7 7-7s7 3 7 7"/>
             </svg>
-
             <span>My Profile</span>
         </a>
-
     </nav>
 </aside>
-
-
 <main class="main">
-
     <header class="topbar">
-
         <!-- Search -->
         <form class="search-box" method="get" action="{% url 'nurse_patients' %}">
-
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                 <circle cx="11" cy="11" r="7"/>
                 <path d="m20 20-4-4"/>
             </svg>
-
             <input
                 type="text"
                 name="q"
                 value="{{ request.GET.q }}"
                 placeholder="Search patients..."
             >
-
         </form>
-
-
         <div class="top-actions">
-
             <!-- Add / Patients -->
             <a href="{% url 'nurse_patients' %}"
                class="icon-btn"
                title="Patients">
-
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                     <path d="M12 5v14"/>
                     <path d="M5 12h14"/>
                 </svg>
-
             </a>
-
-
-            <!-- Notifications -->
-            <a href="{% url 'nurse_notifications' %}"
-               class="icon-btn"
-               title="Notifications">
-
+            <!-- Notifications (same design as hospital admin) -->
+            <button type="button"
+                    class="icon-btn"
+                    id="notificationButton"
+                    title="Notifications"
+                    aria-label="Notifications">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                     <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/>
                     <path d="M10 21h4"/>
                 </svg>
-
                 <span class="notification-dot"></span>
-
-            </a>
-
-
+            </button>
+            <div class="notification-menu" id="notificationMenu">
+                <div class="notification-header">
+                    <h3>Notifications</h3>
+                </div>
+                {% if notices %}
+                    {% for notice in notices %}
+                        <div class="notification-item">
+                            <span class="notification-item-priority priority-{{ notice.priority }}">{{ notice.get_priority_display }}</span>
+                            <div class="notification-item-title">{{ notice.title }}</div>
+                            <div class="notification-item-message">{{ notice.content|truncatewords:15 }}</div>
+                            <div class="notification-item-time">{{ notice.created_at|timesince }} ago</div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="notification-empty">No notifications</div>
+                {% endif %}
+            </div>
             <!-- Dark Mode -->
             <button type="button"
                     class="icon-btn"
                     id="themeButton"
                     title="Dark mode">
-
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                     <path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/>
                 </svg>
-
             </button>
-
-
             <!-- Profile -->
             <div class="profile-wrap">
-
                 <button type="button"
                         class="profile-btn"
                         id="profileButton">
-
                     {% if request.user.first_name %}
                         {{ request.user.first_name|first|upper }}
                     {% elif request.user.username %}
@@ -623,16 +551,10 @@
                     {% else %}
                         N
                     {% endif %}
-
                 </button>
-
-
                 <div class="profile-menu" id="profileMenu">
-
                     <div class="profile-head">
-
                         <div class="profile-mini-avatar">
-
                             {% if request.user.first_name %}
                                 {{ request.user.first_name|first|upper }}
                             {% elif request.user.username %}
@@ -640,11 +562,8 @@
                             {% else %}
                                 N
                             {% endif %}
-
                         </div>
-
                         <div class="profile-info">
-
                             <strong>
                                 {% if request.user.get_full_name %}
                                     {{ request.user.get_full_name }}
@@ -652,75 +571,62 @@
                                     {{ request.user.username }}
                                 {% endif %}
                             </strong>
-
                             <span>Nurse</span>
-
                         </div>
-
                     </div>
-
-
                     <!-- My Profile -->
                     <a href="{% url 'nurse_profile' %}"
                        class="profile-link">
-
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                             <circle cx="12" cy="8" r="3"/>
                             <path d="M5 21c0-4 3-7 7-7s7 3 7 7"/>
                         </svg>
-
                         <span>My Profile</span>
-
                     </a>
-
-
                     <!-- Logout -->
                     <form method="post" action="{% url 'logout' %}">
-
                         {% csrf_token %}
-
                         <button type="submit" class="logout-button">
-
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                                 <path d="M10 17l5-5-5-5"/>
                                 <path d="M15 12H3"/>
                                 <path d="M14 3h6a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1h-6"/>
                             </svg>
-
                             <span>Sign out</span>
-
                         </button>
-
                     </form>
-
                 </div>
-
             </div>
-
         </div>
-
     </header>
-
-
     <section class="content">
-
         {% block content %}
         {% endblock %}
-
     </section>
-
 </main>
-
-
 <script>
     const profileButton = document.getElementById("profileButton");
     const profileMenu = document.getElementById("profileMenu");
     const themeButton = document.getElementById("themeButton");
+    const notificationButton = document.getElementById("notificationButton");
+    const notificationMenu = document.getElementById("notificationMenu");
 
     profileButton.addEventListener("click", function(event) {
         event.stopPropagation();
         profileMenu.classList.toggle("show");
+        if (notificationMenu) notificationMenu.classList.remove("show");
     });
+
+    if (notificationButton && notificationMenu) {
+        notificationButton.addEventListener("click", function(event) {
+            event.stopPropagation();
+            notificationMenu.classList.toggle("show");
+            profileMenu.classList.remove("show");
+        });
+        notificationMenu.addEventListener("click", function(event) {
+            event.stopPropagation();
+        });
+    }
 
     profileMenu.addEventListener("click", function(event) {
         event.stopPropagation();
@@ -728,26 +634,21 @@
 
     document.addEventListener("click", function() {
         profileMenu.classList.remove("show");
+        if (notificationMenu) notificationMenu.classList.remove("show");
     });
 
     if (localStorage.getItem("nhimsTheme") === "dark") {
         document.body.classList.add("dark");
     }
-
     themeButton.addEventListener("click", function() {
-
         document.body.classList.toggle("dark");
-
         if (document.body.classList.contains("dark")) {
             localStorage.setItem("nhimsTheme", "dark");
         } else {
             localStorage.setItem("nhimsTheme", "light");
         }
-
     });
 </script>
-
 {% block extra_js %}{% endblock %}
-
 </body>
 </html>
