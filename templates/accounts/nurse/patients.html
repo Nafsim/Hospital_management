@@ -1,0 +1,185 @@
+{% extends "accounts/nurse/base.html" %}
+{% load static %}
+
+{% block title %}Patients - NHIMS{% endblock %}
+
+{% block extra_css %}
+<style>
+.page-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.4rem;gap:12px;flex-wrap:wrap}
+.page-title{font-size:1.65rem;font-weight:700;color:var(--text);margin:0 0 .25rem}
+.page-subtitle{font-size:.9rem;color:#64748b;margin:0}
+.stats-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-bottom:1.4rem;max-width:480px}
+.stat-card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:1.1rem 1.2rem;box-shadow:0 1px 3px rgba(0,0,0,.05);display:flex;align-items:center;justify-content:space-between;transition:transform .25s ease,box-shadow .25s ease}
+.stat-card:hover{transform:translateY(-4px);box-shadow:0 8px 20px rgba(0,0,0,.10)}
+.stat-label{font-size:.78rem;color:#64748b;margin-bottom:.3rem}
+.stat-value{font-size:1.5rem;font-weight:700;color:#1e293b}
+.stat-icon{width:42px;height:42px;border-radius:10px;display:flex;align-items:center;justify-content:center}
+.stat-icon.blue{background:#dbeafe;color:#2563eb}
+.stat-icon.green{background:#dcfce7;color:#16a34a}
+.card{background:#fff;border:1px solid var(--border);border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,.05);overflow:hidden}
+.card-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.card-header h2{font-size:.98rem;font-weight:600;margin:0;color:var(--text)}
+.search-form{display:flex;gap:8px}
+.search-input{height:36px;border:1px solid #cbd5e1;border-radius:8px;padding:0 12px;font-size:13px;outline:none;width:220px}
+.search-input:focus{border-color:#60a5fa}
+.search-btn{height:36px;border:0;border-radius:8px;padding:0 14px;background:linear-gradient(135deg,#0ea5e9,#2563eb);color:#fff;font-size:13px;font-weight:600;cursor:pointer}
+.table-wrap{overflow-x:auto}
+.patient-table{width:100%;border-collapse:collapse}
+.patient-table th{background:#f8fafc;color:#64748b;font-size:.74rem;font-weight:600;text-transform:uppercase;padding:.75rem 1rem;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
+.patient-table td{padding:.85rem 1rem;font-size:.85rem;color:#334155;border-bottom:1px solid #f1f5f9;vertical-align:middle;white-space:nowrap}
+.patient-table tbody tr:hover{background:#f8fafc}
+.patient-name{font-weight:600;color:#1e293b}
+.gender-badge{display:inline-flex;padding:.22rem .5rem;border-radius:7px;font-size:.71rem;font-weight:600}
+.gender-male{background:#dbeafe;color:#2563eb}
+.gender-female{background:#fce7f3;color:#db2777}
+.gender-other{background:#f1f5f9;color:#475569}
+.action-btn{width:32px;height:32px;border-radius:7px;border:1px solid #e2e8f0;background:#fff;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;color:#2563eb;transition:all .2s}
+.action-btn:hover{transform:translateY(-1px);background:#eff6ff}
+.empty-state{text-align:center;padding:40px 16px;color:#64748b}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:9999;align-items:center;justify-content:center;padding:16px}
+.modal-overlay.show{display:flex}
+.modal{background:#fff;width:100%;max-width:420px;border-radius:14px;box-shadow:0 20px 50px rgba(0,0,0,.2);overflow:hidden}
+.modal-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.modal-header h3{margin:0;font-size:1rem;font-weight:600}
+.modal-close{width:30px;height:30px;border:0;background:#f1f5f9;border-radius:7px;color:#64748b;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.modal-body{padding:18px}
+.view-info{display:grid;gap:8px}
+.view-item{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#f8fafc;border-radius:8px;border:1px solid #f1f5f9}
+.view-label{font-size:12.5px;color:#64748b;font-weight:500}
+.view-value{font-size:13.5px;font-weight:600;color:#1e293b;text-align:right}
+.modal-footer{padding:12px 18px;border-top:1px solid var(--border);display:flex;justify-content:flex-end}
+.btn-cancel{padding:8px 14px;border-radius:7px;font-size:13px;font-weight:600;background:#fff;color:#475569;border:1px solid #cbd5e1;cursor:pointer}
+@media(max-width:600px){.stats-grid{grid-template-columns:1fr}.search-input{width:100%}}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-top">
+    <div>
+        <h1 class="page-title">Patients</h1>
+        <p class="page-subtitle">View hospital patients</p>
+    </div>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div>
+            <div class="stat-label">Total Patients</div>
+            <div class="stat-value">{{ total }}</div>
+        </div>
+        <div class="stat-icon blue">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div>
+            <div class="stat-label">Registered Today</div>
+            <div class="stat-value">{{ today_count }}</div>
+        </div>
+        <div class="stat-icon green">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2>All Patients</h2>
+        <form method="get" class="search-form">
+            <input type="text" name="search" value="{{ search }}" class="search-input" placeholder="Search name, ID or phone">
+            <button type="submit" class="search-btn">Search</button>
+        </form>
+    </div>
+    <div class="table-wrap">
+        <table class="patient-table">
+            <thead>
+                <tr>
+                    <th>Patient</th>
+                    <th>Patient ID</th>
+                    <th>Age</th>
+                    <th>Gender</th>
+                    <th>Phone</th>
+                    <th>Registered</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in patients %}
+                <tr>
+                    <td class="patient-name">{{ p.patient_name|default:p.name|default:"—" }}</td>
+                    <td>{{ p.patient_id|default:"—" }}</td>
+                    <td>{{ p.age|default:"—" }}</td>
+                    <td>
+                        {% if p.gender|lower == 'male' %}
+                        <span class="gender-badge gender-male">Male</span>
+                        {% elif p.gender|lower == 'female' %}
+                        <span class="gender-badge gender-female">Female</span>
+                        {% else %}
+                        <span class="gender-badge gender-other">{{ p.gender|default:"—" }}</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ p.phone|default:"—" }}</td>
+                    <td>{{ p.created_at|date:"d M Y" }}</td>
+                    <td>
+                        <button type="button" class="action-btn" title="View" onclick="openViewModal('{{ p.patient_name|default:p.name|escapejs }}','{{ p.patient_id|default:''|escapejs }}','{{ p.age|default:'' }}','{{ p.gender|default:''|escapejs }}','{{ p.phone|default:''|escapejs }}','{{ p.created_at|date:'d M Y' }}')">
+                            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
+                        </button>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7">
+                        <div class="empty-state">
+                            <h3>No Patients Found</h3>
+                            <p>No patients are registered in this hospital yet.</p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="modal-overlay" id="viewModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>Patient Details</h3>
+            <button type="button" class="modal-close" onclick="closeModal()">
+                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="view-info">
+                <div class="view-item"><span class="view-label">Name</span><span class="view-value" id="viewName"></span></div>
+                <div class="view-item"><span class="view-label">Patient ID</span><span class="view-value" id="viewId"></span></div>
+                <div class="view-item"><span class="view-label">Age</span><span class="view-value" id="viewAge"></span></div>
+                <div class="view-item"><span class="view-label">Gender</span><span class="view-value" id="viewGender"></span></div>
+                <div class="view-item"><span class="view-label">Phone</span><span class="view-value" id="viewPhone"></span></div>
+                <div class="view-item"><span class="view-label">Registered</span><span class="view-value" id="viewDate"></span></div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-cancel" onclick="closeModal()">Close</button>
+        </div>
+    </div>
+</div>
+
+<script>
+function openViewModal(name,id,age,gender,phone,date){
+    document.getElementById('viewName').textContent=name||'—';
+    document.getElementById('viewId').textContent=id||'—';
+    document.getElementById('viewAge').textContent=age||'—';
+    document.getElementById('viewGender').textContent=gender||'—';
+    document.getElementById('viewPhone').textContent=phone||'—';
+    document.getElementById('viewDate').textContent=date||'—';
+    document.getElementById('viewModal').classList.add('show');
+}
+function closeModal(){
+    document.getElementById('viewModal').classList.remove('show');
+}
+window.addEventListener('click',function(e){
+    if(e.target.classList.contains('modal-overlay'))e.target.classList.remove('show');
+});
+</script>
+{% endblock %}

@@ -682,4 +682,99 @@ class DoctorProfile(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
+        return f"{self.user.get_full_name()} - {self.registration_number}"
+
+class VitalSign(models.Model):
+    hospital = models.ForeignKey(
+        'hospitals.Hospital',
+        on_delete=models.CASCADE,
+        related_name='vital_signs'
+    )
+    recorded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='vital_signs_recorded'
+    )
+    patient = models.ForeignKey(
+        'patients.Patient',
+        on_delete=models.CASCADE,
+        related_name='vital_signs'
+    )
+    temperature = models.DecimalField(max_digits=4, decimal_places=1, null=True, blank=True, help_text="°C")
+    pulse = models.PositiveIntegerField(null=True, blank=True, help_text="bpm")
+    blood_pressure = models.CharField(max_length=20, blank=True, help_text="e.g. 120/80")
+    respiratory_rate = models.PositiveIntegerField(null=True, blank=True, help_text="breaths/min")
+    spo2 = models.PositiveIntegerField(null=True, blank=True, help_text="%")
+    blood_sugar = models.DecimalField(max_digits=5, decimal_places=1, null=True, blank=True, help_text="mg/dL")
+    weight = models.DecimalField(max_digits=5, decimal_places=1, null=True, blank=True, help_text="kg")
+    height = models.DecimalField(max_digits=5, decimal_places=1, null=True, blank=True, help_text="cm")
+    notes = models.TextField(blank=True)
+    recorded_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-recorded_at']
+
+    def __str__(self):
+        return f"{self.patient} - {self.recorded_at.strftime('%d %b %Y %H:%M')}"    
+
+class NursingNote(models.Model):
+    NOTE_TYPE_CHOICES = [
+        ('general', 'General'),
+        ('observation', 'Observation'),
+        ('medication', 'Medication'),
+        ('procedure', 'Procedure'),
+        ('incident', 'Incident'),
+        ('handover', 'Handover'),
+    ]
+
+    hospital = models.ForeignKey(
+        'hospitals.Hospital',
+        on_delete=models.CASCADE,
+        related_name='nursing_notes'
+    )
+    recorded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='nursing_notes_recorded'
+    )
+    patient = models.ForeignKey(
+        'patients.Patient',
+        on_delete=models.CASCADE,
+        related_name='nursing_notes'
+    )
+    note_type = models.CharField(max_length=20, choices=NOTE_TYPE_CHOICES, default='general')
+    title = models.CharField(max_length=200)
+    note = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.patient} - {self.title}"    
+class NurseProfile(models.Model):
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='nurse_profile'
+    )
+    registration_number = models.CharField(max_length=50, blank=True)
+    department = models.CharField(max_length=100, blank=True)
+    qualification = models.CharField(max_length=255, blank=True)
+    experience_years = models.PositiveIntegerField(default=0)
+    shift = models.CharField(max_length=50, blank=True)
+    bio = models.TextField(blank=True)
+    address = models.TextField(blank=True)
+    date_of_birth = models.DateField(null=True, blank=True)
+    gender = models.CharField(max_length=20, blank=True)
+    blood_group = models.CharField(max_length=5, blank=True)
+    profile_image = models.ImageField(upload_to='nurse_profiles/', blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
         return f"{self.user.get_full_name()} - {self.registration_number}"    

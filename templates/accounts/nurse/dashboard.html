@@ -5,32 +5,48 @@
 
 {% block extra_css %}
 <style>
-.page-header{margin-bottom:1.5rem}
-.page-title{font-size:1.7rem;font-weight:700;color:var(--text);margin:0 0 .3rem}
+.page-header{margin-bottom:1.4rem}
+.page-title{font-size:1.65rem;font-weight:700;color:var(--text);margin:0 0 .25rem}
 .page-subtitle{font-size:.9rem;color:#64748b;margin:0}
-.hospital-name{font-size:.82rem;color:#2563eb;font-weight:600;margin-top:.35rem}
-.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:1.5rem}
-.stat-card{background:#fff;border:1px solid var(--border);border-radius:16px;padding:1.15rem;box-shadow:0 1px 3px rgba(0,0,0,.06);display:flex;align-items:center;justify-content:space-between;transition:transform .25s ease,box-shadow .25s ease}
-.stat-card:hover{transform:translateY(-4px);box-shadow:0 8px 20px rgba(0,0,0,.10)}
-.stat-label{font-size:.78rem;color:#64748b;margin-bottom:.35rem}
-.stat-value{font-size:1.65rem;font-weight:700;color:#1e293b;line-height:1.2}
-.stat-icon{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.hospital-name{font-size:.82rem;color:#2563eb;font-weight:600;margin-top:.3rem}
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:1.4rem}
+.stat-card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:1.1rem 1.2rem;box-shadow:0 1px 3px rgba(0,0,0,.05);display:flex;align-items:center;justify-content:space-between;transition:transform .25s ease,box-shadow .25s ease}
+.stat-card:hover{transform:translateY(-3px);box-shadow:0 8px 20px rgba(0,0,0,.09)}
+.stat-label{font-size:.78rem;color:#64748b;margin-bottom:.3rem}
+.stat-value{font-size:1.55rem;font-weight:700;color:#1e293b;line-height:1.15}
+.stat-icon{width:44px;height:44px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .stat-icon.blue{background:#dbeafe;color:#2563eb}
 .stat-icon.green{background:#dcfce7;color:#16a34a}
 .stat-icon.purple{background:#ede9fe;color:#7c3aed}
-.stat-icon.orange{background:#fef3c7;color:#d97706}
-.welcome-card{background:#fff;border:1px solid var(--border);border-radius:16px;box-shadow:0 1px 3px rgba(0,0,0,.06);padding:1.5rem 1.6rem}
-.welcome-card h2{font-size:1.15rem;font-weight:700;color:#1e293b;margin:0 0 .5rem}
-.welcome-card p{font-size:.9rem;color:#64748b;margin:0;line-height:1.6}
-@media(max-width:1100px){.stats-grid{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:640px){.stats-grid{grid-template-columns:1fr}}
+.stat-icon.orange{background:#ffedd5;color:#ea580c}
+.main-grid{display:grid;grid-template-columns:1.6fr 1fr;gap:16px;margin-bottom:1.4rem}
+.card{background:#fff;border:1px solid var(--border);border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,.05);overflow:hidden}
+.card-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.card-header h2{font-size:.98rem;font-weight:600;margin:0;color:var(--text)}
+.card-body{padding:16px 18px}
+.chart-wrap{position:relative;height:240px}
+.quick-actions{display:flex;flex-direction:column;gap:10px}
+.action-btn{display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc;color:#334155;font-size:.85rem;font-weight:600;text-decoration:none;transition:all .2s}
+.action-btn:hover{background:#eff6ff;border-color:#93c5fd;color:#2563eb}
+.action-btn svg{flex-shrink:0}
+.recent-table{width:100%;border-collapse:collapse}
+.recent-table th{padding:.7rem .9rem;text-align:left;font-size:.74rem;color:#64748b;font-weight:600;background:#f8fafc;border-bottom:1px solid var(--border)}
+.recent-table td{padding:.8rem .9rem;font-size:.84rem;color:#334155;border-bottom:1px solid #f1f5f9}
+.recent-table tr:last-child td{border-bottom:0}
+.patient-name{font-weight:600;color:#1e293b}
+.badge{display:inline-flex;padding:.22rem .5rem;border-radius:999px;font-size:.7rem;font-weight:600}
+.badge-today{background:#dcfce7;color:#15803d}
+.badge-old{background:#f1f5f9;color:#64748b}
+.empty-text{text-align:center;padding:2rem;color:#64748b;font-size:.88rem}
+@media(max-width:1100px){.stats-grid{grid-template-columns:repeat(2,1fr)}.main-grid{grid-template-columns:1fr}}
+@media(max-width:640px){.stats-grid{grid-template-columns:1fr}.quick-actions{grid-template-columns:1fr}}
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="page-header">
     <h1 class="page-title">Welcome, {{ user.get_full_name|default:user.username }}</h1>
-    <p class="page-subtitle">Nurse Dashboard · NHIMS</p>
+    <p class="page-subtitle">Nurse Dashboard · Overview of today’s activity</p>
     {% if hospital %}
     <div class="hospital-name">{{ hospital.name }}</div>
     {% endif %}
@@ -43,53 +59,150 @@
             <div class="stat-value">{{ total_patients }}</div>
         </div>
         <div class="stat-icon blue">
-            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
-                <circle cx="9" cy="7" r="4"/>
-                <path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>
-            </svg>
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
         </div>
     </div>
     <div class="stat-card">
         <div>
-            <div class="stat-label">Today's Patients</div>
+            <div class="stat-label">Today’s Patients</div>
             <div class="stat-value">{{ today_patients }}</div>
         </div>
         <div class="stat-icon green">
-            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <rect x="3" y="4" width="18" height="18" rx="2"/>
-                <path d="M16 2v4M8 2v4M3 10h18"/>
-            </svg>
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
         </div>
     </div>
     <div class="stat-card">
         <div>
-            <div class="stat-label">Male Patients</div>
-            <div class="stat-value">{{ male_patients }}</div>
+            <div class="stat-label">This Week</div>
+            <div class="stat-value">{{ week_patients }}</div>
         </div>
         <div class="stat-icon purple">
-            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <circle cx="10" cy="14" r="6"/>
-                <path d="M14 10l7-7M16 3h5v5"/>
-            </svg>
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 16l4-8 4 4 4-6"/></svg>
         </div>
     </div>
     <div class="stat-card">
         <div>
-            <div class="stat-label">Female Patients</div>
-            <div class="stat-value">{{ female_patients }}</div>
+            <div class="stat-label">Active Patients</div>
+            <div class="stat-value">{{ active_patients }}</div>
         </div>
         <div class="stat-icon orange">
-            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <circle cx="12" cy="9" r="5"/>
-                <path d="M12 14v8M9 19h6"/>
-            </svg>
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
         </div>
     </div>
 </div>
 
-<div class="welcome-card">
-    <h2>Welcome to NHIMS</h2>
-    <p>Manage patient vital signs, nursing notes and patients from your Nurse Dashboard.</p>
+<div class="main-grid">
+    <div class="card">
+        <div class="card-header">
+            <h2>Patients – Last 7 Days</h2>
+        </div>
+        <div class="card-body">
+            <div class="chart-wrap">
+                <canvas id="patientsChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h2>Quick Actions</h2>
+        </div>
+        <div class="card-body">
+            <div class="quick-actions">
+    <a href="{% url 'nurse_patients' %}" class="action-btn">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+        View Patients
+    </a>
+    <a href="{% url 'nurse_vital_signs' %}" class="action-btn">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        Record Vitals
+    </a>
+    <a href="{% url 'nurse_notes' %}" class="action-btn">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>
+        Nursing Notes
+    </a>
+    <a href="{% url 'nurse_profile' %}" class="action-btn">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        My Profile
+    </a>
 </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2>Recent Patients</h2>
+    </div>
+    <div class="card-body" style="padding:0">
+        {% if recent_patients %}
+        <table class="recent-table">
+            <thead>
+                <tr>
+                    <th>Patient</th>
+                    <th>Patient ID</th>
+                    <th>Phone</th>
+                    <th>Gender</th>
+                    <th>Registered</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in recent_patients %}
+                <tr>
+                    <td class="patient-name">{{ p.patient_name|default:p.name|default:"—" }}</td>
+                    <td>{{ p.patient_id|default:"—" }}</td>
+                    <td>{{ p.phone|default:"—" }}</td>
+                    <td>{{ p.gender|default:"—" }}</td>
+                    <td>
+                        {% if p.created_at.date == today %}
+                        <span class="badge badge-today">Today</span>
+                        {% else %}
+                        <span class="badge badge-old">{{ p.created_at|date:"d M Y" }}</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty-text">No patients found yet.</div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+const ctx=document.getElementById('patientsChart');
+if(ctx){
+    new Chart(ctx,{
+        type:'line',
+        data:{
+            labels:{{ daily_labels|safe }},
+            datasets:[{
+                label:'Patients',
+                data:{{ daily_data|safe }},
+                borderColor:'#2563eb',
+                backgroundColor:'rgba(37,99,235,.12)',
+                borderWidth:2.5,
+                fill:true,
+                tension:.35,
+                pointBackgroundColor:'#2563eb',
+                pointRadius:4,
+                pointHoverRadius:6
+            }]
+        },
+        options:{
+            responsive:true,
+            maintainAspectRatio:false,
+            plugins:{legend:{display:false}},
+            scales:{
+                y:{beginAtZero:true,ticks:{precision:0},grid:{color:'#f1f5f9'}},
+                x:{grid:{display:false}}
+            }
+        }
+    });
+}
+</script>
 {% endblock %}

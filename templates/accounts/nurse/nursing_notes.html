@@ -1,0 +1,299 @@
+{% extends "accounts/nurse/base.html" %}
+{% load static %}
+
+{% block title %}Nursing Notes - NHIMS{% endblock %}
+
+{% block extra_css %}
+<style>
+.page-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.4rem;gap:12px;flex-wrap:wrap}
+.page-title{font-size:1.65rem;font-weight:700;color:var(--text);margin:0 0 .25rem}
+.page-subtitle{font-size:.9rem;color:#64748b;margin:0}
+.add-btn{display:flex;align-items:center;gap:7px;background:linear-gradient(135deg,#0ea5e9,#2563eb);color:#fff;border:0;padding:10px 16px;border-radius:9px;font-size:13.5px;font-weight:600;cursor:pointer}
+.add-btn:hover{transform:translateY(-1px);box-shadow:0 5px 14px rgba(37,99,235,.22)}
+.stats-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-bottom:1.4rem;max-width:480px}
+.stat-card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:1.1rem 1.2rem;box-shadow:0 1px 3px rgba(0,0,0,.05);display:flex;align-items:center;justify-content:space-between;transition:transform .25s ease,box-shadow .25s ease}
+.stat-card:hover{transform:translateY(-4px);box-shadow:0 8px 20px rgba(0,0,0,.10)}
+.stat-label{font-size:.78rem;color:#64748b;margin-bottom:.3rem}
+.stat-value{font-size:1.5rem;font-weight:700;color:#1e293b}
+.stat-icon{width:42px;height:42px;border-radius:10px;display:flex;align-items:center;justify-content:center}
+.stat-icon.blue{background:#dbeafe;color:#2563eb}
+.stat-icon.green{background:#dcfce7;color:#16a34a}
+.card{background:#fff;border:1px solid var(--border);border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,.05);overflow:hidden}
+.card-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.card-header h2{font-size:.98rem;font-weight:600;margin:0;color:var(--text)}
+.search-input{height:36px;border:1px solid #cbd5e1;border-radius:8px;padding:0 12px;font-size:13px;outline:none;width:200px}
+.search-input:focus{border-color:#60a5fa}
+.table-wrap{overflow-x:auto}
+.notes-table{width:100%;border-collapse:collapse}
+.notes-table th{background:#f8fafc;color:#64748b;font-size:.74rem;font-weight:600;text-transform:uppercase;padding:.75rem 1rem;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
+.notes-table td{padding:.85rem 1rem;font-size:.85rem;color:#334155;border-bottom:1px solid #f1f5f9;vertical-align:middle}
+.notes-table tbody tr:hover{background:#f8fafc}
+.patient-name{font-weight:600;color:#1e293b}
+.type-badge{display:inline-flex;padding:.22rem .55rem;border-radius:999px;font-size:.71rem;font-weight:600;background:#eff6ff;color:#2563eb}
+.action-buttons{display:flex;gap:5px}
+.action-btn{width:32px;height:32px;border-radius:7px;border:1px solid #e2e8f0;background:#fff;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s}
+.action-btn.view{color:#2563eb}
+.action-btn.edit{color:#059669}
+.action-btn.delete{color:#dc2626}
+.action-btn:hover{transform:translateY(-1px)}
+.empty-state{text-align:center;padding:40px 16px;color:#64748b}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:9999;align-items:center;justify-content:center;padding:16px}
+.modal-overlay.show{display:flex}
+.modal{background:#fff;width:100%;max-width:520px;border-radius:14px;box-shadow:0 20px 50px rgba(0,0,0,.2);overflow:hidden;max-height:90vh;overflow-y:auto}
+.modal-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.modal-header h3{margin:0;font-size:1rem;font-weight:600}
+.modal-close{width:30px;height:30px;border:0;background:#f1f5f9;border-radius:7px;color:#64748b;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.modal-body{padding:18px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-group{display:flex;flex-direction:column;gap:5px}
+.form-group.full{grid-column:1/-1}
+.form-group label{font-size:12.5px;font-weight:600;color:#475569}
+.form-group input,.form-group select,.form-group textarea{height:38px;border:1px solid #cbd5e1;border-radius:7px;padding:0 11px;font-size:13px;outline:none}
+.form-group textarea{height:110px;padding:9px 11px;resize:vertical}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:#60a5fa}
+.modal-footer{padding:12px 18px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px}
+.btn-cancel,.btn-save,.btn-delete{padding:8px 14px;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer}
+.btn-cancel{background:#fff;color:#475569;border:1px solid #cbd5e1}
+.btn-save{background:#2563eb;color:#fff;border:1px solid #2563eb}
+.btn-delete{background:#dc2626;color:#fff;border:1px solid #dc2626}
+.view-modal{max-width:420px}
+.view-info{display:grid;gap:8px}
+.view-item{display:flex;justify-content:space-between;align-items:flex-start;padding:10px 12px;background:#f8fafc;border-radius:8px;border:1px solid #f1f5f9;gap:12px}
+.view-label{font-size:12.5px;color:#64748b;font-weight:500;flex-shrink:0}
+.view-value{font-size:13.5px;font-weight:600;color:#1e293b;text-align:right}
+@media(max-width:600px){.form-grid{grid-template-columns:1fr}.stats-grid{grid-template-columns:1fr}}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-top">
+    <div>
+        <h1 class="page-title">Nursing Notes</h1>
+        <p class="page-subtitle">Record and manage patient nursing notes</p>
+    </div>
+    <button type="button" class="add-btn" onclick="openAddModal()">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+        Add Note
+    </button>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div>
+            <div class="stat-label">Total Notes</div>
+            <div class="stat-value">{{ total }}</div>
+        </div>
+        <div class="stat-icon blue">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div>
+            <div class="stat-label">Today’s Notes</div>
+            <div class="stat-value">{{ today_count }}</div>
+        </div>
+        <div class="stat-icon green">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2>All Nursing Notes</h2>
+        <input type="text" id="noteSearch" class="search-input" placeholder="Search...">
+    </div>
+    <div class="table-wrap">
+        <table class="notes-table" id="notesTable">
+            <thead>
+                <tr>
+                    <th>Patient</th>
+                    <th>Title</th>
+                    <th>Type</th>
+                    <th>Recorded By</th>
+                    <th>Date</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for n in notes %}
+                <tr>
+                    <td class="patient-name">{{ n.patient.patient_name|default:n.patient.name|default:n.patient }}</td>
+                    <td>{{ n.title }}</td>
+                    <td><span class="type-badge">{{ n.get_note_type_display }}</span></td>
+                    <td>{{ n.recorded_by.get_full_name|default:n.recorded_by.username|default:"—" }}</td>
+                    <td>{{ n.created_at|date:"d M Y H:i" }}</td>
+                    <td>
+                        <div class="action-buttons">
+                            <button type="button" class="action-btn view" title="View" onclick="openViewModal('{{ n.patient.patient_name|default:n.patient.name|escapejs }}','{{ n.title|escapejs }}','{{ n.get_note_type_display }}','{{ n.note|escapejs }}','{{ n.recorded_by.get_full_name|default:n.recorded_by.username|escapejs }}','{{ n.created_at|date:'d M Y H:i' }}')">
+                                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
+                            </button>
+                            <button type="button" class="action-btn edit" title="Edit" onclick="openEditModal('{{ n.id }}','{{ n.patient.id }}','{{ n.note_type }}','{{ n.title|escapejs }}','{{ n.note|escapejs }}')">
+                                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L8 18l-4 1 1-4z"/></svg>
+                            </button>
+                            <button type="button" class="action-btn delete" title="Delete" onclick="openDeleteModal('{{ n.id }}','{{ n.title|escapejs }}')">
+                                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 15H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6">
+                        <div class="empty-state">
+                            <h3>No Nursing Notes</h3>
+                            <p>Click “Add Note” to create the first note.</p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="modal-overlay" id="noteModal">
+    <div class="modal">
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" id="noteAction" value="create">
+            <input type="hidden" name="note_id" id="noteId">
+            <div class="modal-header">
+                <h3 id="noteModalTitle">Add Nursing Note</h3>
+                <button type="button" class="modal-close" onclick="closeModal('noteModal')">
+                    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-grid">
+                    <div class="form-group full">
+                        <label>Patient</label>
+                        <select name="patient" id="notePatient" required>
+                            <option value="">Select Patient</option>
+                            {% for p in patients %}
+                            <option value="{{ p.id }}">{{ p.patient_name|default:p.name }} {% if p.patient_id %}· {{ p.patient_id }}{% endif %}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Note Type</label>
+                        <select name="note_type" id="noteType">
+                            {% for value,label in note_type_choices %}
+                            <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Title</label>
+                        <input type="text" name="title" id="noteTitle" required placeholder="Note title">
+                    </div>
+                    <div class="form-group full">
+                        <label>Note</label>
+                        <textarea name="note" id="noteContent" required placeholder="Write nursing note..."></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" onclick="closeModal('noteModal')">Cancel</button>
+                <button type="submit" class="btn-save">Save Note</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal-overlay" id="viewModal">
+    <div class="modal view-modal">
+        <div class="modal-header">
+            <h3>Note Details</h3>
+            <button type="button" class="modal-close" onclick="closeModal('viewModal')">
+                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="view-info">
+                <div class="view-item"><span class="view-label">Patient</span><span class="view-value" id="viewPatient"></span></div>
+                <div class="view-item"><span class="view-label">Title</span><span class="view-value" id="viewTitle"></span></div>
+                <div class="view-item"><span class="view-label">Type</span><span class="view-value" id="viewType"></span></div>
+                <div class="view-item"><span class="view-label">Note</span><span class="view-value" id="viewNote"></span></div>
+                <div class="view-item"><span class="view-label">Recorded By</span><span class="view-value" id="viewBy"></span></div>
+                <div class="view-item"><span class="view-label">Date</span><span class="view-value" id="viewDate"></span></div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-cancel" onclick="closeModal('viewModal')">Close</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="deleteModal">
+    <div class="modal" style="max-width:380px">
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="delete">
+            <input type="hidden" name="note_id" id="deleteNoteId">
+            <div class="modal-header">
+                <h3>Delete Note</h3>
+                <button type="button" class="modal-close" onclick="closeModal('deleteModal')">
+                    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p style="margin:0;color:#475569;font-size:.88rem">Are you sure you want to delete note <strong id="deleteNoteTitle"></strong>?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" onclick="closeModal('deleteModal')">Cancel</button>
+                <button type="submit" class="btn-delete">Delete</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openAddModal(){
+    document.getElementById('noteAction').value='create';
+    document.getElementById('noteId').value='';
+    document.getElementById('noteModalTitle').textContent='Add Nursing Note';
+    document.getElementById('notePatient').value='';
+    document.getElementById('noteType').value='general';
+    document.getElementById('noteTitle').value='';
+    document.getElementById('noteContent').value='';
+    document.getElementById('noteModal').classList.add('show');
+}
+function openEditModal(id,patientId,type,title,note){
+    document.getElementById('noteAction').value='edit';
+    document.getElementById('noteId').value=id;
+    document.getElementById('noteModalTitle').textContent='Edit Nursing Note';
+    document.getElementById('notePatient').value=patientId;
+    document.getElementById('noteType').value=type;
+    document.getElementById('noteTitle').value=title;
+    document.getElementById('noteContent').value=note;
+    document.getElementById('noteModal').classList.add('show');
+}
+function openViewModal(patient,title,type,note,by,date){
+    document.getElementById('viewPatient').textContent=patient;
+    document.getElementById('viewTitle').textContent=title;
+    document.getElementById('viewType').textContent=type;
+    document.getElementById('viewNote').textContent=note;
+    document.getElementById('viewBy').textContent=by;
+    document.getElementById('viewDate').textContent=date;
+    document.getElementById('viewModal').classList.add('show');
+}
+function openDeleteModal(id,title){
+    document.getElementById('deleteNoteId').value=id;
+    document.getElementById('deleteNoteTitle').textContent=title;
+    document.getElementById('deleteModal').classList.add('show');
+}
+function closeModal(id){
+    document.getElementById(id).classList.remove('show');
+}
+document.getElementById('noteSearch').addEventListener('input',function(){
+    const s=this.value.toLowerCase();
+    document.querySelectorAll('#notesTable tbody tr').forEach(r=>{
+        r.style.display=r.innerText.toLowerCase().includes(s)?'':'none';
+    });
+});
+window.addEventListener('click',function(e){
+    if(e.target.classList.contains('modal-overlay'))e.target.classList.remove('show');
+});
+</script>
+{% endblock %}

@@ -30,7 +30,9 @@ from .models import Blood
 from .models import DiagnosticTest 
 from .models import Facility, MOHJoinRequest
 from django.contrib import messages
-from django.shortcuts import get_object_or_404 
+from .models import VitalSign 
+from .models import NursingNote 
+from .models import NurseProfile
 from .models import User, Notice, Department, DoctorPatient, DoctorSchedule, DoctorPrescription, DoctorReferral
 def login_view(request):
     if request.user.is_authenticated:
@@ -2266,26 +2268,43 @@ def nurse_dashboard(request):
 
     hospital = request.user.hospital
     today = timezone.now().date()
+    week_ago = today - timedelta(days=6)
 
     total_patients = 0
     today_patients = 0
-    male_patients = 0
-    female_patients = 0
+    week_patients = 0
+    active_patients = 0
+
+    daily_labels = []
+    daily_data = []
 
     if hospital:
         patients = Patient.objects.filter(hospital=hospital)
         total_patients = patients.count()
         today_patients = patients.filter(created_at__date=today).count()
-        male_patients = patients.filter(gender__iexact='male').count()
-        female_patients = patients.filter(gender__iexact='female').count()
+        week_patients = patients.filter(created_at__date__gte=week_ago).count()
+        active_patients = patients.filter(is_active=True).count() if hasattr(Patient, 'is_active') else total_patients
+
+        for i in range(6, -1, -1):
+            day = today - timedelta(days=i)
+            daily_labels.append(day.strftime('%a'))
+            daily_data.append(patients.filter(created_at__date=day).count())
+
+    recent_patients = []
+    if hospital:
+        recent_patients = Patient.objects.filter(hospital=hospital).order_by('-created_at')[:6]
 
     context = {
         'hospital': hospital,
+        'user': request.user,
         'total_patients': total_patients,
         'today_patients': today_patients,
-        'male_patients': male_patients,
-        'female_patients': female_patients,
-        'user': request.user,
+        'week_patients': week_patients,
+        'active_patients': active_patients,
+        'daily_labels': json.dumps(daily_labels),   
+        'daily_data': json.dumps(daily_data),       
+        'recent_patients': recent_patients,
+        'today': today,
     }
     return render(request, 'accounts/nurse/dashboard.html', context)
 def nurse_vital_signs(request):
@@ -2293,9 +2312,61 @@ def nurse_vital_signs(request):
         return redirect('login')
     if request.user.role != 'nurse':
         return redirect('dashboard')
+
     hospital = request.user.hospital
-    patients = Patient.objects.filter(hospital=hospital) if hospital else []
-    context = {'patients': patients}
+    patients = Patient.objects.filter(hospital=hospital) if hospital else Patient.objects.none()
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action == 'create':
+            VitalSign.objects.create(
+                hospital=hospital,
+                recorded_by=request.user,
+                patient_id=request.POST.get('patient'),
+                temperature=request.POST.get('temperature') or None,
+                pulse=request.POST.get('pulse') or None,
+                blood_pressure=request.POST.get('blood_pressure', '').strip(),
+                respiratory_rate=request.POST.get('respiratory_rate') or None,
+                spo2=request.POST.get('spo2') or None,
+                blood_sugar=request.POST.get('blood_sugar') or None,
+                weight=request.POST.get('weight') or None,
+                height=request.POST.get('height') or None,
+                notes=request.POST.get('notes', '').strip()
+            )
+            messages.success(request, 'Vital signs recorded successfully.')
+            return redirect('nurse_vital_signs')
+
+        if action == 'edit':
+            vital = get_object_or_404(VitalSign, id=request.POST.get('vital_id'), hospital=hospital)
+            vital.patient_id = request.POST.get('patient')
+            vital.temperature = request.POST.get('temperature') or None
+            vital.pulse = request.POST.get('pulse') or None
+            vital.blood_pressure = request.POST.get('blood_pressure', '').strip()
+            vital.respiratory_rate = request.POST.get('respiratory_rate') or None
+            vital.spo2 = request.POST.get('spo2') or None
+            vital.blood_sugar = request.POST.get('blood_sugar') or None
+            vital.weight = request.POST.get('weight') or None
+            vital.height = request.POST.get('height') or None
+            vital.notes = request.POST.get('notes', '').strip()
+            vital.save()
+            messages.success(request, 'Vital signs updated successfully.')
+            return redirect('nurse_vital_signs')
+
+        if action == 'delete':
+            VitalSign.objects.filter(id=request.POST.get('vital_id'), hospital=hospital).delete()
+            messages.success(request, 'Vital signs deleted.')
+            return redirect('nurse_vital_signs')
+
+    vitals = VitalSign.objects.filter(hospital=hospital).select_related('patient', 'recorded_by') if hospital else VitalSign.objects.none()
+
+    context = {
+        'hospital': hospital,
+        'patients': patients,
+        'vitals': vitals,
+        'total': vitals.count(),
+        'today_count': vitals.filter(recorded_at__date=timezone.now().date()).count() if hospital else 0,
+    }
     return render(request, 'accounts/nurse/vital_signs.html', context)
 
 def nurse_notes(request):
@@ -2303,9 +2374,50 @@ def nurse_notes(request):
         return redirect('login')
     if request.user.role != 'nurse':
         return redirect('dashboard')
+
     hospital = request.user.hospital
-    patients = Patient.objects.filter(hospital=hospital) if hospital else []
-    context = {'patients': patients}
+    patients = Patient.objects.filter(hospital=hospital) if hospital else Patient.objects.none()
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action == 'create':
+            NursingNote.objects.create(
+                hospital=hospital,
+                recorded_by=request.user,
+                patient_id=request.POST.get('patient'),
+                note_type=request.POST.get('note_type', 'general'),
+                title=request.POST.get('title', '').strip(),
+                note=request.POST.get('note', '').strip()
+            )
+            messages.success(request, 'Nursing note added successfully.')
+            return redirect('nurse_notes')
+
+        if action == 'edit':
+            note_obj = get_object_or_404(NursingNote, id=request.POST.get('note_id'), hospital=hospital)
+            note_obj.patient_id = request.POST.get('patient')
+            note_obj.note_type = request.POST.get('note_type', 'general')
+            note_obj.title = request.POST.get('title', '').strip()
+            note_obj.note = request.POST.get('note', '').strip()
+            note_obj.save()
+            messages.success(request, 'Nursing note updated successfully.')
+            return redirect('nurse_notes')
+
+        if action == 'delete':
+            NursingNote.objects.filter(id=request.POST.get('note_id'), hospital=hospital).delete()
+            messages.success(request, 'Nursing note deleted.')
+            return redirect('nurse_notes')
+
+    notes = NursingNote.objects.filter(hospital=hospital).select_related('patient', 'recorded_by') if hospital else NursingNote.objects.none()
+
+    context = {
+        'hospital': hospital,
+        'patients': patients,
+        'notes': notes,
+        'total': notes.count(),
+        'today_count': notes.filter(created_at__date=timezone.now().date()).count() if hospital else 0,
+        'note_type_choices': NursingNote.NOTE_TYPE_CHOICES,
+    }
     return render(request, 'accounts/nurse/nursing_notes.html', context)
 
 def nurse_patients(request):
@@ -2313,19 +2425,87 @@ def nurse_patients(request):
         return redirect('login')
     if request.user.role != 'nurse':
         return redirect('dashboard')
+
     hospital = request.user.hospital
-    patients = Patient.objects.filter(hospital=hospital) if hospital else []
-    context = {'patients': patients}
+    patients = Patient.objects.filter(hospital=hospital).order_by('-created_at') if hospital else Patient.objects.none()
+
+    search = request.GET.get('search', '').strip()
+    if search:
+        patients = patients.filter(
+            models.Q(patient_name__icontains=search) |
+            models.Q(name__icontains=search) |
+            models.Q(patient_id__icontains=search) |
+            models.Q(phone__icontains=search)
+        )
+
+    today = timezone.now().date()
+    total = patients.count() if not search else Patient.objects.filter(hospital=hospital).count()
+    today_count = Patient.objects.filter(hospital=hospital, created_at__date=today).count() if hospital else 0
+
+    context = {
+        'hospital': hospital,
+        'patients': patients,
+        'total': total,
+        'today_count': today_count,
+        'search': search,
+    }
     return render(request, 'accounts/nurse/patients.html', context)
-
-
 
 def nurse_profile(request):
     if not request.user.is_authenticated:
         return redirect('login')
     if request.user.role != 'nurse':
         return redirect('dashboard')
-    return render(request, 'accounts/nurse/profile.html')
+
+    profile, created = NurseProfile.objects.get_or_create(user=request.user)
+
+    if request.method == 'POST':
+        action = request.POST.get('action', 'update')
+
+        if action == 'remove_photo':
+            if profile.profile_image:
+                profile.profile_image.delete(save=False)
+                profile.profile_image = None
+                profile.save()
+            messages.success(request, 'Profile photo removed.')
+            return redirect('nurse_profile')
+
+        user = request.user
+        user.first_name = request.POST.get('first_name', '').strip()
+        user.last_name = request.POST.get('last_name', '').strip()
+        user.phone = request.POST.get('phone', '').strip()
+        user.save()
+
+        profile.registration_number = request.POST.get('registration_number', '').strip()
+        profile.department = request.POST.get('department', '').strip()
+        profile.qualification = request.POST.get('qualification', '').strip()
+        profile.experience_years = int(request.POST.get('experience_years') or 0)
+        profile.shift = request.POST.get('shift', '').strip()
+        profile.bio = request.POST.get('bio', '').strip()
+        profile.address = request.POST.get('address', '').strip()
+        profile.gender = request.POST.get('gender', '').strip()
+        profile.blood_group = request.POST.get('blood_group', '').strip()
+
+        dob = request.POST.get('date_of_birth')
+        profile.date_of_birth = dob if dob else None
+
+        if request.FILES.get('profile_image'):
+            if profile.profile_image:
+                profile.profile_image.delete(save=False)
+            profile.profile_image = request.FILES['profile_image']
+
+        profile.save()
+        messages.success(request, 'Profile updated successfully.')
+        return redirect('nurse_profile')
+
+    context = {
+        'profile': profile,
+        'user': request.user,
+        'hospital': request.user.hospital,
+    }
+    return render(request, 'accounts/nurse/profile.html', context)
+
+
 # Patient
 def patient_dashboard(request):
     if not request.user.is_authenticated:
