@@ -1,10 +1,204 @@
 {% extends "accounts/doctor/base.html" %}
 
-{% block title %}Doctor Dashboard{% endblock %}
+{% block title %}Doctor Dashboard - NHIMS{% endblock %}
+
+{% block extra_css %}
+<style>
+.dashboard-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.5rem}
+.dashboard-title{font-size:1.7rem;font-weight:700;color:var(--text);margin:0 0 .35rem}
+.dashboard-subtitle{font-size:.9rem;color:#64748b;margin:0}
+.hospital-name{font-size:.82rem;color:#2563eb;font-weight:600;margin-top:.35rem}
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:1.5rem}
+.stat-card{background:white;border:1px solid var(--border);border-radius:16px;padding:1.15rem;box-shadow:0 1px 3px rgba(0,0,0,.06);display:flex;align-items:center;justify-content:space-between}  
+.stat-card{transition:transform .25s ease,box-shadow .25s ease}
+.stat-card:hover{transform:translateY(-4px);box-shadow:0 8px 20px rgba(0,0,0,.10)}
+.stat-info{min-width:0}
+.stat-label{font-size:.78rem;color:#64748b;margin-bottom:.35rem}
+.stat-value{font-size:1.65rem;font-weight:700;color:#1e293b;line-height:1.2}
+.stat-icon{width:46px;height:46px;border-radius:12px;background:#dbeafe;color:#2563eb;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.stat-card:nth-child(2) .stat-icon{background:#dcfce7;color:#16a34a}
+.stat-card:nth-child(3) .stat-icon{background:#fef3c7;color:#d97706}
+.stat-card:nth-child(4) .stat-icon{background:#ede9fe;color:#7c3aed}
+.dashboard-grid{display:grid;grid-template-columns:1.5fr 1fr;gap:16px;margin-bottom:1.5rem}
+.card{background:white;border:1px solid var(--border);border-radius:16px;box-shadow:0 1px 3px rgba(0,0,0,.06);overflow:hidden}
+.card-header{padding:1rem 1.2rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.card-header h2{font-size:1rem;font-weight:600;color:var(--text);margin:0}
+.card-link{font-size:.78rem;color:#2563eb;text-decoration:none;font-weight:600}
+.card-body{padding:0}
+.schedule-item{display:flex;align-items:center;gap:14px;padding:1rem 1.2rem;border-bottom:1px solid #f1f5f9}
+.schedule-item:last-child{border-bottom:none}
+.schedule-time{width:72px;flex-shrink:0;font-size:.78rem;font-weight:700;color:#2563eb}
+.schedule-patient{flex:1;min-width:0}
+.schedule-patient strong{display:block;font-size:.88rem;color:#1e293b;margin-bottom:3px}
+.schedule-patient span{font-size:.75rem;color:#64748b}
+.status-badge{font-size:.7rem;font-weight:600;padding:5px 9px;border-radius:999px;background:#dcfce7;color:#15803d}
+.patient-item{display:flex;align-items:center;gap:12px;padding:.9rem 1.2rem;border-bottom:1px solid #f1f5f9}
+.patient-item:last-child{border-bottom:none}
+.patient-avatar{width:38px;height:38px;border-radius:10px;background:#dbeafe;color:#2563eb;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.8rem;flex-shrink:0}
+.patient-info{min-width:0}
+.patient-info strong{display:block;font-size:.85rem;color:#1e293b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.patient-info span{font-size:.73rem;color:#64748b}
+.empty-state{padding:2rem 1.2rem;text-align:center;color:#94a3b8;font-size:.82rem}
+.quick-actions{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding:1.2rem}
+.quick-action{display:flex;align-items:center;gap:9px;padding:.8rem;border:1px solid #e2e8f0;border-radius:10px;text-decoration:none;color:#334155;background:#f8fafc;font-size:.8rem;font-weight:600;transition:all .2s ease}
+.quick-action:hover{border-color:#93c5fd;background:#eff6ff;color:#2563eb;transform:translateY(-1px)}
+.quick-action svg{flex-shrink:0}
+@media(max-width:1100px){.stats-grid{grid-template-columns:repeat(2,1fr)}.dashboard-grid{grid-template-columns:1fr}}
+@media(max-width:700px){.stats-grid{grid-template-columns:1fr}.quick-actions{grid-template-columns:1fr 1fr}.dashboard-header{display:block}}
+@media(max-width:450px){.quick-actions{grid-template-columns:1fr}}
+</style>
+{% endblock %}
 
 {% block content %}
-<div style="padding:20px;">
-    <h1 style="margin-bottom:10px;">Doctor Dashboard</h1>
-    <p>Doctor dashboard is working successfully.</p>
+<div class="dashboard-header">
+    <div>
+        <h1 class="dashboard-title">Welcome,  {{ doctor.get_full_name }}</h1>
+        <p class="dashboard-subtitle">Here's your clinical overview for today.</p>
+        {% if hospital %}
+        <div class="hospital-name">{{ hospital.name }}</div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-info">
+            <div class="stat-label">My Patients</div>
+            <div class="stat-value">{{ total_patients }}</div>
+        </div>
+        <div class="stat-icon">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-info">
+            <div class="stat-label">Today's Patients</div>
+            <div class="stat-value">{{ today_patients }}</div>
+        </div>
+        <div class="stat-icon">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <rect x="3" y="4" width="18" height="18" rx="2"/>
+                <path d="M16 2v4M8 2v4M3 10h18"/>
+                <path d="m9 16 2 2 4-4"/>
+            </svg>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-info">
+            <div class="stat-label">Upcoming Schedule</div>
+            <div class="stat-value">{{ upcoming_count }}</div>
+        </div>
+        <div class="stat-icon">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="9"/>
+                <path d="M12 7v5l3 2"/>
+            </svg>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-info">
+            <div class="stat-label">Departments</div>
+            <div class="stat-value">{{ department_count }}</div>
+        </div>
+        <div class="stat-icon">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M3 21h18"/>
+                <path d="M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16"/>
+                <path d="M9 7h2M13 7h2M9 11h2M13 11h2M9 15h2M13 15h2"/>
+            </svg>
+        </div>
+    </div>
+</div>
+
+<div class="dashboard-grid">
+    <div class="card">
+        <div class="card-header">
+            <h2>Today's Schedule</h2>
+            <a href="{% url 'doctor_appointments' %}" class="card-link">View Appointments</a>
+        </div>
+        <div class="card-body">
+            {% for item in today_schedule %}
+            <div class="schedule-item">
+                <div class="schedule-time">{{ item.start_time|time:"h:i A" }}</div>
+                <div class="schedule-patient">
+                    <strong>{{ item.patient_name }}</strong>
+                    <span>{{ item.patient_id|default:"Patient" }}</span>
+                </div>
+                <div class="status-badge">{{ item.get_status_display }}</div>
+            </div>
+            {% empty %}
+            <div class="empty-state">No schedule for today.</div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h2>Recent Patients</h2>
+            <a href="{% url 'doctor_patient_summary' %}" class="card-link">View Patients</a>
+        </div>
+        <div class="card-body">
+            {% for patient in recent_patients %}
+            <div class="patient-item">
+                <div class="patient-avatar">
+                    {{ patient.patient_name|first|upper }}
+                </div>
+                <div class="patient-info">
+                    <strong>{{ patient.patient_name }}</strong>
+                    <span>{{ patient.patient_id }}</span>
+                </div>
+            </div>
+            {% empty %}
+            <div class="empty-state">No patients available.</div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2>Quick Actions</h2>
+    </div>
+    <div class="quick-actions">
+        <a href="{% url 'doctor_patient_summary' %}" class="quick-action">
+            <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <circle cx="11" cy="11" r="7"/>
+                <path d="m20 20-4-4"/>
+            </svg>
+            Patient Summary
+        </a>
+
+        <a href="{% url 'doctor_prescription' %}" class="quick-action">
+            <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <path d="M14 2v6h6M8 13h8M8 17h6"/>
+            </svg>
+            Prescription
+        </a>
+
+        <a href="{% url 'doctor_appointments' %}" class="quick-action">
+            <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <rect x="3" y="4" width="18" height="18" rx="2"/>
+                <path d="M16 2v4M8 2v4M3 10h18"/>
+            </svg>
+            My Appointments
+        </a>
+
+        <a href="{% url 'doctor_referrals' %}" class="quick-action">
+            <svg width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M4 4h16v16H4z"/>
+                <path d="M8 12h8M12 8v8"/>
+            </svg>
+            Referrals
+        </a>
+    </div>
 </div>
 {% endblock %}

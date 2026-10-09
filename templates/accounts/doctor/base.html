@@ -203,6 +203,63 @@
             border-radius:50%;
             background:#0ea5e9
         }
+        .notification-wrap{position:relative}
+        .notification-menu{
+            display:none;
+            position:absolute;
+            top:54px;
+            right:0;
+            width:440px;
+            max-height:500px;
+            overflow-y:auto;
+            background:var(--white);
+            border:1px solid var(--border);
+            border-radius:14px;
+            box-shadow:0 16px 40px rgba(20,40,80,.18);
+            z-index:950
+        }
+        .notification-menu.show{display:block}
+        .notification-title{
+            padding:17px 20px;
+            border-bottom:1px solid var(--border);
+            color:var(--text);
+            font-size:18px;
+            font-weight:700
+        }
+        .notification-item{
+            padding:16px 20px;
+            border-bottom:1px solid var(--border)
+        }
+        .notification-item:last-child{border-bottom:0}
+        .notification-priority{
+            display:inline-block;
+            margin-bottom:10px;
+            padding:5px 12px;
+            border-radius:20px;
+            background:#ffedd5;
+            color:#f97316;
+            font-size:12px;
+            font-weight:600
+        }
+        .notification-item h4{
+            margin:0 0 7px;
+            color:var(--text);
+            font-size:16px;
+            font-weight:700
+        }
+        .notification-item p{
+            margin:0 0 9px;
+            color:var(--muted);
+            font-size:14px;
+            line-height:1.45
+        }
+        .notification-time{color:var(--muted);font-size:13px}
+        .notification-empty{
+            padding:25px 20px;
+            color:var(--muted);
+            font-size:14px;
+            text-align:center
+        }
         .profile-wrap{
             position:relative;
             margin-left:5px
@@ -292,6 +349,15 @@
             color:#dc2626;
             border-bottom:0
         }
+        @media(max-width:640px){
+            .notification-menu{
+                position:fixed;
+                top:76px;
+                left:12px;
+                right:12px;
+                width:auto
+            }
+        }
         .content{padding:28px}
         @media(max-width:950px){
             .sidebar{width:225px}
@@ -369,24 +435,6 @@
             <span>My Appointments</span>
         </a>
 
-        <a href="{% url 'doctor_admissions' %}" class="menu-item {% if request.resolver_match.url_name == 'doctor_admissions' %}active{% endif %}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                <path d="M4 21V4h16v17"/>
-                <path d="M8 9h8"/>
-                <path d="M12 6v6"/>
-                <path d="M8 17h8"/>
-            </svg>
-            <span>Admissions</span>
-        </a>
-
-        <a href="{% url 'doctor_schedule' %}" class="menu-item {% if request.resolver_match.url_name == 'doctor_schedule' %}active{% endif %}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                <circle cx="12" cy="12" r="9"/>
-                <path d="M12 7v5l3 2"/>
-            </svg>
-            <span>My Schedule</span>
-        </a>
-
         <div class="menu-title section-space">ACCOUNT</div>
 
         <a href="{% url 'doctor_profile' %}" class="menu-item {% if request.resolver_match.url_name == 'doctor_profile' %}active{% endif %}">
@@ -410,13 +458,30 @@
         </form>
 
         <div class="top-actions">
-            <a href="#" class="icon-btn" title="Notifications">
+            <div class="notification-wrap">
+            <button type="button" class="icon-btn" id="notificationButton" title="Notifications">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                     <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/>
                     <path d="M10 21h4"/>
                 </svg>
+                {% if notices %}
                 <span class="notification-dot"></span>
-            </a>
+                {% endif %}
+            </button>
+            <div class="notification-menu" id="notificationMenu">
+                <div class="notification-title">Nitification</div>
+                {% for notice in notices %}
+                <div class="notification-item">
+                    <span class="notification-priority">{{ notice.get_priority_display }}</span>
+                    <h4>{{ notice.title }}</h4>
+                    <p>{{ notice.content }}</p>
+                    <span class="notification-time">{{ notice.created_at|timesince }} ago</span>
+                </div>
+                {% empty %}
+                <div class="notification-empty">No notifications available.</div>
+                {% endfor %}
+            </div>
+            </div>
 
             <button type="button" class="icon-btn" id="themeButton" title="Dark mode">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
@@ -487,16 +552,27 @@
 const profileButton=document.getElementById("profileButton");
 const profileMenu=document.getElementById("profileMenu");
 const themeButton=document.getElementById("themeButton");
+const notificationButton=document.getElementById("notificationButton");
+const notificationMenu=document.getElementById("notificationMenu");
 
 profileButton.addEventListener("click",function(event){
     event.stopPropagation();
     profileMenu.classList.toggle("show");
 });
+notificationButton.addEventListener("click",function(event){
+    event.stopPropagation();
+    notificationMenu.classList.toggle("show");
+    profileMenu.classList.remove("show");
+});
 profileMenu.addEventListener("click",function(event){
+    event.stopPropagation();
+});
+notificationMenu.addEventListener("click",function(event){
     event.stopPropagation();
 });
 document.addEventListener("click",function(){
     profileMenu.classList.remove("show");
+    notificationMenu.classList.remove("show");
 });
 
 if(localStorage.getItem("nhimsTheme")==="dark"){

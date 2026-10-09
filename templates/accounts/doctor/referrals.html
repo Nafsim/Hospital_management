@@ -1,0 +1,932 @@
+{% extends 'accounts/doctor/base.html' %}
+
+{% block title %}Referrals - NHIMS{% endblock %}
+
+{% block extra_css %}
+<style>
+.page-header{
+    margin-bottom:1.5rem;
+}
+.page-header h1{
+    margin:0;
+    font-size:1.6rem;
+    font-weight:700;
+    color:#0f172a;
+}
+.page-header p{
+    margin:.35rem 0 0;
+    color:#64748b;
+    font-size:.9rem;
+}
+.referral-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:1.25rem;
+    align-items:start;
+}
+.referral-card{
+    background:#fff;
+    border:1px solid #e2e8f0;
+    border-radius:16px;
+    box-shadow:0 4px 16px rgba(15,23,42,.06);
+    overflow:hidden;
+}
+.card-header{
+    padding:1.1rem 1.25rem;
+    border-bottom:1px solid #e2e8f0;
+    display:flex;
+    align-items:center;
+    gap:.75rem;
+}
+.card-icon{
+    width:40px;
+    height:40px;
+    border-radius:10px;
+    background:#eff6ff;
+    color:#2563eb;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    flex-shrink:0;
+}
+.card-icon svg{
+    width:21px;
+    height:21px;
+}
+.card-header h2{
+    margin:0;
+    font-size:1rem;
+    font-weight:700;
+    color:#0f172a;
+}
+.card-header p{
+    margin:.2rem 0 0;
+    font-size:.78rem;
+    color:#64748b;
+}
+.card-body{
+    padding:1.25rem;
+}
+.form-group{
+    margin-bottom:1.05rem;
+}
+.form-group:last-child{
+    margin-bottom:0;
+}
+.form-label{
+    display:block;
+    margin-bottom:.45rem;
+    font-size:.84rem;
+    font-weight:600;
+    color:#334155;
+}
+.form-control{
+    width:100%;
+    min-height:44px;
+    padding:.65rem .8rem;
+    border:1px solid #cbd5e1;
+    border-radius:9px;
+    background:#fff;
+    color:#0f172a;
+    font-size:.88rem;
+    outline:none;
+    transition:.2s;
+    box-sizing:border-box;
+}
+.form-control:focus{
+    border-color:#2563eb;
+    box-shadow:0 0 0 3px rgba(37,99,235,.1);
+}
+textarea.form-control{
+    min-height:125px;
+    resize:vertical;
+}
+.priority-group{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:.6rem;
+}
+.priority-option{
+    position:relative;
+}
+.priority-option input{
+    position:absolute;
+    opacity:0;
+    pointer-events:none;
+}
+.priority-label{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    min-height:42px;
+    padding:.5rem .4rem;
+    border:1px solid #cbd5e1;
+    border-radius:9px;
+    color:#475569;
+    font-size:.8rem;
+    font-weight:600;
+    cursor:pointer;
+    transition:.2s;
+}
+.priority-option input:checked+.priority-label{
+    border-color:#2563eb;
+    background:#eff6ff;
+    color:#2563eb;
+}
+.file-upload{
+    position:relative;
+}
+.file-upload input{
+    position:absolute;
+    width:1px;
+    height:1px;
+    opacity:0;
+}
+.file-label{
+    min-height:48px;
+    padding:.65rem .8rem;
+    border:1px dashed #94a3b8;
+    border-radius:9px;
+    display:flex;
+    align-items:center;
+    gap:.7rem;
+    cursor:pointer;
+    color:#64748b;
+    font-size:.84rem;
+    transition:.2s;
+}
+.file-label:hover{
+    border-color:#2563eb;
+    background:#f8fbff;
+    color:#2563eb;
+}
+.file-label svg{
+    width:20px;
+    height:20px;
+    flex-shrink:0;
+}
+.file-name{
+    overflow:hidden;
+    white-space:nowrap;
+    text-overflow:ellipsis;
+}
+.specialist-select-wrap{
+    margin-bottom:1rem;
+}
+.specialist-list{
+    display:flex;
+    flex-direction:column;
+    gap:.65rem;
+    max-height:440px;
+    overflow-y:auto;
+    padding-right:.2rem;
+}
+.specialist-option{
+    position:relative;
+    display:flex;
+    align-items:center;
+    gap:.75rem;
+    padding:.85rem;
+    border:1px solid #e2e8f0;
+    border-radius:11px;
+    cursor:pointer;
+    transition:.2s;
+    background:#fff;
+}
+.specialist-option:hover{
+    border-color:#93c5fd;
+    background:#f8fbff;
+}
+.specialist-option input{
+    position:absolute;
+    opacity:0;
+    pointer-events:none;
+}
+.specialist-radio{
+    width:18px;
+    height:18px;
+    border:2px solid #cbd5e1;
+    border-radius:50%;
+    flex-shrink:0;
+    position:relative;
+    transition:.2s;
+}
+.specialist-option input:checked+.specialist-radio{
+    border-color:#2563eb;
+}
+.specialist-option input:checked+.specialist-radio:after{
+    content:"";
+    position:absolute;
+    width:8px;
+    height:8px;
+    border-radius:50%;
+    background:#2563eb;
+    top:3px;
+    left:3px;
+}
+.specialist-option:has(input:checked){
+    border-color:#60a5fa;
+    background:#eff6ff;
+    box-shadow:0 2px 8px rgba(37,99,235,.08);
+}
+.specialist-option input:disabled+.specialist-radio{
+    background:#f1f5f9;
+    border-color:#cbd5e1;
+}
+.specialist-info{
+    min-width:0;
+    flex:1;
+}
+.specialist-name{
+    font-size:.88rem;
+    font-weight:700;
+    color:#0f172a;
+    margin-bottom:.22rem;
+}
+.specialist-details{
+    font-size:.77rem;
+    color:#64748b;
+    line-height:1.45;
+}
+.specialist-status{
+    font-size:.72rem;
+    font-weight:700;
+    padding:.3rem .55rem;
+    border-radius:999px;
+    flex-shrink:0;
+}
+.status-available{
+    color:#15803d;
+    background:#dcfce7;
+}
+.status-unavailable{
+    color:#b91c1c;
+    background:#fee2e2;
+}
+.send-area{
+    margin-top:1.25rem;
+    display:flex;
+    justify-content:flex-end;
+}
+.send-btn{
+    min-height:44px;
+    border:0;
+    border-radius:9px;
+    padding:.65rem 1.1rem;
+    background:linear-gradient(135deg,#2563eb,#0ea5e9);
+    color:#fff;
+    font-size:.84rem;
+    font-weight:700;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:.55rem;
+    cursor:pointer;
+    transition:.2s;
+    box-shadow:0 4px 12px rgba(37,99,235,.2);
+}
+.send-btn:hover{
+    transform:translateY(-2px);
+    box-shadow:0 7px 16px rgba(37,99,235,.25);
+}
+.send-btn svg{
+    width:18px;
+    height:18px;
+}
+.empty-specialists{
+    padding:1.5rem 1rem;
+    text-align:center;
+    border:1px dashed #cbd5e1;
+    border-radius:10px;
+    color:#64748b;
+    font-size:.84rem;
+}
+.referral-history{
+    margin-top:1.25rem;
+}
+.history-header{
+    padding:1.1rem 1.25rem;
+    border-bottom:1px solid #e2e8f0;
+}
+.history-header h2{
+    margin:0;
+    font-size:1rem;
+    color:#0f172a;
+}
+.history-table-wrap{
+    overflow-x:auto;
+}
+.history-table{
+    width:100%;
+    border-collapse:collapse;
+}
+.history-table th{
+    padding:.8rem 1rem;
+    text-align:left;
+    font-size:.76rem;
+    font-weight:700;
+    color:#64748b;
+    background:#f8fafc;
+    border-bottom:1px solid #e2e8f0;
+    white-space:nowrap;
+}
+.history-table td{
+    padding:.85rem 1rem;
+    font-size:.82rem;
+    color:#334155;
+    border-bottom:1px solid #f1f5f9;
+    white-space:nowrap;
+}
+.history-table tr:last-child td{
+    border-bottom:0;
+}
+.priority-badge,
+.history-status{
+    display:inline-flex;
+    align-items:center;
+    padding:.28rem .55rem;
+    border-radius:999px;
+    font-size:.7rem;
+    font-weight:700;
+}
+.priority-routine{
+    color:#2563eb;
+    background:#dbeafe;
+}
+.priority-urgent{
+    color:#c2410c;
+    background:#ffedd5;
+}
+.priority-emergency{
+    color:#b91c1c;
+    background:#fee2e2;
+}
+.history-status{
+    color:#2563eb;
+    background:#dbeafe;
+}
+.action-buttons{
+    display:flex;
+    align-items:center;
+    gap:.35rem;
+}
+.action-btn{
+    width:32px;
+    height:32px;
+    border:1px solid #e2e8f0;
+    border-radius:7px;
+    background:#fff;
+    color:#64748b;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    transition:.2s;
+}
+.action-btn:hover{
+    color:#2563eb;
+    border-color:#93c5fd;
+    background:#eff6ff;
+}
+.action-btn.delete:hover{
+    color:#dc2626;
+    border-color:#fecaca;
+    background:#fef2f2;
+}
+.action-btn svg{
+    width:16px;
+    height:16px;
+}
+.empty-history{
+    padding:2rem 1rem;
+    text-align:center;
+    color:#64748b;
+    font-size:.85rem;
+}
+.modal{
+    position:fixed;
+    inset:0;
+    background:rgba(15,23,42,.55);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    padding:1rem;
+    z-index:9999;
+}
+.modal.show{
+    display:flex;
+}
+.modal-content{
+    width:100%;
+    max-width:560px;
+    max-height:90vh;
+    overflow-y:auto;
+    background:#fff;
+    border-radius:16px;
+    box-shadow:0 20px 50px rgba(15,23,42,.2);
+}
+.modal-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:1.1rem 1.25rem;
+    border-bottom:1px solid #e2e8f0;
+}
+.modal-header h3{
+    margin:0;
+    font-size:1rem;
+    color:#0f172a;
+}
+.modal-close{
+    width:34px;
+    height:34px;
+    border:0;
+    border-radius:8px;
+    background:#f1f5f9;
+    color:#64748b;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+}
+.modal-close:hover{
+    background:#e2e8f0;
+    color:#0f172a;
+}
+.modal-close svg{
+    width:18px;
+    height:18px;
+}
+.modal-body{
+    padding:1.25rem;
+}
+.detail-row{
+    display:grid;
+    grid-template-columns:140px 1fr;
+    gap:1rem;
+    padding:.7rem 0;
+    border-bottom:1px solid #f1f5f9;
+}
+.detail-row:last-child{
+    border-bottom:0;
+}
+.detail-label{
+    font-size:.78rem;
+    font-weight:600;
+    color:#64748b;
+}
+.detail-value{
+    font-size:.84rem;
+    color:#0f172a;
+}
+.delete-text{
+    color:#475569;
+    font-size:.88rem;
+    line-height:1.6;
+    margin:0;
+}
+.modal-actions{
+    display:flex;
+    justify-content:flex-end;
+    gap:.6rem;
+    padding:0 1.25rem 1.25rem;
+}
+.cancel-btn,
+.confirm-delete{
+    min-height:40px;
+    padding:.55rem .9rem;
+    border-radius:8px;
+    font-size:.82rem;
+    font-weight:600;
+    cursor:pointer;
+}
+.cancel-btn{
+    border:1px solid #cbd5e1;
+    background:#fff;
+    color:#475569;
+}
+.confirm-delete{
+    border:0;
+    background:#dc2626;
+    color:#fff;
+}
+@media(max-width:900px){
+    .referral-grid{
+        grid-template-columns:1fr;
+    }
+}
+@media(max-width:600px){
+    .priority-group{
+        grid-template-columns:1fr;
+    }
+    .detail-row{
+        grid-template-columns:1fr;
+        gap:.25rem;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Referrals</h1>
+    <p>Refer your patients to another specialist for further consultation and treatment.</p>
+</div>
+
+<form method="post" enctype="multipart/form-data" id="referralForm">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="add">
+
+    <div class="referral-grid">
+        <div class="referral-card">
+            <div class="card-header">
+                <div class="card-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                        <path d="M20 21a8 8 0 0 0-16 0"></path>
+                        <circle cx="12" cy="7" r="4"></circle>
+                    </svg>
+                </div>
+                <div>
+                    <h2>Referral Details</h2>
+                    <p>Select patient and provide referral information</p>
+                </div>
+            </div>
+
+            <div class="card-body">
+                <div class="form-group">
+                    <label class="form-label" for="patient">Patient</label>
+                    <select name="patient" id="patient" class="form-control" required>
+                        <option value="">Select Patient</option>
+                        {% for patient in patients %}
+                        <option value="{{ patient.id }}">
+                            {{ patient.patient_name }}{% if patient.patient_id %} · {{ patient.patient_id }}{% endif %}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="reason">Reason for Referral</label>
+                    <textarea name="reason" id="reason" class="form-control" placeholder="Enter reason for referral..." required></textarea>
+                </div>
+
+                <div class="form-group">
+    <label class="form-label" for="priority">Priority</label>
+    <select name="priority" id="priority" class="form-control" required>
+        <option value="routine" selected>Routine</option>
+        <option value="urgent">Urgent</option>
+        <option value="emergency">Emergency</option>
+    </select>
+</div>
+
+                <div class="form-group">
+                    <label class="form-label">Attach Document</label>
+                    <div class="file-upload">
+                        <input type="file" name="document" id="document">
+                        <label class="file-label" for="document">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                                <path d="M21.44 11.05 12.25 20.24a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.82-2.83l8.49-8.48"></path>
+                            </svg>
+                            <span class="file-name" id="fileName">Choose document</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="referral-card">
+            <div class="card-header">
+                <div class="card-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M19 8v6"></path>
+                        <path d="M22 11h-6"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h2>Select Specialist</h2>
+                    <p>Choose a specialist for this referral</p>
+                </div>
+            </div>
+
+            <div class="card-body">
+                <div class="specialist-select-wrap">
+                    <label class="form-label" for="specialistSelect">Specialist</label>
+                    <select name="specialist" id="specialistSelect" class="form-control" required onchange="selectSpecialist(this)">
+                        <option value="">Select Specialist</option>
+                        {% for specialist in specialists %}
+                        {% if specialist.is_active %}
+                        <option value="{{ specialist.id }}">
+                            {{ specialist.get_full_name|default:specialist.username }}
+                        </option>
+                        {% endif %}
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="specialist-list">
+                    {% for specialist in specialists %}
+                    <label class="specialist-option">
+                        <input type="radio" name="specialist_card" value="{{ specialist.id }}" {% if not specialist.is_active %}disabled{% endif %} onchange="selectSpecialistCard(this)">
+                        <span class="specialist-radio"></span>
+
+                        <div class="specialist-info">
+                            <div class="specialist-name">
+                                {{ specialist.get_full_name|default:specialist.username }}
+                            </div>
+                            <div class="specialist-details">
+                                {% if specialist.staff_profile %}
+                                {{ specialist.staff_profile.get_department_display }}
+                                {% else %}
+                                Specialist
+                                {% endif %}
+                                {% if specialist.hospital %}
+                                · {{ specialist.hospital.name }}
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        {% if specialist.is_active %}
+                        <span class="specialist-status status-available">Available</span>
+                        {% else %}
+                        <span class="specialist-status status-unavailable">Unavailable</span>
+                        {% endif %}
+                    </label>
+                    {% empty %}
+                    <div class="empty-specialists">
+                        No specialists are available.
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="send-area">
+        <button type="submit" class="send-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="m22 2-7 20-4-9-9-4Z"></path>
+                <path d="M22 2 11 13"></path>
+            </svg>
+            Send Referral
+        </button>
+    </div>
+</form>
+
+<div class="referral-card referral-history">
+    <div class="history-header">
+        <h2>Referral History</h2>
+    </div>
+
+    {% if referrals %}
+    <div class="history-table-wrap">
+        <table class="history-table">
+            <thead>
+                <tr>
+                    <th>Patient</th>
+                    <th>Specialist</th>
+                    <th>Priority</th>
+                    <th>Status</th>
+                    <th>Date</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for referral in referrals %}
+                <tr>
+                    <td>{{ referral.patient.patient_name }}</td>
+                    <td>{{ referral.specialist.get_full_name|default:referral.specialist.username }}</td>
+                    <td>
+                        <span class="priority-badge priority-{{ referral.priority }}">
+                            {{ referral.get_priority_display }}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="history-status">{{ referral.get_status_display }}</span>
+                    </td>
+                    <td>{{ referral.created_at|date:"d M Y" }}</td>
+                    <td>
+                        <div class="action-buttons">
+                            <button type="button" class="action-btn" onclick="openViewModal({{ referral.id }})" title="View">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                                    <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"></path>
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                </svg>
+                            </button>
+
+                            <button type="button" class="action-btn delete" onclick="openDeleteModal({{ referral.id }})" title="Delete">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                                    <path d="M3 6h18"></path>
+                                    <path d="M8 6V4h8v2"></path>
+                                    <path d="M19 6l-1 15H6L5 6"></path>
+                                    <path d="M10 11v6"></path>
+                                    <path d="M14 11v6"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+
+                <div id="referralData{{ referral.id }}" style="display:none;">
+                    <span class="patient">{{ referral.patient.patient_name }}</span>
+                    <span class="patient-id">{{ referral.patient.patient_id }}</span>
+                    <span class="specialist">{{ referral.specialist.get_full_name|default:referral.specialist.username }}</span>
+                    <span class="priority">{{ referral.get_priority_display }}</span>
+                    <span class="reason">{{ referral.reason }}</span>
+                    <span class="status">{{ referral.get_status_display }}</span>
+                    <span class="date">{{ referral.created_at|date:"d M Y, h:i A" }}</span>
+                    {% if referral.document %}
+                    <a class="document" href="{{ referral.document.url }}" target="_blank">View Document</a>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-history">
+        No referrals have been created yet.
+    </div>
+    {% endif %}
+</div>
+
+<div class="modal" id="viewModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Referral Details</h3>
+            <button type="button" class="modal-close" onclick="closeModal('viewModal')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                    <path d="M18 6 6 18"></path>
+                    <path d="m6 6 12 12"></path>
+                </svg>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="detail-row">
+                <div class="detail-label">Patient</div>
+                <div class="detail-value" id="viewPatient"></div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">Patient ID</div>
+                <div class="detail-value" id="viewPatientId"></div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">Specialist</div>
+                <div class="detail-value" id="viewSpecialist"></div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">Priority</div>
+                <div class="detail-value" id="viewPriority"></div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">Reason</div>
+                <div class="detail-value" id="viewReason"></div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">Status</div>
+                <div class="detail-value" id="viewStatus"></div>
+            </div>
+            <div class="detail-row">
+                <div class="detail-label">Date</div>
+                <div class="detail-value" id="viewDate"></div>
+            </div>
+            <div class="detail-row" id="documentRow" style="display:none;">
+                <div class="detail-label">Document</div>
+                <div class="detail-value" id="viewDocument"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal" id="deleteModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Delete Referral</h3>
+            <button type="button" class="modal-close" onclick="closeModal('deleteModal')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                    <path d="M18 6 6 18"></path>
+                    <path d="m6 6 12 12"></path>
+                </svg>
+            </button>
+        </div>
+
+        <div class="modal-body">
+            <p class="delete-text">
+                Are you sure you want to delete this referral? This action cannot be undone.
+            </p>
+        </div>
+
+        <div class="modal-actions">
+            <button type="button" class="cancel-btn" onclick="closeModal('deleteModal')">Cancel</button>
+
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="delete">
+                <input type="hidden" name="referral_id" id="deleteReferralId">
+                <button type="submit" class="confirm-delete">Delete</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const specialistSelect=document.getElementById('specialistSelect');
+
+function selectSpecialist(select){
+    const value=select.value;
+
+    document.querySelectorAll('input[name="specialist_card"]').forEach(function(input){
+        input.checked=input.value===value;
+    });
+}
+
+function selectSpecialistCard(input){
+    if(input.disabled){
+        return;
+    }
+
+    specialistSelect.value=input.value;
+}
+
+document.getElementById('document').addEventListener('change',function(){
+    const fileName=document.getElementById('fileName');
+
+    if(this.files.length){
+        fileName.textContent=this.files[0].name;
+    }else{
+        fileName.textContent='Choose document';
+    }
+});
+
+function openViewModal(id){
+    const data=document.getElementById('referralData'+id);
+
+    if(!data){
+        return;
+    }
+
+    document.getElementById('viewPatient').textContent=data.querySelector('.patient').textContent;
+    document.getElementById('viewPatientId').textContent=data.querySelector('.patient-id').textContent;
+    document.getElementById('viewSpecialist').textContent=data.querySelector('.specialist').textContent;
+    document.getElementById('viewPriority').textContent=data.querySelector('.priority').textContent;
+    document.getElementById('viewReason').textContent=data.querySelector('.reason').textContent;
+    document.getElementById('viewStatus').textContent=data.querySelector('.status').textContent;
+    document.getElementById('viewDate').textContent=data.querySelector('.date').textContent;
+
+    const documentElement=data.querySelector('.document');
+    const documentRow=document.getElementById('documentRow');
+    const viewDocument=document.getElementById('viewDocument');
+
+    if(documentElement){
+        viewDocument.innerHTML='';
+        const link=document.createElement('a');
+        link.href=documentElement.href;
+        link.target='_blank';
+        link.textContent='View Document';
+        link.style.color='#2563eb';
+        link.style.fontWeight='600';
+        viewDocument.appendChild(link);
+        documentRow.style.display='grid';
+    }else{
+        documentRow.style.display='none';
+    }
+
+    document.getElementById('viewModal').classList.add('show');
+}
+
+function openDeleteModal(id){
+    document.getElementById('deleteReferralId').value=id;
+    document.getElementById('deleteModal').classList.add('show');
+}
+
+function closeModal(id){
+    document.getElementById(id).classList.remove('show');
+}
+
+document.querySelectorAll('.modal').forEach(function(modal){
+    modal.addEventListener('click',function(event){
+        if(event.target===modal){
+            modal.classList.remove('show');
+        }
+    });
+});
+
+document.addEventListener('keydown',function(event){
+    if(event.key==='Escape'){
+        document.querySelectorAll('.modal.show').forEach(function(modal){
+            modal.classList.remove('show');
+        });
+    }
+});
+
+document.getElementById('referralForm').addEventListener('submit',function(event){
+    if(!specialistSelect.value){
+        event.preventDefault();
+        alert('Please select a specialist.');
+    }
+});
+</script>
+{% endblock %}

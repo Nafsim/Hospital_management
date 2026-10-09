@@ -30,7 +30,8 @@ from .models import Blood
 from .models import DiagnosticTest 
 from .models import Facility, MOHJoinRequest
 from django.contrib import messages
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404 
+from .models import User, Notice, Department, DoctorPatient, DoctorSchedule, DoctorPrescription, DoctorReferral
 def login_view(request):
     if request.user.is_authenticated:
         return redirect('dashboard')
@@ -1147,6 +1148,13 @@ def hospital_payroll(request):
         if record.status == 'pending'
     )
 
+    def format_salary_amount(amount):
+        if amount >= 100000:
+            return f'{amount / 100000:.1f}L'
+        if amount >= 1000:
+            return f'{amount / 1000:.0f}k'
+        return str(amount)
+
     context = {
         'hospital': hospital,
         'staff': staff,
@@ -1154,6 +1162,8 @@ def hospital_payroll(request):
         'total_staff': total_staff,
         'total_payroll': total_payroll,
         'pending_payroll': pending_payroll,
+        'total_payroll_display': format_salary_amount(total_payroll),
+        'pending_payroll_display': format_salary_amount(pending_payroll),
     }
 
     return render(
@@ -1161,6 +1171,81 @@ def hospital_payroll(request):
         'accounts/hospital_admin/payroll.html',
         context
     )
+
+def export_payroll(request):
+    if not request.user.is_authenticated:
+        return redirect('login')
+
+    if request.user.role != 'hospital_admin':
+        return redirect('dashboard')
+
+    hospital = request.user.hospital
+
+    payroll = Payroll.objects.filter(hospital=hospital).order_by('-salary_month')
+
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = 'attachment; filename="payroll_export.pdf"'
+
+    pdf = canvas.Canvas(response, pagesize=A4)
+    page_width, page_height = A4
+    left_margin = 36
+    row_height = 22
+    y = page_height - 48
+
+    pdf.setFont('Helvetica-Bold', 16)
+    pdf.drawString(left_margin, y, 'Payroll Salary History')
+    y -= 24
+    pdf.setFont('Helvetica', 9)
+    pdf.drawString(left_margin, y, f'Hospital: {hospital}')
+    y -= 24
+
+    headers = ['Staff Name', 'Staff ID', 'Department', 'Salary Date', 'Amount', 'Status']
+    column_x = [36, 180, 230, 340, 435, 490]
+
+    def draw_headers():
+        pdf.setFillColorRGB(0.90, 0.93, 0.97)
+        pdf.rect(left_margin, y - 6, page_width - 72, row_height, fill=1, stroke=0)
+        pdf.setFillColorRGB(0, 0, 0)
+        pdf.setFont('Helvetica-Bold', 8)
+        for x, header in zip(column_x, headers):
+            pdf.drawString(x, y, header)
+
+    draw_headers()
+    y -= row_height
+    pdf.setFont('Helvetica', 8)
+    for record in payroll:
+        amount = record.amount
+        if amount >= 100000:
+            formatted_amount = f"{amount/100000:.1f}L"
+        elif amount >= 1000:
+            formatted_amount = f"{amount/1000:.0f}k"
+        else:
+            formatted_amount = str(amount)
+
+        if y < 48:
+            pdf.showPage()
+            y = page_height - 48
+            draw_headers()
+            y -= row_height
+            pdf.setFont('Helvetica', 8)
+
+        values = [
+            str(record.staff),
+            str(record.staff.id),
+            record.staff.department if record.staff.department else 'N/A',
+            record.salary_month.strftime('%d %B %Y'),
+            formatted_amount,
+            record.status,
+        ]
+        for x, value in zip(column_x, values):
+            pdf.drawString(x, y, value[:24])
+        pdf.setStrokeColorRGB(0.88, 0.90, 0.93)
+        pdf.line(left_margin, y - 7, page_width - 36, y - 7)
+        y -= row_height
+
+    pdf.save()
+    return response
+
 def download_payslip(request, payroll_id):
     if not request.user.is_authenticated:
         return redirect('login')
@@ -1657,42 +1742,504 @@ def hospital_contact_support(request):
 def doctor_dashboard(request):
     if not request.user.is_authenticated:
         return redirect('login')
-    return render(request, 'accounts/doctor/dashboard.html')
+
+    if request.user.role != 'doctor':
+        return redirect('dashboard')
+
+    doctor = request.user
+    hospital = doctor.hospital
+    today = timezone.localdate()
+
+    patients = DoctorPatient.objects.filter(
+        doctor=doctor,
+        hospital=hospital
+    )
+
+    today_schedule = DoctorSchedule.objects.filter(
+        doctor=doctor,
+        hospital=hospital,
+        schedule_date=today
+    )
+
+    upcoming_schedule = DoctorSchedule.objects.filter(
+        doctor=doctor,
+        hospital=hospital,
+        schedule_date__gte=today,
+        status='scheduled'
+    ).order_by('schedule_date', 'start_time')[:5]
+
+    recent_patients = patients[:5]
+
+    today_patient_count = today_schedule.values('patient_id').distinct().count()
+
+    pending_schedule_count = DoctorSchedule.objects.filter(
+        doctor=doctor,
+        hospital=hospital,
+        schedule_date__gte=today,
+        status='scheduled'
+    ).count()
+
+    department_count = Department.objects.filter(
+        hospital=hospital,
+        is_active=True
+    ).count()
+
+    notice_count = Notice.objects.filter(
+        hospital=hospital,
+        status='published'
+    ).count()
+
+    context = {
+        'doctor': doctor,
+        'hospital': hospital,
+        'total_patients': patients.count(),
+        'today_patients': today_patient_count,
+        'upcoming_count': pending_schedule_count,
+        'department_count': department_count,
+        'today_schedule': today_schedule,
+        'upcoming_schedule': upcoming_schedule,
+        'recent_patients': recent_patients,
+        'notice_count': notice_count,
+        'today': today
+    }
+
+    return render(
+        request,
+        'accounts/doctor/dashboard.html',
+        context
+    )
 
 def doctor_patient_summary(request):
     if not request.user.is_authenticated:
         return redirect('login')
-    return render(request, 'accounts/doctor/patient_summary.html')
+
+    if request.user.role != 'doctor':
+        return redirect('dashboard')
+
+    doctor = request.user
+    hospital = doctor.hospital
+
+    patients = DoctorPatient.objects.filter(
+        doctor=doctor,
+        hospital=hospital
+    )
+
+    search = request.GET.get('search', '').strip()
+
+    if search:
+        patients = patients.filter(
+            models.Q(patient_name__icontains=search) |
+            models.Q(patient_id__icontains=search) |
+            models.Q(phone__icontains=search)
+        )
+
+    total_patients = patients.count()
+    male_patients = patients.filter(gender__iexact='male').count()
+    female_patients = patients.filter(gender__iexact='female').count()
+
+    today = timezone.localdate()
+
+    today_schedule = DoctorSchedule.objects.filter(
+        doctor=doctor,
+        hospital=hospital,
+        schedule_date=today
+    )
+
+    today_patient_ids = list(
+        today_schedule.values_list(
+            'patient_id',
+            flat=True
+        )
+    )
+
+    today_patients = patients.filter(
+        patient_id__in=today_patient_ids
+    ).count()
+
+    context = {
+        'doctor': doctor,
+        'hospital': hospital,
+        'patients': patients,
+        'total_patients': total_patients,
+        'male_patients': male_patients,
+        'female_patients': female_patients,
+        'today_patients': today_patients,
+        'today_patient_ids': today_patient_ids,
+        'search': search
+    }
+
+    return render(
+        request,
+        'accounts/doctor/patient_summary.html',
+        context
+    )
 
 def doctor_prescription(request):
     if not request.user.is_authenticated:
         return redirect('login')
-    return render(request, 'accounts/doctor/prescription.html')
+
+    if request.user.role != 'doctor':
+        return redirect('dashboard')
+
+    doctor = request.user
+    hospital = doctor.hospital
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action == 'add':
+            patient_id = request.POST.get('patient')
+            medicine_name = request.POST.get('medicine_name', '').strip()
+            dosage = request.POST.get('dosage', '').strip()
+            frequency = request.POST.get('frequency', '').strip()
+            meal_timing = request.POST.get('meal_timing', '').strip()
+            duration = request.POST.get('duration', '').strip()
+            notes = request.POST.get('notes', '').strip()
+
+            patient = DoctorPatient.objects.filter(
+                id=patient_id,
+                doctor=doctor,
+                hospital=hospital
+            ).first()
+
+            if patient and medicine_name and dosage and frequency and meal_timing and duration:
+                DoctorPrescription.objects.create(
+                    doctor=doctor,
+                    hospital=hospital,
+                    patient=patient,
+                    medicine_name=medicine_name,
+                    dosage=dosage,
+                    frequency=frequency,
+                    meal_timing=meal_timing,
+                    duration=duration,
+                    notes=notes
+                )
+
+        elif action == 'edit':
+            prescription_id = request.POST.get('prescription_id')
+
+            prescription = DoctorPrescription.objects.filter(
+                id=prescription_id,
+                doctor=doctor,
+                hospital=hospital
+            ).first()
+
+            if prescription:
+                patient_id = request.POST.get('patient')
+
+                patient = DoctorPatient.objects.filter(
+                    id=patient_id,
+                    doctor=doctor,
+                    hospital=hospital
+                ).first()
+
+                if patient:
+                    prescription.patient = patient
+
+                prescription.medicine_name = request.POST.get('medicine_name', '').strip()
+                prescription.dosage = request.POST.get('dosage', '').strip()
+                prescription.frequency = request.POST.get('frequency', '').strip()
+                prescription.meal_timing = request.POST.get('meal_timing', '').strip()
+                prescription.duration = request.POST.get('duration', '').strip()
+                prescription.notes = request.POST.get('notes', '').strip()
+                prescription.save()
+
+        elif action == 'delete':
+            prescription_id = request.POST.get('prescription_id')
+
+            DoctorPrescription.objects.filter(
+                id=prescription_id,
+                doctor=doctor,
+                hospital=hospital
+            ).delete()
+
+        return redirect('doctor_prescription')
+
+    prescriptions = DoctorPrescription.objects.filter(
+        doctor=doctor,
+        hospital=hospital
+    ).select_related('patient')
+
+    patients = DoctorPatient.objects.filter(
+        doctor=doctor,
+        hospital=hospital
+    )
+
+    context = {
+        'doctor': doctor,
+        'hospital': hospital,
+        'prescriptions': prescriptions,
+        'patients': patients,
+    }
+
+    return render(
+        request,
+        'accounts/doctor/prescription.html',
+        context
+    )
 
 def doctor_referrals(request):
     if not request.user.is_authenticated:
         return redirect('login')
-    return render(request, 'accounts/doctor/referrals.html')
+
+    if request.user.role != 'doctor':
+        return redirect('dashboard')
+
+    doctor = request.user
+    hospital = doctor.hospital
+
+    patients = DoctorPatient.objects.filter(
+        doctor=doctor,
+        hospital=hospital
+    )
+
+    specialists = request.user.__class__.objects.filter(
+        role='doctor',
+        is_active=True
+    ).exclude(
+        id=doctor.id
+    ).select_related('hospital')
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action == 'add':
+            patient_id = request.POST.get('patient')
+            specialist_id = request.POST.get('specialist')
+            reason = request.POST.get('reason', '').strip()
+            priority = request.POST.get('priority', 'routine')
+
+            patient = DoctorPatient.objects.filter(
+                id=patient_id,
+                doctor=doctor,
+                hospital=hospital
+            ).first()
+
+            specialist = request.user.__class__.objects.filter(
+                id=specialist_id,
+                role='doctor',
+                is_active=True
+            ).exclude(
+                id=doctor.id
+            ).first()
+
+            if patient and specialist and reason:
+                referral = DoctorReferral.objects.create(
+                    doctor=doctor,
+                    patient=patient,
+                    specialist=specialist,
+                    reason=reason,
+                    priority=priority
+                )
+
+                if request.FILES.get('document'):
+                    referral.document = request.FILES['document']
+                    referral.save()
+
+        elif action == 'edit':
+            referral_id = request.POST.get('referral_id')
+
+            referral = DoctorReferral.objects.filter(
+                id=referral_id,
+                doctor=doctor
+            ).first()
+
+            if referral:
+                patient_id = request.POST.get('patient')
+                specialist_id = request.POST.get('specialist')
+
+                patient = DoctorPatient.objects.filter(
+                    id=patient_id,
+                    doctor=doctor,
+                    hospital=hospital
+                ).first()
+
+                specialist = request.user.__class__.objects.filter(
+                    id=specialist_id,
+                    role='doctor',
+                    is_active=True
+                ).exclude(
+                    id=doctor.id
+                ).first()
+
+                if patient:
+                    referral.patient = patient
+
+                if specialist:
+                    referral.specialist = specialist
+
+                referral.reason = request.POST.get('reason', '').strip()
+                referral.priority = request.POST.get(
+                    'priority',
+                    'routine'
+                )
+
+                if request.FILES.get('document'):
+                    referral.document = request.FILES['document']
+
+                referral.save()
+
+        elif action == 'delete':
+            referral_id = request.POST.get('referral_id')
+
+            DoctorReferral.objects.filter(
+                id=referral_id,
+                doctor=doctor
+            ).delete()
+
+        return redirect('doctor_referrals')
+
+    referrals = DoctorReferral.objects.filter(
+        doctor=doctor
+    ).select_related(
+        'patient',
+        'specialist',
+        'specialist__hospital'
+    )
+
+    context = {
+        'doctor': doctor,
+        'hospital': hospital,
+        'patients': patients,
+        'specialists': specialists,
+        'referrals': referrals
+    }
+
+    return render(
+        request,
+        'accounts/doctor/referrals.html',
+        context
+    )
 
 def doctor_appointments(request):
     if not request.user.is_authenticated:
         return redirect('login')
-    return render(request, 'accounts/doctor/appointments.html')
 
-def doctor_admissions(request):
-    if not request.user.is_authenticated:
-        return redirect('login')
-    return render(request, 'accounts/doctor/admissions.html')
+    if request.user.role != 'doctor':
+        return redirect('dashboard')
 
-def doctor_schedule(request):
-    if not request.user.is_authenticated:
-        return redirect('login')
-    return render(request, 'accounts/doctor/schedule.html')
+    doctor = request.user
+    hospital = doctor.hospital
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        appointment_id = request.POST.get('appointment_id')
+
+        if action == 'update_status':
+            appointment = DoctorSchedule.objects.filter(
+                id=appointment_id,
+                doctor=doctor,
+                hospital=hospital
+            ).first()
+
+            if appointment:
+                status = request.POST.get('status')
+
+                if status in ['scheduled', 'completed', 'cancelled']:
+                    appointment.status = status
+                    appointment.save(update_fields=['status'])
+
+        return redirect('doctor_appointments')
+
+    appointments = DoctorSchedule.objects.filter(
+        doctor=doctor,
+        hospital=hospital
+    )
+
+    today = timezone.localdate()
+
+    today_appointments = appointments.filter(
+        schedule_date=today
+    ).count()
+
+    upcoming_appointments = appointments.filter(
+        schedule_date__gte=today,
+        status='scheduled'
+    ).count()
+
+    completed_appointments = appointments.filter(
+        status='completed'
+    ).count()
+
+    cancelled_appointments = appointments.filter(
+        status='cancelled'
+    ).count()
+
+    search = request.GET.get('search', '').strip()
+
+    if search:
+        appointments = appointments.filter(
+            models.Q(patient_name__icontains=search) |
+            models.Q(patient_id__icontains=search)
+        )
+
+    appointments = appointments.order_by(
+        'schedule_date',
+        'start_time'
+    )
+
+    context = {
+        'doctor': doctor,
+        'hospital': hospital,
+        'appointments': appointments,
+        'today_appointments': today_appointments,
+        'upcoming_appointments': upcoming_appointments,
+        'completed_appointments': completed_appointments,
+        'cancelled_appointments': cancelled_appointments,
+        'search': search,
+    }
+
+    return render(
+        request,
+        'accounts/doctor/appointments.html',
+        context
+    )
+from .models import DoctorProfile
+from django.contrib import messages
 
 def doctor_profile(request):
     if not request.user.is_authenticated:
         return redirect('login')
-    return render(request, 'accounts/doctor/profile.html')
+    if request.user.role != 'doctor':
+        return redirect('dashboard')
+
+    profile, created = DoctorProfile.objects.get_or_create(user=request.user)
+
+    if request.method == 'POST':
+        user = request.user
+        user.first_name = request.POST.get('first_name', '').strip()
+        user.last_name = request.POST.get('last_name', '').strip()
+        user.phone = request.POST.get('phone', '').strip()
+        user.save()
+
+        profile.registration_number = request.POST.get('registration_number', '').strip()
+        profile.specialization = request.POST.get('specialization', '').strip()
+        profile.department = request.POST.get('department', '').strip()
+        profile.qualification = request.POST.get('qualification', '').strip()
+        profile.experience_years = int(request.POST.get('experience_years') or 0)
+        profile.bio = request.POST.get('bio', '').strip()
+        profile.address = request.POST.get('address', '').strip()
+        profile.gender = request.POST.get('gender', '').strip()
+        profile.blood_group = request.POST.get('blood_group', '').strip()
+
+        dob = request.POST.get('date_of_birth')
+        profile.date_of_birth = dob if dob else None
+
+        if request.FILES.get('profile_image'):
+            profile.profile_image = request.FILES['profile_image']
+
+        profile.save()
+        messages.success(request, 'Profile updated successfully.')
+        return redirect('doctor_profile')
+
+    context = {
+        'profile': profile,
+        'user': request.user,
+        'hospital': request.user.hospital,
+    }
+    return render(request, 'accounts/doctor/profile.html', context)
+
+
 
 #Nourse
 def nurse_dashboard(request):

@@ -30,6 +30,7 @@ path('hospital-admin/departments/', views.hospital_departments, name='hospital_d
 path('hospital-admin/patients/', views.hospital_patients, name='hospital_patients'),
 path('hospital-admin/documents/', views.hospital_documents, name='hospital_documents'),
 path('hospital-admin/payroll/', views.hospital_payroll, name='hospital_payroll'),
+path('hospital-admin/payroll/export/', views.export_payroll, name='export_payroll'),
 path(
     'hospital-admin/payroll/<int:payroll_id>/download/',
     views.download_payslip,
@@ -49,8 +50,7 @@ path('doctor/patient-summary/', views.doctor_patient_summary, name='doctor_patie
 path('doctor/prescription/', views.doctor_prescription, name='doctor_prescription'),
 path('doctor/referrals/', views.doctor_referrals, name='doctor_referrals'),
 path('doctor/appointments/', views.doctor_appointments, name='doctor_appointments'),
-path('doctor/admissions/', views.doctor_admissions, name='doctor_admissions'),
-path('doctor/schedule/', views.doctor_schedule, name='doctor_schedule'),
+path('doctor/schedule/', views.doctor_appointments, name='doctor_schedule'),
 path('doctor/profile/', views.doctor_profile, name='doctor_profile'),
 #nourse
 path('nurse/dashboard/', views.nurse_dashboard, name='nurse_dashboard'),

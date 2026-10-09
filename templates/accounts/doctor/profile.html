@@ -1,0 +1,283 @@
+{% extends "accounts/doctor/base.html" %}
+{% load static %}
+
+{% block title %}My Profile - NHIMS{% endblock %}
+
+{% block extra_css %}
+<style>
+.profile-page{padding:18px 16px}
+.page-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.5rem;gap:12px;flex-wrap:wrap}
+.page-title{font-size:1.7rem;font-weight:700;color:var(--text);margin:0 0 .3rem}
+.page-subtitle{font-size:.9rem;color:#64748b;margin:0}
+.edit-btn{display:inline-flex;align-items:center;gap:7px;background:linear-gradient(135deg,#0ea5e9,#2563eb);color:#fff;border:0;padding:10px 16px;border-radius:9px;font-size:13.5px;font-weight:600;cursor:pointer}
+.edit-btn:hover{transform:translateY(-1px);box-shadow:0 5px 14px rgba(37,99,235,.22)}
+.profile-grid{display:grid;grid-template-columns:320px 1fr;gap:18px}
+.profile-card,.info-card{background:#fff;border:1px solid var(--border);border-radius:16px;box-shadow:0 1px 3px rgba(0,0,0,.06);overflow:hidden}
+.profile-side{padding:28px 22px;text-align:center}
+.avatar-wrap{width:120px;height:120px;border-radius:50%;margin:0 auto 16px;background:#dbeafe;display:flex;align-items:center;justify-content:center;overflow:hidden;border:4px solid #eff6ff}
+.avatar-wrap img{width:100%;height:100%;object-fit:cover}
+.avatar-initial{font-size:2.4rem;font-weight:700;color:#2563eb}
+.doctor-name{font-size:1.25rem;font-weight:700;color:#1e293b;margin:0 0 4px}
+.doctor-role{font-size:.88rem;color:#64748b;margin:0 0 12px}
+.reg-badge{display:inline-flex;padding:.35rem .75rem;border-radius:999px;background:#dbeafe;color:#1d4ed8;font-size:.78rem;font-weight:600;margin-bottom:16px}
+.side-info{text-align:left;margin-top:18px}
+.side-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f1f5f9;font-size:.86rem;color:#334155}
+.side-item:last-child{border-bottom:0}
+.side-item svg{color:#64748b;flex-shrink:0}
+.info-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.info-header h2{font-size:1.05rem;font-weight:600;margin:0;color:var(--text)}
+.info-body{padding:20px}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.info-item{padding:12px 14px;background:#f8fafc;border-radius:10px;border:1px solid #f1f5f9}
+.info-item.full{grid-column:1/-1}
+.info-label{font-size:.75rem;color:#64748b;font-weight:500;margin-bottom:4px}
+.info-value{font-size:.9rem;font-weight:600;color:#1e293b}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-group{display:flex;flex-direction:column;gap:5px}
+.form-group.full{grid-column:1/-1}
+.form-group label{font-size:.82rem;font-weight:600;color:#334155}
+.form-group input,.form-group select,.form-group textarea{height:40px;border:1px solid #cbd5e1;border-radius:8px;padding:0 12px;font-size:.87rem;outline:none;background:#fff}
+.form-group textarea{height:90px;padding:10px 12px;resize:vertical}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:#60a5fa;box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+.form-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px}
+.btn-cancel{padding:9px 16px;border-radius:8px;font-size:13px;font-weight:600;background:#fff;color:#475569;border:1px solid #cbd5e1;cursor:pointer}
+.btn-save{padding:9px 16px;border-radius:8px;font-size:13px;font-weight:600;background:#2563eb;color:#fff;border:1px solid #2563eb;cursor:pointer}
+.edit-section{display:none}
+.edit-section.show{display:block}
+.view-section.hide{display:none}
+@media(max-width:900px){.profile-grid{grid-template-columns:1fr}.info-grid,.form-grid{grid-template-columns:1fr}}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="profile-page">
+    <div class="page-header">
+        <div>
+            <h1 class="page-title">My Profile</h1>
+            <p class="page-subtitle">View and update your professional information</p>
+        </div>
+        <button type="button" class="edit-btn" id="editToggleBtn" onclick="toggleEdit()">
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L8 18l-4 1 1-4z"/>
+            </svg>
+            Edit Profile
+        </button>
+    </div>
+
+    <div class="profile-grid">
+        <!-- Left Side -->
+        <div class="profile-card">
+            <div class="profile-side">
+                <div class="avatar-wrap">
+                    {% if profile.profile_image %}
+                    <img src="{{ profile.profile_image.url }}" alt="Profile">
+                    {% else %}
+                    <span class="avatar-initial">{{ user.first_name|slice:":1"|upper|default:user.username|slice:":1"|upper }}</span>
+                    {% endif %}
+                </div>
+                <h2 class="doctor-name">{{ user.get_full_name|default:user.username }}</h2>
+                <p class="doctor-role">{{ profile.specialization|default:"Doctor" }}</p>
+                {% if profile.registration_number %}
+                <div class="reg-badge">Reg: {{ profile.registration_number }}</div>
+                {% endif %}
+                <div class="side-info">
+                    <div class="side-item">
+                        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><path d="M22 6l-10 7L2 6"/></svg>
+                        {{ user.email }}
+                    </div>
+                    {% if user.phone %}
+                    <div class="side-item">
+                        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+                        {{ user.phone }}
+                    </div>
+                    {% endif %}
+                    {% if hospital %}
+                    <div class="side-item">
+                        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6"/></svg>
+                        {{ hospital.name }}
+                    </div>
+                    {% endif %}
+                    {% if profile.experience_years %}
+                    <div class="side-item">
+                        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                        {{ profile.experience_years }} Years Experience
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Side -->
+        <div class="info-card">
+            <!-- View Mode -->
+            <div class="view-section" id="viewSection">
+                <div class="info-header">
+                    <h2>Professional Information</h2>
+                </div>
+                <div class="info-body">
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <div class="info-label">Full Name</div>
+                            <div class="info-value">{{ user.get_full_name|default:user.username }}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Registration Number</div>
+                            <div class="info-value">{{ profile.registration_number|default:"—" }}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Specialization</div>
+                            <div class="info-value">{{ profile.specialization|default:"—" }}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Department</div>
+                            <div class="info-value">{{ profile.department|default:"—" }}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Qualification</div>
+                            <div class="info-value">{{ profile.qualification|default:"—" }}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Experience</div>
+                            <div class="info-value">{% if profile.experience_years %}{{ profile.experience_years }} Years{% else %}—{% endif %}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Gender</div>
+                            <div class="info-value">{{ profile.gender|default:"—" }}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Blood Group</div>
+                            <div class="info-value">{{ profile.blood_group|default:"—" }}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Date of Birth</div>
+                            <div class="info-value">{{ profile.date_of_birth|date:"d M Y"|default:"—" }}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Phone</div>
+                            <div class="info-value">{{ user.phone|default:"—" }}</div>
+                        </div>
+                        <div class="info-item full">
+                            <div class="info-label">Email</div>
+                            <div class="info-value">{{ user.email }}</div>
+                        </div>
+                        <div class="info-item full">
+                            <div class="info-label">Address</div>
+                            <div class="info-value">{{ profile.address|default:"—" }}</div>
+                        </div>
+                        <div class="info-item full">
+                            <div class="info-label">Bio</div>
+                            <div class="info-value">{{ profile.bio|default:"—" }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Edit Mode -->
+            <div class="edit-section" id="editSection">
+                <div class="info-header">
+                    <h2>Edit Profile</h2>
+                </div>
+                <div class="info-body">
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>First Name</label>
+                                <input type="text" name="first_name" value="{{ user.first_name }}">
+                            </div>
+                            <div class="form-group">
+                                <label>Last Name</label>
+                                <input type="text" name="last_name" value="{{ user.last_name }}">
+                            </div>
+                            <div class="form-group">
+                                <label>Registration Number</label>
+                                <input type="text" name="registration_number" value="{{ profile.registration_number }}">
+                            </div>
+                            <div class="form-group">
+                                <label>Phone</label>
+                                <input type="text" name="phone" value="{{ user.phone|default:'' }}">
+                            </div>
+                            <div class="form-group">
+                                <label>Specialization</label>
+                                <input type="text" name="specialization" value="{{ profile.specialization }}" placeholder="e.g. Cardiology">
+                            </div>
+                            <div class="form-group">
+                                <label>Department</label>
+                                <input type="text" name="department" value="{{ profile.department }}">
+                            </div>
+                            <div class="form-group">
+                                <label>Qualification</label>
+                                <input type="text" name="qualification" value="{{ profile.qualification }}" placeholder="e.g. MBBS, FCPS">
+                            </div>
+                            <div class="form-group">
+                                <label>Experience (Years)</label>
+                                <input type="number" name="experience_years" value="{{ profile.experience_years }}" min="0">
+                            </div>
+                            <div class="form-group">
+                                <label>Gender</label>
+                                <select name="gender">
+                                    <option value="">Select</option>
+                                    <option value="Male" {% if profile.gender == "Male" %}selected{% endif %}>Male</option>
+                                    <option value="Female" {% if profile.gender == "Female" %}selected{% endif %}>Female</option>
+                                    <option value="Other" {% if profile.gender == "Other" %}selected{% endif %}>Other</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Blood Group</label>
+                                <select name="blood_group">
+                                    <option value="">Select</option>
+                                    <option value="A+" {% if profile.blood_group == "A+" %}selected{% endif %}>A+</option>
+                                    <option value="A-" {% if profile.blood_group == "A-" %}selected{% endif %}>A-</option>
+                                    <option value="B+" {% if profile.blood_group == "B+" %}selected{% endif %}>B+</option>
+                                    <option value="B-" {% if profile.blood_group == "B-" %}selected{% endif %}>B-</option>
+                                    <option value="AB+" {% if profile.blood_group == "AB+" %}selected{% endif %}>AB+</option>
+                                    <option value="AB-" {% if profile.blood_group == "AB-" %}selected{% endif %}>AB-</option>
+                                    <option value="O+" {% if profile.blood_group == "O+" %}selected{% endif %}>O+</option>
+                                    <option value="O-" {% if profile.blood_group == "O-" %}selected{% endif %}>O-</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Date of Birth</label>
+                                <input type="date" name="date_of_birth" value="{{ profile.date_of_birth|date:'Y-m-d' }}">
+                            </div>
+                            <div class="form-group">
+                                <label>Profile Image</label>
+                                <input type="file" name="profile_image" accept="image/*">
+                            </div>
+                            <div class="form-group full">
+                                <label>Address</label>
+                                <textarea name="address">{{ profile.address }}</textarea>
+                            </div>
+                            <div class="form-group full">
+                                <label>Bio</label>
+                                <textarea name="bio">{{ profile.bio }}</textarea>
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button type="button" class="btn-cancel" onclick="toggleEdit()">Cancel</button>
+                            <button type="submit" class="btn-save">Save Changes</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleEdit(){
+    const view=document.getElementById('viewSection');
+    const edit=document.getElementById('editSection');
+    const btn=document.getElementById('editToggleBtn');
+    if(edit.classList.contains('show')){
+        edit.classList.remove('show');
+        view.classList.remove('hide');
+        btn.innerHTML='<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L8 18l-4 1 1-4z"/></svg> Edit Profile';
+    }else{
+        edit.classList.add('show');
+        view.classList.add('hide');
+        btn.innerHTML='<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg> Cancel';
+    }
+}
+</script>
+{% endblock %}

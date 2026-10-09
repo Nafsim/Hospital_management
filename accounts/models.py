@@ -516,3 +516,170 @@ class EmergencyContact(models.Model):
 
     def __str__(self):
         return f"{self.contact_name} ({self.get_relation_display()})"
+
+class DoctorPatient(models.Model):
+    doctor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='doctor_patients'
+    )
+    hospital = models.ForeignKey(
+        'hospitals.Hospital',
+        on_delete=models.CASCADE,
+        related_name='doctor_patients'
+    )
+    patient_name = models.CharField(max_length=150)
+    patient_id = models.CharField(max_length=50)
+    phone = models.CharField(max_length=20, blank=True)
+    gender = models.CharField(max_length=20, blank=True)
+    age = models.PositiveIntegerField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.patient_name} - {self.patient_id}"
+
+
+class DoctorSchedule(models.Model):
+    STATUS_CHOICES = (
+        ('scheduled', 'Scheduled'),
+        ('completed', 'Completed'),
+        ('cancelled', 'Cancelled'),
+    )
+
+    doctor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='doctor_schedules'
+    )
+    hospital = models.ForeignKey(
+        'hospitals.Hospital',
+        on_delete=models.CASCADE,
+        related_name='doctor_schedules'
+    )
+    patient_name = models.CharField(max_length=150)
+    patient_id = models.CharField(max_length=50, blank=True)
+    schedule_date = models.DateField()
+    start_time = models.TimeField()
+    end_time = models.TimeField()
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='scheduled'
+    )
+    notes = models.CharField(max_length=255, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['schedule_date', 'start_time']
+
+    def __str__(self):
+        return f"{self.doctor.get_full_name()} - {self.patient_name}"
+class DoctorPrescription(models.Model):
+    doctor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='doctor_prescriptions'
+    )
+    hospital = models.ForeignKey(
+        'hospitals.Hospital',
+        on_delete=models.CASCADE,
+        related_name='doctor_prescriptions'
+    )
+    patient = models.ForeignKey(
+        DoctorPatient,
+        on_delete=models.CASCADE,
+        related_name='prescriptions'
+    )
+    medicine_name = models.CharField(max_length=150)
+    dosage = models.CharField(max_length=100)
+    frequency = models.CharField(max_length=50)
+    meal_timing = models.CharField(max_length=20)
+    duration = models.CharField(max_length=50)
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.patient.patient_name} - {self.medicine_name}"
+class DoctorReferral(models.Model):
+    PRIORITY_CHOICES = (
+        ('routine', 'Routine'),
+        ('urgent', 'Urgent'),
+        ('emergency', 'Emergency'),
+    )
+
+    STATUS_CHOICES = (
+        ('pending', 'Pending'),
+        ('accepted', 'Accepted'),
+        ('completed', 'Completed'),
+        ('cancelled', 'Cancelled'),
+    )
+
+    doctor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='sent_referrals'
+    )
+    patient = models.ForeignKey(
+        DoctorPatient,
+        on_delete=models.CASCADE,
+        related_name='referrals'
+    )
+    specialist = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='received_referrals'
+    )
+    reason = models.TextField()
+    priority = models.CharField(
+        max_length=20,
+        choices=PRIORITY_CHOICES,
+        default='routine'
+    )
+    document = models.FileField(
+        upload_to='referrals/',
+        blank=True,
+        null=True
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='pending'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.patient.patient_name} - {self.specialist.get_full_name()}"    
+
+class DoctorProfile(models.Model):
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='doctor_profile'
+    )
+    registration_number = models.CharField(max_length=50, blank=True)
+    specialization = models.CharField(max_length=100, blank=True)
+    department = models.CharField(max_length=100, blank=True)
+    qualification = models.CharField(max_length=255, blank=True, help_text="e.g. MBBS, FCPS, MD")
+    experience_years = models.PositiveIntegerField(default=0)
+    bio = models.TextField(blank=True)
+    address = models.TextField(blank=True)
+    date_of_birth = models.DateField(null=True, blank=True)
+    gender = models.CharField(max_length=20, blank=True)
+    blood_group = models.CharField(max_length=5, blank=True)
+    profile_image = models.ImageField(upload_to='doctor_profiles/', blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.user.get_full_name()} - {self.registration_number}"    
