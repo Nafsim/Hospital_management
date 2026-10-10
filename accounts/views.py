@@ -2505,7 +2505,6 @@ def nurse_profile(request):
     }
     return render(request, 'accounts/nurse/profile.html', context)
 
-
 # Patient
 def patient_dashboard(request):
     if not request.user.is_authenticated:
