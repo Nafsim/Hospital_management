@@ -2327,6 +2327,31 @@ def doctor_profile(request):
 
 
 #Nourse
+def _sync_nurse_patients(hospital):
+    if not hospital:
+        return Patient.objects.none()
+
+    appointment_users = User.objects.filter(
+        my_appointments__hospital=hospital
+    ).distinct()
+
+    for patient_user in appointment_users:
+        patient, created = Patient.objects.get_or_create(
+            user=patient_user,
+            defaults={
+                'hospital': hospital,
+                'patient_id': f'PT-{patient_user.id:06d}',
+            }
+        )
+        if not created and patient.hospital_id != hospital.id:
+            patient.hospital = hospital
+            patient.save(update_fields=['hospital', 'updated_at'])
+
+    return Patient.objects.filter(
+        hospital=hospital
+    ).select_related('user').order_by('-created_at')
+
+
 def nurse_dashboard(request):
     if not request.user.is_authenticated:
         return redirect('login')
@@ -2346,7 +2371,7 @@ def nurse_dashboard(request):
     daily_data = []
 
     if hospital:
-        patients = Patient.objects.filter(hospital=hospital)
+        patients = _sync_nurse_patients(hospital)
         total_patients = patients.count()
         today_patients = patients.filter(created_at__date=today).count()
         week_patients = patients.filter(created_at__date__gte=week_ago).count()
@@ -2359,7 +2384,7 @@ def nurse_dashboard(request):
 
     recent_patients = []
     if hospital:
-        recent_patients = Patient.objects.filter(hospital=hospital).order_by('-created_at')[:6]
+        recent_patients = _sync_nurse_patients(hospital)[:6]
 
     context = {
         'hospital': hospital,
@@ -2381,7 +2406,7 @@ def nurse_vital_signs(request):
         return redirect('dashboard')
 
     hospital = request.user.hospital
-    patients = Patient.objects.filter(hospital=hospital) if hospital else Patient.objects.none()
+    patients = _sync_nurse_patients(hospital)
 
     if request.method == 'POST':
         action = request.POST.get('action')
@@ -2443,7 +2468,7 @@ def nurse_notes(request):
         return redirect('dashboard')
 
     hospital = request.user.hospital
-    patients = Patient.objects.filter(hospital=hospital) if hospital else Patient.objects.none()
+    patients = _sync_nurse_patients(hospital)
 
     if request.method == 'POST':
         action = request.POST.get('action')
@@ -2494,20 +2519,22 @@ def nurse_patients(request):
         return redirect('dashboard')
 
     hospital = request.user.hospital
-    patients = Patient.objects.filter(hospital=hospital).order_by('-created_at') if hospital else Patient.objects.none()
+    patients = _sync_nurse_patients(hospital)
 
     search = request.GET.get('search', '').strip()
     if search:
         patients = patients.filter(
-            models.Q(patient_name__icontains=search) |
-            models.Q(name__icontains=search) |
+            models.Q(user__first_name__icontains=search) |
+            models.Q(user__last_name__icontains=search) |
+            models.Q(user__email__icontains=search) |
+            models.Q(user__phone__icontains=search) |
             models.Q(patient_id__icontains=search) |
-            models.Q(phone__icontains=search)
+            models.Q(user__username__icontains=search)
         )
 
     today = timezone.now().date()
-    total = patients.count() if not search else Patient.objects.filter(hospital=hospital).count()
-    today_count = Patient.objects.filter(hospital=hospital, created_at__date=today).count() if hospital else 0
+    total = patients.count()
+    today_count = patients.filter(created_at__date=today).count()
 
     context = {
         'hospital': hospital,
@@ -2575,8 +2602,6 @@ def nurse_profile(request):
 # Patient
 User = get_user_model()
 
-User = get_user_model()
-
 def patient_dashboard(request):
     if not request.user.is_authenticated:
         return redirect('login')
@@ -2603,26 +2628,26 @@ def patient_dashboard(request):
 
     total_doctors = 0
     total_departments = 0
+    total_hospitals = 0
     upcoming_appointments = 0
     completed_appointments = 0
     recent_appointments = []
     notices = []
 
-    if hospital:
-        total_doctors = User.objects.filter(
-            hospital=hospital,
-            role='doctor',
+    total_hospitals = Hospital.objects.filter(is_active=True).count()
+    total_doctors = User.objects.filter(
+        role='doctor',
+        is_active=True
+    ).count()
+
+    try:
+        total_departments = Department.objects.filter(
             is_active=True
         ).count()
+    except Exception:
+        total_departments = 0
 
-        try:
-            total_departments = Department.objects.filter(
-                hospital=hospital,
-                is_active=True
-            ).count()
-        except Exception:
-            total_departments = 0
-
+    if hospital:
         appt_qs = DoctorSchedule.objects.filter(hospital=hospital)
 
         if patient:
@@ -2668,6 +2693,7 @@ def patient_dashboard(request):
         'patient': patient,
         'total_doctors': total_doctors,
         'total_departments': total_departments,
+        'total_hospitals': total_hospitals,
         'upcoming_appointments': upcoming_appointments,
         'completed_appointments': completed_appointments,
         'recent_appointments': recent_appointments,
@@ -2692,11 +2718,9 @@ def patient_departments(request):
     hospital = request.user.hospital
     search = request.GET.get('search', '').strip()
 
-    departments = Department.objects.none()
-    if hospital:
-        departments = Department.objects.filter(hospital=hospital, is_active=True).order_by('name')
-        if search:
-            departments = departments.filter(name__icontains=search)
+    departments = Department.objects.filter(is_active=True).order_by('name')
+    if search:
+        departments = departments.filter(name__icontains=search)
 
     context = {
         'hospital': hospital,
@@ -2715,21 +2739,18 @@ def patient_doctors(request):
     hospital = request.user.hospital
     search = request.GET.get('q', '').strip() or request.GET.get('search', '').strip()
 
-    doctors = User.objects.none()
-    if hospital:
-        doctors = User.objects.filter(
-            hospital=hospital,
-            role='doctor',
-            is_active=True
-        ).order_by('first_name', 'last_name')
+    doctors = User.objects.filter(
+        role='doctor',
+        is_active=True
+    ).order_by('first_name', 'last_name')
 
-        if search:
-            doctors = doctors.filter(
-                Q(first_name__icontains=search) |
-                Q(last_name__icontains=search) |
-                Q(email__icontains=search) |
-                Q(phone__icontains=search)
-            )
+    if search:
+        doctors = doctors.filter(
+            Q(first_name__icontains=search) |
+            Q(last_name__icontains=search) |
+            Q(email__icontains=search) |
+            Q(phone__icontains=search)
+        )
 
     context = {
         'hospital': hospital,
@@ -2749,31 +2770,32 @@ def patient_appointments(request):
     hospital = request.user.hospital
     user = request.user
 
-    doctors = User.objects.none()
-    if hospital:
-        doctors = User.objects.filter(
-            hospital=hospital,
-            role='doctor',
-            is_active=True
-        ).order_by('first_name', 'last_name')
+    doctors = User.objects.filter(
+        role='doctor',
+        is_active=True
+    ).order_by('first_name', 'last_name')
 
     if request.method == 'POST':
         action = request.POST.get('action')
 
         if action == 'book':
             doctor_id = request.POST.get('doctor')
+            hospital_id = request.POST.get('hospital')
             appt_date = request.POST.get('appointment_date')
             appt_time = request.POST.get('appointment_time')
             reason = request.POST.get('reason', '').strip()
             amount = request.POST.get('amount') or 500
             pay_now = request.POST.get('pay_now') == 'on'
 
-            if not (hospital and doctor_id and appt_date and appt_time):
+            if not (doctor_id and appt_date and appt_time):
                 messages.error(request, 'Please fill all required fields.')
                 return redirect('patient_appointments')
 
+            doctor = get_object_or_404(User, id=doctor_id)
+            selected_hospital = doctor.hospital if not hospital_id else get_object_or_404(Hospital, id=hospital_id)
+
             PatientAppointment.objects.create(
-                hospital=hospital,
+                hospital=selected_hospital,
                 patient_user=user,
                 doctor_id=doctor_id,
                 patient_name=user.get_full_name() or user.username,
@@ -2818,9 +2840,14 @@ def patient_appointments(request):
         patient_user=user
     ).select_related('doctor', 'hospital')
 
+    hospitals = Hospital.objects.filter(is_active=True).order_by('name')
+    departments = Department.objects.filter(is_active=True).order_by('name')
+
     context = {
         'hospital': hospital,
         'doctors': doctors,
+        'hospitals': hospitals,
+        'departments': departments,
         'appointments': appointments,
         'total': appointments.count(),
         'pending': appointments.filter(status='pending').count(),
@@ -2865,7 +2892,7 @@ def patient_medical_records(request):
     return render(request, 'accounts/patient/medical_records.html', context)
 
 from .models import PatientPayment, PatientAppointment
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 def patient_payments(request):
     if not request.user.is_authenticated:
         return redirect('login')
@@ -2874,6 +2901,7 @@ def patient_payments(request):
 
     user = request.user
     hospital = user.hospital
+    hospitals = Hospital.objects.filter(is_active=True).order_by('name')
 
     unpaid_appointments = PatientAppointment.objects.filter(
         patient_user=user,
@@ -2891,15 +2919,38 @@ def patient_payments(request):
             note = request.POST.get('note', '').strip()
             appointment_id = request.POST.get('appointment_id') or None
 
-            if not hospital:
-                messages.error(request, 'No hospital assigned.')
+            try:
+                amount = Decimal(str(amount))
+            except (InvalidOperation, TypeError, ValueError):
+                messages.error(request, 'Enter a valid payment amount.')
                 return redirect('patient_payments')
 
-            payment = PatientPayment.objects.create(
-                hospital=hospital,
+            if amount <= 0:
+                messages.error(request, 'Payment amount must be greater than zero.')
+                return redirect('patient_payments')
+
+            if appointment_id:
+                appointment = PatientAppointment.objects.filter(
+                    id=appointment_id,
+                    patient_user=user,
+                    payment_status='pending'
+                ).exclude(status='cancelled').select_related('hospital').first()
+                if not appointment:
+                    messages.error(request, 'The selected appointment is not available for payment.')
+                    return redirect('patient_payments')
+                payment_hospital = appointment.hospital
+            else:
+                hospital_id = request.POST.get('hospital_id')
+                payment_hospital = hospitals.filter(id=hospital_id).first()
+                if not payment_hospital:
+                    messages.error(request, 'Select a hospital for this payment.')
+                    return redirect('patient_payments')
+
+            PatientPayment.objects.create(
+                hospital=payment_hospital,
                 patient_user=user,
-                appointment_id=appointment_id if appointment_id else None,
-                amount=Decimal(str(amount)),
+                appointment=appointment if appointment_id else None,
+                amount=amount,
                 purpose=purpose,
                 method=method,
                 transaction_id=transaction_id,
@@ -2908,13 +2959,8 @@ def patient_payments(request):
             )
 
             if appointment_id:
-                appt = PatientAppointment.objects.filter(
-                    id=appointment_id,
-                    patient_user=user
-                ).first()
-                if appt:
-                    appt.payment_status = 'paid'
-                    appt.save()
+                appointment.payment_status = 'paid'
+                appointment.save(update_fields=['payment_status', 'updated_at'])
 
             messages.success(request, 'Payment submitted. Counter will verify and receive the amount.')
             return redirect('patient_payments')
@@ -2929,6 +2975,7 @@ def patient_payments(request):
 
     context = {
         'hospital': hospital,
+        'hospitals': hospitals,
         'payments': payments,
         'unpaid_appointments': unpaid_appointments,
         'total_paid': total_paid,
