@@ -54,7 +54,11 @@
             </div>
             <div class="form-group">
                 <label>Hospital Name</label>
-                <input type="text" name="hospital_name" value="{{ hospital.name }}">
+                <input type="text" name="hospital_name" value="{{ hospital.name|default:'' }}" required>
+            </div>
+            <div class="form-group">
+                <label>Hospital Code</label>
+                <input type="text" name="hospital_code" value="{{ hospital.code|default:'' }}" {% if not hospital %}required{% endif %}>
             </div>
             <div class="form-group">
                 <label>Hospital Email</label>

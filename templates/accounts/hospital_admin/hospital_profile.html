@@ -157,6 +157,7 @@
 {% block content %}
 <div class="page-header">
     <h1>Hospital Profile</h1>
+    {% if hospital %}
     <button type="button" class="btn-edit" id="editBtn" onclick="toggleEdit(true)">
         <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
@@ -164,9 +165,46 @@
         </svg>
         Edit Profile
     </button>
+    {% endif %}
 </div>
 
 <div class="profile-card">
+    {% if not hospital %}
+    <div class="empty-state">
+        <h2>No Hospital Profile</h2>
+        <p>No hospital is linked to this admin account yet.</p>
+        <form method="post" style="max-width:560px;margin:1.5rem auto 0;text-align:left;">
+            {% csrf_token %}
+            <div class="form-group">
+                <label>Hospital Name *</label>
+                <input type="text" name="name" required>
+            </div>
+            <div class="form-group">
+                <label>Registration No / Code *</label>
+                <input type="text" name="code" required>
+            </div>
+            <div class="form-group">
+                <label>Address *</label>
+                <textarea name="address" required></textarea>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>City</label>
+                    <input type="text" name="city">
+                </div>
+                <div class="form-group">
+                    <label>Phone</label>
+                    <input type="text" name="phone">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Email</label>
+                <input type="email" name="email">
+            </div>
+            <button type="submit" class="btn-save">Create Hospital Profile</button>
+        </form>
+    </div>
+    {% else %}
     <!-- VIEW MODE -->
     <div id="viewMode">
         <h2>{{ hospital.name }}</h2>
@@ -241,6 +279,7 @@
                         <option value="specialty" {% if hospital.facility_type == 'specialty' %}selected{% endif %}>Specialty</option>
                     </select>
                 </div>
+                {% endif %}
             </div>
             <div class="form-row">
                 <div class="form-group">

@@ -120,7 +120,11 @@ def moh_dashboard(request):
         return redirect('dashboard')
 
     total_hospitals = Hospital.objects.filter(is_active=True).count()
-    total_doctors = User.objects.filter(role='doctor', is_active=True).count()
+    total_doctors = User.objects.filter(
+        role='doctor',
+        is_active=True,
+        hospital__is_active=True
+    ).count()
     total_patients = Patient.objects.count()
     pending_hospitals = Hospital.objects.filter(is_active=False).count()
 
@@ -337,7 +341,7 @@ def moh_facilities(request):
 
     search = request.GET.get('q', '').strip()
 
-    facilities = Hospital.objects.all().order_by('-created_at')
+    facilities = Hospital.objects.filter(is_active=True).order_by('-created_at')
 
     if search:
         facilities = facilities.filter(
@@ -347,10 +351,10 @@ def moh_facilities(request):
             Q(address__icontains=search)
         )
 
-    total_hospitals = Hospital.objects.filter(facility_type='hospital').count()
-    total_clinics   = Hospital.objects.filter(facility_type='clinic').count()
-    total_labs      = Hospital.objects.filter(facility_type='lab').count()
-    total_specialty = Hospital.objects.filter(facility_type='specialty').count()
+    total_hospitals = Hospital.objects.filter(is_active=True, facility_type='hospital').count()
+    total_clinics   = Hospital.objects.filter(is_active=True, facility_type='clinic').count()
+    total_labs      = Hospital.objects.filter(is_active=True, facility_type='lab').count()
+    total_specialty = Hospital.objects.filter(is_active=True, facility_type='specialty').count()
 
     context = {
         'facilities': facilities,
@@ -608,14 +612,15 @@ def hospital_admin_notices(request):
         return redirect('dashboard')
 
     hospital = request.user.hospital
-    if not hospital:
-        messages.error(request, 'No hospital linked to your account.')
-        return redirect('hospital_admin_dashboard')
 
     if request.method == 'POST':
         action = request.POST.get('action')
 
         if action == 'create':
+            if not hospital:
+                messages.error(request, 'No hospital is linked to your account yet.')
+                return redirect('hospital_admin_notices')
+
             Notice.objects.create(
                 title=request.POST.get('title'),
                 content=request.POST.get('content'),
@@ -645,10 +650,10 @@ def hospital_admin_notices(request):
             messages.success(request, 'Notice deleted successfully.')
             return redirect('hospital_admin_notices')
 
-    # Hospital Admin sees: own hospital notices + MOH notices (hospital=null)
+    # Keep hospital data isolated; an unassigned admin sees an empty list.
     notices = Notice.objects.filter(
         Q(hospital=hospital) | Q(hospital__isnull=True)
-    ).order_by('-created_at')
+    ).order_by('-created_at') if hospital else Notice.objects.none()
 
     context = {
         'notices': notices,
@@ -664,14 +669,14 @@ def hospital_doctors(request):
         return redirect('dashboard')
 
     hospital = request.user.hospital
-    if not hospital:
-        messages.error(request, 'No hospital linked to your account.')
-        return redirect('hospital_admin_dashboard')
-
     if request.method == 'POST':
         action = request.POST.get('action')
 
         if action == 'create':
+            if not hospital:
+                messages.error(request, 'Create a hospital profile before adding doctors.')
+                return redirect('hospital_doctors')
+
             email = request.POST.get('email')
             if User.objects.filter(email=email).exists():
                 messages.error(request, 'A user with this email already exists.')
@@ -882,11 +887,33 @@ def hospital_profile(request):
         return redirect('dashboard')
 
     hospital = request.user.hospital
-    if not hospital:
-        messages.error(request, 'No hospital linked to your account.')
-        return redirect('hospital_admin_dashboard')
 
     if request.method == 'POST':
+        if not hospital:
+            name = request.POST.get('name', '').strip()
+            code = request.POST.get('code', '').strip()
+            address = request.POST.get('address', '').strip()
+            if not name or not code or not address:
+                messages.error(request, 'Hospital name, code, and address are required.')
+                return redirect('hospital_profile')
+            if Hospital.objects.filter(code=code).exists():
+                messages.error(request, 'A hospital with this code already exists.')
+                return redirect('hospital_profile')
+            hospital = Hospital.objects.create(
+                name=name,
+                code=code,
+                address=address,
+                city=request.POST.get('city', '').strip(),
+                phone=request.POST.get('phone', '').strip(),
+                email=request.POST.get('email', '').strip(),
+                facility_type=request.POST.get('facility_type', 'hospital'),
+                is_active=False,
+            )
+            request.user.hospital = hospital
+            request.user.save(update_fields=['hospital'])
+            messages.success(request, 'Hospital profile created successfully.')
+            return redirect('hospital_profile')
+
         hospital.name = request.POST.get('name', hospital.name)
         hospital.code = request.POST.get('code', hospital.code)
         hospital.address = request.POST.get('address', hospital.address)
@@ -1709,11 +1736,32 @@ def hospital_admin_settings(request):
 
     if request.method == 'POST':
         # Update Hospital Profile (per hospital)
-        hospital.name = request.POST.get('hospital_name', '').strip()
-        hospital.email = request.POST.get('hospital_email', '').strip()
-        hospital.phone = request.POST.get('hospital_phone', '').strip()
-        hospital.address = request.POST.get('hospital_address', '').strip()
-        hospital.save()
+        if hospital:
+            hospital.name = request.POST.get('hospital_name', '').strip()
+            hospital.email = request.POST.get('hospital_email', '').strip()
+            hospital.phone = request.POST.get('hospital_phone', '').strip()
+            hospital.address = request.POST.get('hospital_address', '').strip()
+            hospital.save()
+        else:
+            name = request.POST.get('hospital_name', '').strip()
+            code = request.POST.get('hospital_code', '').strip()
+            address = request.POST.get('hospital_address', '').strip()
+            if not name or not code or not address:
+                messages.error(request, 'Hospital name, code, and address are required.')
+                return redirect('hospital_admin_settings')
+            if Hospital.objects.filter(code=code).exists():
+                messages.error(request, 'A hospital with this code already exists.')
+                return redirect('hospital_admin_settings')
+            hospital = Hospital.objects.create(
+                name=name,
+                code=code,
+                address=address,
+                phone=request.POST.get('hospital_phone', '').strip(),
+                email=request.POST.get('hospital_email', '').strip(),
+                is_active=False,
+            )
+            request.user.hospital = hospital
+            request.user.save(update_fields=['hospital'])
 
         # Update Global Preferences
         settings.timezone = request.POST.get('timezone', 'Asia/Dhaka')
