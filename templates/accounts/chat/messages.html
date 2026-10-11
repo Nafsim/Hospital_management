@@ -1,0 +1,97 @@
+{% extends base_template %}
+
+{% block title %}Messages - NHIMS{% endblock %}
+
+{% block extra_css %}
+<style>
+.messages-page{height:calc(100vh - 150px);min-height:560px;display:grid;grid-template-columns:320px 1fr;background:#fff;border:1px solid var(--border);border-radius:18px;box-shadow:0 8px 24px rgba(15,45,80,.07);overflow:hidden}
+.messages-list{border-right:1px solid var(--border);display:flex;flex-direction:column;min-width:0}
+.messages-heading{display:flex;align-items:center;gap:10px;padding:20px;border-bottom:1px solid var(--border)}
+.messages-heading-icon{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;background:#dbeafe;color:#2563eb}
+.messages-heading-icon svg{width:21px;height:21px}
+.messages-heading h1{font-size:1.1rem;color:var(--text);margin:0}
+.user-count{margin-left:auto;padding:5px 9px;border-radius:999px;background:#eff6ff;color:#2563eb;font-size:.72rem;font-weight:700}
+.user-search{margin:14px 14px 8px;padding:11px 13px;border:0;border-radius:10px;background:#f1f5f9;color:var(--text);outline:none}
+.user-search:focus{box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+.users{overflow-y:auto;padding:4px 8px 12px}
+.user-link{display:flex;align-items:center;gap:11px;padding:13px 10px;border-radius:10px;text-decoration:none;color:var(--text);transition:.2s}
+.user-link:hover,.user-link.active{background:#eff6ff}
+.avatar{width:40px;height:40px;display:flex;align-items:center;justify-content:center;flex:0 0 40px;border-radius:50%;background:linear-gradient(135deg,#2563eb,#38bdf8);color:#fff;font-weight:700}
+.user-details{min-width:0;flex:1}.user-name{font-size:.85rem;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.user-role{font-size:.72rem;color:#64748b;margin-top:3px}
+.chat-panel{display:flex;flex-direction:column;min-width:0;background:#f8fafc}
+.chat-empty{height:100%;display:flex;align-items:center;justify-content:center;text-align:center;color:#64748b;padding:30px}
+.chat-empty-icon{width:76px;height:76px;margin:0 auto 18px;border-radius:20px;background:#dbeafe;color:#2563eb;display:flex;align-items:center;justify-content:center}.chat-empty-icon svg{width:38px;height:38px}
+.chat-empty h2{margin:0 0 8px;color:var(--text);font-size:1.35rem}.chat-empty p{margin:0;line-height:1.5}
+.chat-header{display:flex;align-items:center;gap:12px;padding:17px 22px;background:#fff;border-bottom:1px solid var(--border)}
+.chat-header .user-role{margin:2px 0 0}.online-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#22c55e;margin-right:4px}
+.chat-messages{flex:1;overflow-y:auto;padding:24px;display:flex;flex-direction:column;gap:10px}
+.message-row{display:flex}.message-row.mine{justify-content:flex-end}.message-bubble{max-width:min(70%,520px);padding:10px 13px;border-radius:14px 14px 14px 4px;background:#fff;border:1px solid var(--border);color:var(--text);box-shadow:0 2px 6px rgba(15,45,80,.04)}.mine .message-bubble{border-radius:14px 14px 4px 14px;background:#2563eb;border-color:#2563eb;color:#fff}.message-time{display:block;margin-top:5px;font-size:.65rem;opacity:.7}
+.chat-compose{display:flex;align-items:center;gap:12px;padding:14px 18px;background:#fff;border-top:1px solid var(--border)}.chat-compose textarea{flex:1;resize:none;height:60px;padding:16px;border:1px solid #4f46e5;border-radius:24px;font:inherit;outline:none}.chat-compose textarea:focus{box-shadow:0 0 0 3px rgba(37,99,235,.1)}.send-item{height:48px;padding:0 16px;border:1px solid var(--border);border-radius:18px;background:#f8fafc;color:#475569;font-weight:600;cursor:pointer;white-space:nowrap}.send-item:hover{background:#eff6ff;color:#2563eb}.send-message{width:56px;height:56px;border:0;border-radius:18px;background:#2563eb;color:#fff;cursor:pointer;box-shadow:0 6px 14px rgba(37,99,235,.2)}.send-message:hover{background:#1d4ed8}.file-name{display:none;font-size:.72rem;color:#2563eb;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.connection-status{padding:0 18px 7px;background:#fff;color:#64748b;font-size:.7rem}.connection-status.error{color:#dc2626}
+@media(max-width:760px){.messages-page{grid-template-columns:1fr;height:auto;min-height:calc(100vh - 130px)}.messages-list{max-height:310px;border-right:0;border-bottom:1px solid var(--border)}.chat-panel{min-height:520px}.message-bubble{max-width:85%}}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="messages-page">
+    <aside class="messages-list">
+        <div class="messages-heading">
+            <div class="messages-heading-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.5 9.7 9.7 0 0 1-4-.9L3 20l1.4-4A8.3 8.3 0 0 1 3 11.5 8.5 8.5 0 0 1 12 3a8.5 8.5 0 0 1 9 8.5Z"/><path d="M8 11h.01M12 11h.01M16 11h.01"/></svg>
+            </div>
+            <h1>Messages</h1><span class="user-count">{{ teammates|length }} Users</span>
+        </div>
+        <input class="user-search" id="userSearch" placeholder="{{ search_placeholder }}" aria-label="{{ search_placeholder }}">
+        <div class="users" id="users">
+            {% for member in teammates %}
+            <a class="user-link {% if selected_user.id == member.id %}active{% endif %}" href="?user={{ member.id }}" data-name="{{ member.get_full_name|default:member.username|lower }}">
+                <span class="avatar">{{ member.get_full_name|default:member.username|first|upper }}</span>
+                <span class="user-details"><span class="user-name">{{ member.get_full_name|default:member.username }}</span></span>
+            </a>
+            {% empty %}<div class="chat-empty" style="padding:30px 12px">No hospital users available.</div>{% endfor %}
+        </div>
+    </aside>
+    <section class="chat-panel">
+        {% if selected_user %}
+        <header class="chat-header">
+            <span class="avatar">{{ selected_user.get_full_name|default:selected_user.username|first|upper }}</span>
+            <span class="user-details"><span class="user-name">{{ selected_user.get_full_name|default:selected_user.username }}</span></span>
+        </header>
+        <div class="chat-messages" id="chatMessages">
+            {% for message in chat_messages %}
+            <div class="message-row {% if message.sender_id == request.user.id %}mine{% endif %}">
+                <div class="message-bubble">{% if message.body %}{{ message.body|linebreaksbr }}{% endif %}{% if message.attachment %}{% with filename=message.attachment_name|lower %}{% if filename|slice:"-4:" == ".jpg" or filename|slice:"-5:" == ".jpeg" or filename|slice:"-4:" == ".png" or filename|slice:"-4:" == ".gif" or filename|slice:"-5:" == ".webp" %}<img src="{{ message.attachment.url }}" alt="{{ message.attachment_name }}" style="display:block;max-width:240px;max-height:220px;border-radius:9px;margin-top:4px">{% endif %}<a href="{{ message.attachment.url }}" target="_blank" rel="noopener" style="display:block;color:inherit;text-decoration:underline">{{ message.attachment_name }}</a>{% endwith %}{% endif %}<span class="message-time">{{ message.created_at|date:"d M Y, h:i A" }}</span></div>
+            </div>
+            {% empty %}<div class="chat-empty" id="emptyChat"><div><div class="chat-empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.5 9.7 9.7 0 0 1-4-.9L3 20l1.4-4A8.3 8.3 0 0 1 3 11.5 8.5 8.5 0 0 1 12 3a8.5 8.5 0 0 1 9 8.5Z"/></svg></div><h2>Talk with {{ chat_partner_label|capfirst }}</h2><p>{{ chat_hours }}</p></div></div>{% endfor %}
+        </div>
+        <form class="chat-compose" id="chatForm">
+            <input type="file" id="attachmentInput" hidden accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt">
+            <button type="button" class="send-item" id="sendItem"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="vertical-align:-3px"><path d="M21.4 11.6 12.2 20.8a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5"/></svg> Attach</button>
+            <span class="file-name" id="fileName"></span>
+            <textarea id="messageInput" maxlength="2000" placeholder="Write a message..."></textarea>
+            <button class="send-message" type="submit" aria-label="Send message"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg></button>
+        </form>
+        {% else %}
+        <div class="chat-empty"><div><div class="chat-empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 11.5a8.4 8.4 0 0 1-9 8.5 9.7 9.7 0 0 1-4-.9L3 20l1.4-4A8.3 8.3 0 0 1 3 11.5 8.5 8.5 0 0 1 12 3a8.5 8.5 0 0 1 9 8.5Z"/></svg></div><h2>Talk with {{ chat_partner_label|capfirst }}</h2><p>Select a {{ chat_partner_label }} to start a one-to-one conversation.<br>{{ chat_hours }}</p></div></div>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const search=document.getElementById('userSearch');
+if(search){search.addEventListener('input',function(){const q=this.value.toLowerCase();document.querySelectorAll('.user-link').forEach(el=>{el.style.display=el.dataset.name.includes(q)?'flex':'none';});});}
+{% if selected_user %}
+const socket=new WebSocket((location.protocol==='https:'?'wss://':'ws://')+location.host+'{{ websocket_url }}');
+const messages=document.getElementById('chatMessages'), input=document.getElementById('messageInput'), attachment=document.getElementById('attachmentInput'), fileName=document.getElementById('fileName');
+function addMessage(data){if(data.id&&document.querySelector('[data-message-id="'+data.id+'"]'))return;const empty=document.getElementById('emptyChat');if(empty)empty.remove();const row=document.createElement('div');row.dataset.messageId=data.id||'';row.className='message-row '+(Number(data.sender_id)===Number({{ request.user.id }})?'mine':'');const bubble=document.createElement('div');bubble.className='message-bubble';if(data.body)bubble.append(document.createTextNode(data.body));if(data.attachment_url){if(/\.(jpg|jpeg|png|gif|webp)$/i.test(data.attachment_name)){const image=document.createElement('img');image.src=data.attachment_url;image.alt=data.attachment_name;image.style.cssText='display:block;max-width:240px;max-height:220px;border-radius:9px;margin-top:4px';bubble.appendChild(image);}const link=document.createElement('a');link.href=data.attachment_url;link.target='_blank';link.rel='noopener';link.textContent=data.attachment_name;link.style.cssText='display:block;color:inherit;text-decoration:underline';bubble.appendChild(link);}const time=document.createElement('span');time.className='message-time';time.textContent=data.created_at;bubble.appendChild(time);row.appendChild(bubble);messages.appendChild(row);messages.scrollTop=messages.scrollHeight;}
+socket.onmessage=event=>addMessage(JSON.parse(event.data));
+document.getElementById('sendItem').addEventListener('click',()=>attachment.click());
+attachment.addEventListener('change',()=>{fileName.textContent=attachment.files[0]?attachment.files[0].name:'';fileName.style.display=attachment.files[0]?'inline-block':'none';});
+document.getElementById('chatForm').addEventListener('submit',async event=>{event.preventDefault();const file=attachment.files[0], body=input.value.trim();if(!file&&!body)return;const formData=new FormData();formData.append('recipient_id','{{ selected_user.id }}');let endpoint='{% url "message_send" %}';if(file){endpoint='{% url "message_upload" %}';formData.append('attachment',file);}else{formData.append('body',body);}const response=await fetch(endpoint,{method:'POST',headers:{'X-CSRFToken':'{{ csrf_token }}'},body:formData});const data=await response.json();if(!response.ok){alert(data.error||'Message could not be sent.');return;}addMessage(data);input.value='';attachment.value='';fileName.textContent='';fileName.style.display='none';});
+input.addEventListener('keydown',event=>{if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();document.getElementById('chatForm').requestSubmit();}});
+messages.scrollTop=messages.scrollHeight;
+{% endif %}
+</script>
+{% endblock %}

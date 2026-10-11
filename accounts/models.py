@@ -43,6 +43,41 @@ class User(AbstractUser):
         return f"{self.get_full_name()} ({self.get_role_display()})"
 
 
+class ChatMessage(models.Model):
+    hospital = models.ForeignKey(
+        'hospitals.Hospital',
+        on_delete=models.CASCADE,
+        related_name='chat_messages',
+    )
+    sender = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='sent_chat_messages',
+    )
+    recipient = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='received_chat_messages',
+    )
+    body = models.TextField(max_length=2000)
+    attachment = models.FileField(
+        upload_to='chat_attachments/',
+        blank=True,
+        null=True,
+    )
+    attachment_name = models.CharField(max_length=255, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created_at']
+        indexes = [
+            models.Index(fields=['hospital', 'sender', 'recipient', 'created_at']),
+        ]
+
+    def __str__(self):
+        return f'{self.sender} -> {self.recipient}'
+
+
 class Notice(models.Model):
     PRIORITY_CHOICES = (
         ('low', 'Low'),
@@ -617,6 +652,7 @@ class DoctorReferral(models.Model):
     STATUS_CHOICES = (
         ('pending', 'Pending'),
         ('accepted', 'Accepted'),
+        ('declined', 'Declined'),
         ('completed', 'Completed'),
         ('cancelled', 'Cancelled'),
     )

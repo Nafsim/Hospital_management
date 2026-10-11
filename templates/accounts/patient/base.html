@@ -438,6 +438,13 @@
             </svg>
             <span>Doctors</span>
         </a>
+        <a href="{% url 'messages' %}" class="menu-item {% if request.resolver_match.url_name == 'messages' %}active{% endif %}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M21 11.5a8.4 8.4 0 0 1-9 8.5 9.7 9.7 0 0 1-4-.9L3 20l1.4-4A8.3 8.3 0 0 1 3 11.5 8.5 8.5 0 0 1 12 3a8.5 8.5 0 0 1 9 8.5Z"/>
+                <path d="M8 11h.01M12 11h.01M16 11h.01"/>
+            </svg>
+            <span>Messages</span>
+        </a>
         <a href="{% url 'patient_appointments' %}" class="menu-item {% if request.resolver_match.url_name == 'patient_appointments' %}active{% endif %}">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
                 <rect x="3" y="5" width="18" height="16" rx="2"/>

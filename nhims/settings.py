@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'channels',
     # Third party
     'crispy_forms',
     'crispy_bootstrap5',
@@ -83,6 +84,13 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'nhims.wsgi.application'
+ASGI_APPLICATION = 'nhims.asgi.application'
+
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels.layers.InMemoryChannelLayer',
+    },
+}
 
 
 # Database

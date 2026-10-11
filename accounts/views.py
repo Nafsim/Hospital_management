@@ -1,5 +1,6 @@
 import json
 from django.shortcuts import render , redirect, get_object_or_404
+from django.urls import reverse
 from django.contrib.auth import login, authenticate
 from django.contrib import messages
 from .forms import LoginForm, HospitalCreationForm
@@ -23,6 +24,9 @@ from django.contrib.auth.hashers import make_password
 from .models import Department
 from .models import HospitalDocument, Payroll  
 from django.http import HttpResponse
+from django.http import JsonResponse
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4 
 from django.db import models
@@ -37,7 +41,10 @@ from django.db.models import Sum
 from django.contrib.auth.decorators import login_required
 from .models import PatientAppointment
 from django.shortcuts import render, redirect, get_object_or_404
-from .models import User, Notice, Department, DoctorPatient, DoctorSchedule, DoctorPrescription, DoctorReferral
+from .models import (
+    User, Notice, Department, DoctorPatient, DoctorSchedule,
+    DoctorPrescription, DoctorReferral, ChatMessage,
+)
 def login_view(request):
     if request.user.is_authenticated:
         return redirect('dashboard')
@@ -1824,6 +1831,232 @@ def hospital_contact_support(request):
 
 
 #doctors
+def _chat_members(user):
+    if user.role == 'doctor':
+        patient_codes = DoctorPatient.objects.filter(
+            doctor=user,
+        ).values_list('patient_id', flat=True)
+        appointment_patient_ids = PatientAppointment.objects.filter(
+            doctor=user,
+        ).exclude(status='cancelled').values_list('patient_user_id', flat=True)
+        return User.objects.filter(
+            models.Q(
+                patient_profile__patient_id__in=patient_codes,
+            ) | models.Q(
+                id__in=appointment_patient_ids,
+            ),
+            role='patient',
+            is_active=True,
+        ).exclude(id=user.id).order_by('first_name', 'last_name', 'username')
+
+    appointment_doctor_ids = PatientAppointment.objects.filter(
+        patient_user=user,
+    ).exclude(status='cancelled').values_list('doctor_id', flat=True)
+    return User.objects.filter(
+        id__in=appointment_doctor_ids,
+        role='doctor',
+        is_active=True,
+    ).exclude(id=user.id).order_by('first_name', 'last_name', 'username')
+
+
+def _chat_hospital_id(user, recipient):
+    if user.role == 'doctor':
+        relation = DoctorPatient.objects.filter(
+            doctor=user,
+            patient_id=recipient.patient_profile.patient_id,
+        ).first()
+        if relation:
+            return relation.hospital_id
+        appointment = PatientAppointment.objects.filter(
+            doctor=user,
+            patient_user=recipient,
+        ).first()
+    else:
+        appointment = PatientAppointment.objects.filter(
+            patient_user=user,
+            doctor=recipient,
+        ).first()
+    return appointment.hospital_id if appointment else recipient.hospital_id or user.hospital_id
+
+
+@login_required(login_url='login')
+def messages_view(request):
+    if request.user.role not in ('doctor', 'patient'):
+        return redirect('dashboard')
+
+    user = request.user
+    teammates = _chat_members(user)
+
+    selected_id = request.GET.get('user')
+    selected_user = teammates.filter(id=selected_id).first() if selected_id else None
+    chat_messages = ChatMessage.objects.none()
+    if selected_user:
+        chat_messages = ChatMessage.objects.filter(
+            models.Q(sender=user, recipient=selected_user) |
+            models.Q(sender=selected_user, recipient=user)
+        ).select_related('sender').order_by('created_at')
+
+    return render(request, 'accounts/chat/messages.html', {
+        'base_template': (
+            'accounts/doctor/base.html'
+            if user.role == 'doctor'
+            else 'accounts/patient/base.html'
+        ),
+        'teammates': teammates,
+        'selected_user': selected_user,
+        'chat_messages': chat_messages,
+        'websocket_url': f'/ws/messages/{selected_user.id}/' if selected_user else '',
+        'search_placeholder': (
+            'Search patients...' if user.role == 'doctor'
+            else 'Search doctors...'
+        ),
+        'chat_partner_label': 'patient' if user.role == 'doctor' else 'doctor',
+        'chat_hours': 'Messages are available from 10 AM to 6 PM.',
+    })
+
+
+@login_required(login_url='login')
+def message_upload(request):
+    if request.method != 'POST' or request.user.role not in ('doctor', 'patient'):
+        return JsonResponse({'error': 'Invalid request.'}, status=400)
+
+    recipient = _chat_members(request.user).filter(
+        id=request.POST.get('recipient_id'),
+    ).first()
+    upload = request.FILES.get('attachment')
+    if not recipient or not upload:
+        return JsonResponse({'error': 'Recipient and attachment are required.'}, status=400)
+    if upload.size > 10 * 1024 * 1024:
+        return JsonResponse({'error': 'Files must be 10 MB or smaller.'}, status=400)
+
+    message = ChatMessage.objects.create(
+        hospital_id=_chat_hospital_id(request.user, recipient),
+        sender=request.user,
+        recipient=recipient,
+        body='',
+        attachment=upload,
+        attachment_name=upload.name,
+    )
+    data = {
+        'id': message.id,
+        'body': '',
+        'sender_id': message.sender_id,
+        'sender_name': request.user.get_full_name() or request.user.username,
+        'created_at': timezone.localtime(message.created_at).strftime(
+            '%d %b %Y, %I:%M %p'
+        ),
+        'attachment_url': message.attachment.url,
+        'attachment_name': message.attachment_name,
+    }
+    ids = sorted([request.user.id, recipient.id])
+    async_to_sync(get_channel_layer().group_send)(
+        f'chat_{ids[0]}_{ids[1]}',
+        {'type': 'chat_message', 'message': data},
+    )
+    return JsonResponse(data)
+
+
+@login_required(login_url='login')
+def message_send(request):
+    if request.method != 'POST' or request.user.role not in ('doctor', 'patient'):
+        return JsonResponse({'error': 'Invalid request.'}, status=400)
+
+    recipient = _chat_members(request.user).filter(
+        id=request.POST.get('recipient_id'),
+    ).first()
+    body = request.POST.get('body', '').strip()
+    if not recipient or not body:
+        return JsonResponse({'error': 'Recipient and message are required.'}, status=400)
+    if len(body) > 2000:
+        return JsonResponse({'error': 'Messages must be 2000 characters or fewer.'}, status=400)
+
+    message = ChatMessage.objects.create(
+        hospital_id=_chat_hospital_id(request.user, recipient),
+        sender=request.user,
+        recipient=recipient,
+        body=body,
+    )
+    data = {
+        'id': message.id,
+        'body': message.body,
+        'sender_id': message.sender_id,
+        'sender_name': request.user.get_full_name() or request.user.username,
+        'created_at': timezone.localtime(message.created_at).strftime(
+            '%d %b %Y, %I:%M %p'
+        ),
+        'attachment_url': '',
+        'attachment_name': '',
+    }
+    ids = sorted([request.user.id, recipient.id])
+    async_to_sync(get_channel_layer().group_send)(
+        f'chat_{ids[0]}_{ids[1]}',
+        {'type': 'chat_message', 'message': data},
+    )
+    return JsonResponse(data)
+
+
+def _sync_doctor_appointments(doctor, hospital):
+    """Make counter-approved appointments available to the doctor's screens."""
+    if not hospital:
+        return
+
+    approved_appointments = PatientAppointment.objects.filter(
+        doctor=doctor,
+        hospital=hospital,
+        status='approved',
+    ).select_related('patient_user')
+
+    for appointment in approved_appointments:
+        patient_profile = Patient.objects.filter(
+            user=appointment.patient_user,
+            hospital=hospital,
+        ).first()
+        patient_id = (
+            patient_profile.patient_id
+            if patient_profile
+            else f'PT-{appointment.patient_user_id:06d}'
+        )
+        gender = ''
+        age = None
+        if patient_profile:
+            gender = dict(Patient.GENDER_CHOICES).get(
+                patient_profile.gender,
+                patient_profile.gender or '',
+            )
+            age = patient_profile.age
+
+        patient, _ = DoctorPatient.objects.update_or_create(
+            doctor=doctor,
+            hospital=hospital,
+            patient_id=patient_id,
+            defaults={
+                'patient_name': appointment.patient_name,
+                'phone': appointment.patient_phone,
+                'gender': gender,
+                'age': age,
+            },
+        )
+
+        DoctorSchedule.objects.get_or_create(
+            doctor=doctor,
+            hospital=hospital,
+            patient_name=appointment.patient_name,
+            patient_id=patient_id,
+            schedule_date=appointment.appointment_date,
+            start_time=appointment.appointment_time,
+            defaults={
+                'end_time': (
+                    datetime.combine(
+                        appointment.appointment_date,
+                        appointment.appointment_time,
+                    ) + timedelta(minutes=30)
+                ).time(),
+                'notes': appointment.reason,
+                'status': 'scheduled',
+            },
+        )
+
+
 def doctor_dashboard(request):
     if not request.user.is_authenticated:
         return redirect('login')
@@ -1833,6 +2066,7 @@ def doctor_dashboard(request):
 
     doctor = request.user
     hospital = doctor.hospital
+    _sync_doctor_appointments(doctor, hospital)
     today = timezone.localdate()
 
     patients = DoctorPatient.objects.filter(
@@ -1903,6 +2137,19 @@ def doctor_patient_summary(request):
 
     doctor = request.user
     hospital = doctor.hospital
+    _sync_doctor_appointments(doctor, hospital)
+
+    if request.method == 'POST' and request.POST.get('action') == 'referral_status':
+        referral = DoctorReferral.objects.filter(
+            id=request.POST.get('referral_id'),
+            specialist=doctor,
+            patient__hospital=hospital,
+        ).first()
+        status = request.POST.get('status')
+        if referral and status in ('accepted', 'declined'):
+            referral.status = status
+            referral.save(update_fields=['status', 'updated_at'])
+        return redirect(f"{reverse('doctor_patient_summary')}?referrals=1")
 
     patients = DoctorPatient.objects.filter(
         doctor=doctor,
@@ -1941,6 +2188,33 @@ def doctor_patient_summary(request):
         patient_id__in=today_patient_ids
     ).count()
 
+    show_referrals = request.GET.get('referrals') == '1'
+    referral_patients = DoctorReferral.objects.filter(
+        specialist=doctor,
+        patient__hospital=hospital,
+    ).select_related('patient', 'doctor')
+
+    all_patient_ids = set(patients.values_list('patient_id', flat=True))
+    all_patient_ids.update(
+        referral_patients.values_list('patient__patient_id', flat=True)
+    )
+    latest_vitals = {}
+    if hospital and all_patient_ids:
+        vital_records = VitalSign.objects.filter(
+            hospital=hospital,
+            patient__hospital=hospital,
+            patient__patient_id__in=all_patient_ids,
+        ).select_related('patient').order_by('-recorded_at')
+        for vital in vital_records:
+            latest_vitals.setdefault(vital.patient.patient_id, vital)
+
+    for patient in patients:
+        patient.latest_vital = latest_vitals.get(patient.patient_id)
+    for referral in referral_patients:
+        referral.patient.latest_vital = latest_vitals.get(
+            referral.patient.patient_id
+        )
+
     context = {
         'doctor': doctor,
         'hospital': hospital,
@@ -1950,7 +2224,9 @@ def doctor_patient_summary(request):
         'female_patients': female_patients,
         'today_patients': today_patients,
         'today_patient_ids': today_patient_ids,
-        'search': search
+        'search': search,
+        'show_referrals': show_referrals,
+        'referral_patients': referral_patients,
     }
 
     return render(
@@ -1968,6 +2244,7 @@ def doctor_prescription(request):
 
     doctor = request.user
     hospital = doctor.hospital
+    _sync_doctor_appointments(doctor, hospital)
 
     if request.method == 'POST':
         action = request.POST.get('action')
@@ -2072,6 +2349,7 @@ def doctor_referrals(request):
 
     doctor = request.user
     hospital = doctor.hospital
+    _sync_doctor_appointments(doctor, hospital)
 
     patients = DoctorPatient.objects.filter(
         doctor=doctor,
@@ -2205,6 +2483,7 @@ def doctor_appointments(request):
 
     doctor = request.user
     hospital = doctor.hospital
+    _sync_doctor_appointments(doctor, hospital)
 
     if request.method == 'POST':
         action = request.POST.get('action')
