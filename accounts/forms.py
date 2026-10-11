@@ -25,6 +25,11 @@ class LoginForm(AuthenticationForm):
         })
     )
 
+    def clean_username(self):
+        email = self.cleaned_data['username'].strip()
+        user = User.objects.filter(email__iexact=email).first()
+        return user.email if user else email
+
     def clean(self):
         cleaned_data = super().clean()
         email = cleaned_data.get('username')
@@ -33,7 +38,7 @@ class LoginForm(AuthenticationForm):
 
         if email and password and role:
             try:
-                user = User.objects.get(email=email)
+                user = User.objects.get(email__iexact=email)
                 if user.role != role:
                     raise forms.ValidationError("Selected role does not match this account.")
             except User.DoesNotExist:

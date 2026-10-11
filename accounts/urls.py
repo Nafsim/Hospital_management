@@ -71,8 +71,6 @@ path('patient/profile/', views.patient_profile, name='patient_profile'),
 #diagnostic lab
 path('lab/dashboard/', views.lab_dashboard, name='lab_dashboard'),
 path('lab/upload-report/', views.lab_upload_report, name='lab_upload_report'),
-path('lab/report-status/', views.lab_report_status, name='lab_report_status'),
-path('lab/report-preview/', views.lab_report_preview, name='lab_report_preview'),
 path('lab/history/', views.lab_history, name='lab_history'),
 path('lab/profile/', views.lab_profile, name='lab_profile'),
 #counter

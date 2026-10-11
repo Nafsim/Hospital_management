@@ -789,9 +789,9 @@ def hospital_staff(request):
             designation = request.POST.get('designation', '').strip()
             city = request.POST.get('city', '').strip()
             national_id = request.POST.get('national_id', '').strip()
-            date_of_joining = request.POST.get('date_of_joining') or None
+            date_of_joining = request.POST.get('date_of_joining') or timezone.localdate()
             qualification = request.POST.get('qualification', '').strip()
-            is_active = request.POST.get('is_active') == 'on'
+            is_active = request.POST.get('is_active', 'on') == 'on'
 
             role_map = {
                 'Nurse': 'nurse',
@@ -803,19 +803,33 @@ def hospital_staff(request):
             }
             role = role_map.get(department, 'nurse')
 
-            if User.objects.filter(email=email).exists():
+            if not password:
+                messages.error(request, 'Password is required for the staff login account.')
                 return redirect('hospital_staff')
 
-            user = User.objects.create(
+            if User.objects.filter(email=email).exists():
+                messages.error(request, 'A staff account with this email already exists.')
+                return redirect('hospital_staff')
+            if Staff.objects.filter(employee_id=employee_id).exists():
+                messages.error(request, 'A staff member with this employee ID already exists.')
+                return redirect('hospital_staff')
+            if national_id and Staff.objects.filter(national_id=national_id).exists():
+                messages.error(request, 'A staff member with this national ID already exists.')
+                return redirect('hospital_staff')
+
+            user = User.objects.create_user(
+                username=email,
                 email=email,
                 first_name=first_name,
                 last_name=last_name,
                 phone=phone,
-                password=make_password(password),
+                password=password,
                 role=role,
                 hospital=hospital,
                 is_active=is_active
             )
+            user.set_password(password)
+            user.save(update_fields=['password'])
 
             Staff.objects.create(
                 user=user,
@@ -829,6 +843,7 @@ def hospital_staff(request):
                 national_id=national_id,
                 is_active=is_active
             )
+            messages.success(request, 'Staff member created successfully.')
             return redirect('hospital_staff')
 
         if action == 'delete' and staff_id:
@@ -3043,28 +3058,191 @@ def patient_profile(request):
     }
     return render(request, 'accounts/patient/profile.html', context)
 # Diagnostic Center
-
+from .models import MedicalRecord, DiagnosticTest
 def lab_dashboard(request):
     if not request.user.is_authenticated:
         return redirect('login')
     if request.user.role != 'lab':
         return redirect('dashboard')
+
     hospital = request.user.hospital
+    today = timezone.now().date()
+    week_ago = today - timedelta(days=6)
+
+    patients_count = 0
+    total_reports = 0
+    today_reports = 0
+    week_reports = 0
+    total_tests = 0
+    recent_reports = []
+    daily_labels = []
+    daily_data = []
+
+    if hospital:
+        patients_count = Patient.objects.filter(hospital=hospital).count()
+        reports = MedicalRecord.objects.filter(hospital=hospital)
+        total_reports = reports.count()
+        today_reports = reports.filter(created_at__date=today).count()
+        week_reports = reports.filter(created_at__date__gte=week_ago).count()
+        recent_reports = reports.select_related('uploaded_by').order_by('-created_at')[:6]
+
+        try:
+            total_tests = DiagnosticTest.objects.filter(hospital=hospital, is_active=True).count()
+        except Exception:
+            total_tests = 0
+
+        for i in range(6, -1, -1):
+            day = today - timedelta(days=i)
+            daily_labels.append(day.strftime('%a'))
+            daily_data.append(reports.filter(created_at__date=day).count())
+
     context = {
         'hospital': hospital,
-        'patients_count': Patient.objects.filter(hospital=hospital).count() if hospital else 0,
+        'user': request.user,
+        'patients_count': patients_count,
+        'total_reports': total_reports,
+        'today_reports': today_reports,
+        'week_reports': week_reports,
+        'total_tests': total_tests,
+        'recent_reports': recent_reports,
+        'daily_labels': json.dumps(daily_labels),
+        'daily_data': json.dumps(daily_data),
+        'today': today,
     }
     return render(request, 'accounts/lab/dashboard.html', context)
 
+from .models import MedicalRecord, DiagnosticTest
 def lab_upload_report(request):
     if not request.user.is_authenticated:
         return redirect('login')
     if request.user.role != 'lab':
         return redirect('dashboard')
+
     hospital = request.user.hospital
-    patients = Patient.objects.filter(hospital=hospital) if hospital else []
-    context = {'patients': patients}
+    search = request.GET.get('q', '').strip()
+    patients = Patient.objects.filter(hospital=hospital).select_related('user').order_by('user__first_name') if hospital else Patient.objects.none()
+    tests = DiagnosticTest.objects.filter(hospital=hospital, is_active=True).order_by('name') if hospital else DiagnosticTest.objects.none()
+
+    if request.method == 'POST':
+        action = request.POST.get('action', 'upload')
+
+        if action == 'delete':
+            MedicalRecord.objects.filter(id=request.POST.get('report_id'), hospital=hospital).delete()
+            messages.success(request, 'Report deleted.')
+            return redirect('lab_upload_report')
+
+        if action == 'edit':
+            report = get_object_or_404(MedicalRecord, id=request.POST.get('report_id'), hospital=hospital)
+            report.title = request.POST.get('title', '').strip()
+            report.record_type = request.POST.get('record_type', 'lab')
+            report.test_name = request.POST.get('test_name', '').strip()
+            report.notes = request.POST.get('notes', '').strip()
+            report.status = request.POST.get('status', report.status)
+            report_date = request.POST.get('report_date')
+            report.report_date = report_date if report_date else None
+
+            patient_id = request.POST.get('patient')
+            if patient_id:
+                p = Patient.objects.filter(id=patient_id, hospital=hospital).select_related('user').first()
+                if p:
+                    if p.user:
+                        report.patient_name = p.user.get_full_name() or p.user.username
+                        report.patient_phone = p.user.phone or ''
+                        report.patient_user = p.user
+                    report.patient_id = p.patient_id or ''
+            else:
+                if request.POST.get('patient_name', '').strip():
+                    report.patient_name = request.POST.get('patient_name', '').strip()
+                if request.POST.get('patient_phone', '').strip():
+                    report.patient_phone = request.POST.get('patient_phone', '').strip()
+                if request.POST.get('patient_code', '').strip():
+                    report.patient_id = request.POST.get('patient_code', '').strip()
+
+            if request.FILES.get('file'):
+                report.file = request.FILES['file']
+
+            report.save()
+            messages.success(request, 'Report updated.')
+            return redirect('lab_upload_report')
+
+        title = request.POST.get('title', '').strip()
+        record_type = request.POST.get('record_type', 'lab')
+        test_name = request.POST.get('test_name', '').strip()
+        notes = request.POST.get('notes', '').strip()
+        status = request.POST.get('status', 'pending')
+        report_date = request.POST.get('report_date') or None
+        file = request.FILES.get('file')
+        patient_id = request.POST.get('patient')
+
+        if not hospital:
+            messages.error(request, 'No hospital assigned.')
+            return redirect('lab_upload_report')
+        if not title or not file:
+            messages.error(request, 'Title and file are required.')
+            return redirect('lab_upload_report')
+
+        patient_name = ''
+        patient_phone = ''
+        patient_code = ''
+        patient_user = None
+
+        if patient_id:
+            p = Patient.objects.filter(id=patient_id, hospital=hospital).select_related('user').first()
+            if p:
+                if p.user:
+                    patient_name = p.user.get_full_name() or p.user.username
+                    patient_phone = p.user.phone or ''
+                    patient_user = p.user
+                patient_code = p.patient_id or ''
+
+        if not patient_name:
+            patient_name = request.POST.get('patient_name', '').strip()
+            patient_phone = request.POST.get('patient_phone', '').strip()
+            patient_code = request.POST.get('patient_code', '').strip()
+
+        MedicalRecord.objects.create(
+            hospital=hospital,
+            patient_user=patient_user,
+            patient_name=patient_name,
+            patient_id=patient_code,
+            patient_phone=patient_phone,
+            title=title,
+            record_type=record_type,
+            test_name=test_name,
+            file=file,
+            notes=notes,
+            status=status,
+            uploaded_by=request.user,
+            report_date=report_date
+        )
+        messages.success(request, 'Report uploaded successfully.')
+        return redirect('lab_upload_report')
+
+    reports = MedicalRecord.objects.none()
+    if hospital:
+        reports = MedicalRecord.objects.filter(hospital=hospital).select_related('uploaded_by').order_by('-created_at')
+        if search:
+            reports = reports.filter(
+                Q(title__icontains=search) |
+                Q(patient_name__icontains=search) |
+                Q(patient_id__icontains=search) |
+                Q(test_name__icontains=search)
+            )
+
+    context = {
+        'hospital': hospital,
+        'patients': patients,
+        'tests': tests,
+        'reports': reports,
+        'total': reports.count(),
+        'pending_count': reports.filter(status='pending').count() if hospital else 0,
+        'search': search,
+        'record_type_choices': MedicalRecord.RECORD_TYPE_CHOICES,
+        'status_choices': MedicalRecord.STATUS_CHOICES,
+        'today': timezone.now().date(),
+    }
     return render(request, 'accounts/lab/upload_report.html', context)
+
 
 def lab_report_status(request):
     if not request.user.is_authenticated:
@@ -3091,9 +3269,33 @@ def lab_history(request):
         return redirect('login')
     if request.user.role != 'lab':
         return redirect('dashboard')
+
     hospital = request.user.hospital
-    patients = Patient.objects.filter(hospital=hospital) if hospital else []
-    context = {'patients': patients}
+    records = MedicalRecord.objects.filter(hospital=hospital, record_type='lab') if hospital else MedicalRecord.objects.none()
+
+    status_filter = request.GET.get('status', 'all').lower()
+    search_query = request.GET.get('q', '').strip()
+
+    if status_filter in ['verified', 'pending']:
+        records = records.filter(status=status_filter)
+
+    if search_query:
+        records = records.filter(
+            models.Q(test_name__icontains=search_query) |
+            models.Q(title__icontains=search_query) |
+            models.Q(patient_name__icontains=search_query) |
+            models.Q(patient_id__icontains=search_query)
+        )
+
+    context = {
+        'records': records,
+        'status_filter': status_filter,
+        'search_query': search_query,
+        'total_count': MedicalRecord.objects.filter(hospital=hospital, record_type='lab').count() if hospital else 0,
+        'verified_count': MedicalRecord.objects.filter(hospital=hospital, record_type='lab', status='verified').count() if hospital else 0,
+        'pending_count': MedicalRecord.objects.filter(hospital=hospital, record_type='lab', status='pending').count() if hospital else 0,
+    }
+
     return render(request, 'accounts/lab/lab_history.html', context)
 
 def lab_profile(request):
@@ -3101,7 +3303,28 @@ def lab_profile(request):
         return redirect('login')
     if request.user.role != 'lab':
         return redirect('dashboard')
-    return render(request, 'accounts/lab/profile.html')
+
+    user = request.user
+    hospital = user.hospital
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action == 'update':
+            user.first_name = request.POST.get('first_name', '').strip()
+            user.last_name = request.POST.get('last_name', '').strip()
+            user.email = request.POST.get('email', '').strip()
+            user.phone = request.POST.get('phone', '').strip()
+            user.save()
+
+            return redirect('lab_profile')
+
+    context = {
+        'user': user,
+        'hospital': hospital,
+    }
+
+    return render(request, 'accounts/lab/profile.html', context)
 # Counter
 def counter_dashboard(request):
     if not request.user.is_authenticated:

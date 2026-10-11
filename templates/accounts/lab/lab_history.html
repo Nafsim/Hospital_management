@@ -1,0 +1,147 @@
+{% extends "accounts/lab/base.html" %}
+{% load static %}
+
+{% block title %}Lab History - NHIMS{% endblock %}
+
+{% block extra_css %}
+<style>
+.page-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.4rem;gap:12px;flex-wrap:wrap}
+.page-title{font-size:1.65rem;font-weight:700;color:var(--text);margin:0 0 .25rem}
+.page-subtitle{font-size:.9rem;color:#64748b;margin:0}
+.stats-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-bottom:1.4rem}
+.stat-card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:1.1rem 1.2rem;box-shadow:0 1px 3px rgba(0,0,0,.05);display:flex;align-items:center;justify-content:space-between;transition:transform .25s ease,box-shadow .25s ease}
+.stat-card:hover{transform:translateY(-3px);box-shadow:0 8px 20px rgba(0,0,0,.08)}
+.stat-label{font-size:.78rem;color:#64748b;margin-bottom:.3rem}
+.stat-value{font-size:1.5rem;font-weight:700;color:#1e293b}
+.stat-icon{width:42px;height:42px;border-radius:10px;display:flex;align-items:center;justify-content:center}
+.stat-icon.blue{background:#dbeafe;color:#2563eb}
+.stat-icon.green{background:#dcfce7;color:#15803d}
+.stat-icon.yellow{background:#fef3c7;color:#b45309}
+.card{background:#fff;border:1px solid var(--border);border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,.05);overflow:hidden}
+.card-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.card-header h2{font-size:.98rem;font-weight:600;margin:0;color:var(--text)}
+.filter-form{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.filter-select,.search-input{height:38px;border:1px solid #cbd5e1;border-radius:8px;padding:0 12px;font-size:13px;outline:none;background:#fff;color:#334155}
+.filter-select:focus,.search-input:focus{border-color:#60a5fa}
+.search-input{width:220px}
+.filter-btn{height:38px;border:0;border-radius:8px;padding:0 15px;background:linear-gradient(135deg,#0ea5e9,#2563eb);color:#fff;font-size:13px;font-weight:600;cursor:pointer}
+.reset-btn{height:38px;display:inline-flex;align-items:center;padding:0 13px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;color:#475569;font-size:13px;text-decoration:none}
+.filter-tabs{display:flex;gap:8px;padding:14px 18px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.filter-tab{padding:7px 15px;border:1px solid #e2e8f0;border-radius:8px;background:#fff;color:#475569;text-decoration:none;font-size:13px;font-weight:600;transition:all .2s}
+.filter-tab:hover{border-color:#93c5fd;color:#2563eb}
+.filter-tab.active{background:#dbeafe;border-color:#bfdbfe;color:#1d4ed8}
+.table-wrap{overflow-x:auto}
+.history-table{width:100%;border-collapse:collapse}
+.history-table th{background:#f8fafc;color:#64748b;font-size:.74rem;font-weight:600;text-transform:uppercase;padding:.85rem 1rem;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
+.history-table td{padding:.9rem 1rem;font-size:.85rem;color:#334155;border-bottom:1px solid #f1f5f9;vertical-align:middle;white-space:nowrap}
+.history-table tbody tr:hover{background:#f8fafc}
+.test-name{font-weight:600;color:#1e293b}
+.patient-name{font-weight:500;color:#334155}
+.status-badge{display:inline-flex;padding:.3rem .65rem;border-radius:999px;font-size:.72rem;font-weight:600}
+.status-pending{background:#fef3c7;color:#b45309}
+.status-verified{background:#dcfce7;color:#15803d}
+.status-available{background:#dbeafe;color:#1d4ed8}
+.status-rejected{background:#fee2e2;color:#b91c1c}
+.empty-state{text-align:center;padding:42px 16px;color:#64748b}
+.empty-state h3{font-size:1rem;color:#334155;margin:0 0 7px}
+.empty-state p{font-size:.85rem;margin:0}
+.results-info{font-size:12.5px;color:#64748b;padding:12px 18px}
+@media(max-width:700px){.stats-grid{grid-template-columns:1fr}.card-header{align-items:stretch}.filter-form{width:100%}.search-input{width:100%;flex:1}.filter-select{flex:1}.history-table th,.history-table td{padding:.75rem}}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-top">
+    <div>
+        <h1 class="page-title">Lab History</h1>
+        <p class="page-subtitle">View laboratory test records and verification status across your hospital.</p>
+    </div>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div>
+            <div class="stat-label">All Lab Records</div>
+            <div class="stat-value">{{ total_count }}</div>
+        </div>
+        <div class="stat-icon blue">
+            <svg width="21" height="21" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 3h6M10 3v6l-5 9a2 2 0 002 3h10a2 2 0 002-3l-5-9V3"/><path d="M8 15h8"/></svg>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div>
+            <div class="stat-label">Verified</div>
+            <div class="stat-value">{{ verified_count }}</div>
+        </div>
+        <div class="stat-icon green">
+            <svg width="21" height="21" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></svg>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div>
+            <div class="stat-label">Pending</div>
+            <div class="stat-value">{{ pending_count }}</div>
+        </div>
+        <div class="stat-icon yellow">
+            <svg width="21" height="21" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2>Laboratory Test History</h2>
+        <form method="get" class="filter-form">
+            <input type="hidden" name="status" value="{{ status_filter }}">
+            <input type="search" name="q" value="{{ search_query }}" class="search-input" placeholder="Search test or patient...">
+            <button type="submit" class="filter-btn">Search</button>
+            <a href="{% url 'lab_history' %}" class="reset-btn">Reset</a>
+        </form>
+    </div>
+
+    <div class="filter-tabs">
+        <a href="?status=all{% if search_query %}&q={{ search_query|urlencode }}{% endif %}" class="filter-tab {% if status_filter == 'all' %}active{% endif %}">All</a>
+        <a href="?status=verified{% if search_query %}&q={{ search_query|urlencode }}{% endif %}" class="filter-tab {% if status_filter == 'verified' %}active{% endif %}">Verified</a>
+        <a href="?status=pending{% if search_query %}&q={{ search_query|urlencode }}{% endif %}" class="filter-tab {% if status_filter == 'pending' %}active{% endif %}">Pending</a>
+    </div>
+
+    <div class="table-wrap">
+        <table class="history-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Test</th>
+                    <th>Patient</th>
+                    <th>Date</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for record in records %}
+                <tr>
+                    <td>#{{ record.id }}</td>
+                    <td class="test-name">{{ record.test_name|default:record.title }}</td>
+                    <td class="patient-name">{{ record.patient_name|default:"—" }}</td>
+                    <td>{% if record.report_date %}{{ record.report_date|date:"d M Y" }}{% else %}{{ record.created_at|date:"d M Y" }}{% endif %}</td>
+                    <td>
+                        <span class="status-badge status-{{ record.status }}">
+                            {{ record.get_status_display }}
+                        </span>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5">
+                        <div class="empty-state">
+                            <h3>No Lab History Found</h3>
+                            <p>No laboratory records match the selected filter or search.</p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="results-info">Showing {{ records|length }} matching record{{ records|length|pluralize }}.</div>
+</div>
+{% endblock %}

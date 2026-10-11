@@ -1,30 +1,40 @@
 from django.db.models import Q
 from accounts.models import Notice
 
-
 def notices_context(request):
     if not request.user.is_authenticated:
-        return {'notices': []}
+        return {'notices': [], 'notice_count': 0}
 
-    if request.user.role == 'hospital_admin' and request.user.hospital:
-        # Hospital Admin → own hospital notices + MOH notices
+    notices = []
+    role = getattr(request.user, 'role', None)
+    hospital = getattr(request.user, 'hospital', None)
+
+    if role == 'hospital_admin' and hospital:
         notices = Notice.objects.filter(
-            Q(hospital=request.user.hospital) | Q(hospital__isnull=True),
+            Q(hospital=hospital) | Q(hospital__isnull=True),
             status='published'
         ).order_by('-created_at')[:10]
 
-    elif request.user.role in ['doctor', 'nurse', 'lab', 'counter', 'bloodbank', 'accountant'] and request.user.hospital:
-        # Doctor / Nurse / Staff → only their hospital notices
+    elif role in ['doctor', 'nurse', 'lab', 'counter', 'bloodbank', 'accountant'] and hospital:
         notices = Notice.objects.filter(
-            hospital=request.user.hospital,
+            hospital=hospital,
             status='published'
         ).order_by('-created_at')[:10]
 
-    elif request.user.role == 'moh':
-        # MOH → all notices
+    elif role == 'patient' and hospital:
+        notices = Notice.objects.filter(
+            Q(hospital=hospital) | Q(hospital__isnull=True),
+            status='published'
+        ).order_by('-created_at')[:10]
+
+    elif role == 'moh':
         notices = Notice.objects.filter(status='published').order_by('-created_at')[:10]
 
-    else:
-        notices = []
-
-    return {'notices': notices}
+    notices = list(notices)
+    notice_count = len(notices)
+    return {
+        'notices': notices,
+        'notice_count': notice_count,
+        'lab_notices': notices,
+        'lab_notice_count': notice_count,
+    }

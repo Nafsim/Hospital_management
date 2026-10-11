@@ -2,670 +2,173 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}NHIMS - Diagnostic Center{% endblock %}</title>
-
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        :root {
-            --sidebar-top: #1e3a5f;
-            --sidebar-middle: #1d4f7a;
-            --sidebar-bottom: #17365d;
-            --sidebar-text: #cbd9ea;
-            --sidebar-muted: #8299b6;
-            --active-start: #dbeafe;
-            --active-end: #bfdbfe;
-            --active-text: #075985;
-            --text: #172033;
-            --muted: #718096;
-            --border: #e3eaf3;
-            --page: #f5f8fc;
-            --white: #ffffff;
-        }
-
-        body.dark {
-            --text: #e7edf7;
-            --muted: #9eabc0;
-            --border: #34445e;
-            --page: #101827;
-            --white: #182235;
-        }
-
-        body {
-            font-family: "Segoe UI", Arial, sans-serif;
-            background: var(--page);
-            color: var(--text);
-        }
-
-        .sidebar {
-            width: 265px;
-            height: 100vh;
-            position: fixed;
-            left: 0;
-            top: 0;
-            overflow-y: auto;
-            z-index: 1000;
-            background: linear-gradient(
-                180deg,
-                var(--sidebar-top) 0%,
-                var(--sidebar-middle) 48%,
-                var(--sidebar-bottom) 100%
-            );
-            box-shadow: 5px 0 20px rgba(15,45,80,.08);
-        }
-
-        .brand {
-            min-height: 105px;
-            display: flex;
-            align-items: center;
-            gap: 13px;
-            padding: 17px 18px;
-            border-bottom: 1px solid rgba(255,255,255,.10);
-        }
-
-        .brand-logo {
-            width: 78px;
-            height: 70px;
-            flex-shrink: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: #ffffff;
-            border-radius: 14px;
-        }
-
-        .brand-logo img {
-            width: 67px;
-            max-height: 60px;
-            object-fit: contain;
-        }
-
-        .brand-text h3 {
-            color: #ffffff;
-            font-size: 18px;
-            font-weight: 700;
-            margin-bottom: 4px;
-        }
-
-        .brand-text p {
-            color: #c8d8ea;
-            font-size: 12px;
-        }
-
-        .menu {
-            padding: 24px 12px 30px;
-        }
-
-        .menu-title {
-            color: var(--sidebar-muted);
-            font-size: 11px;
-            font-weight: 700;
-            letter-spacing: 1px;
-            margin: 0 12px 10px;
-        }
-
-        .menu-item {
-            min-height: 52px;
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            padding: 10px 15px;
-            margin-bottom: 7px;
-            border-radius: 12px;
-            color: var(--sidebar-text);
-            text-decoration: none;
-            font-size: 15px;
-            font-weight: 500;
-            transition: .2s ease;
-        }
-
-        .menu-item:hover {
-            color: #ffffff;
-            background: rgba(255,255,255,.09);
-        }
-
-        .menu-item.active {
-            color: var(--active-text);
-            font-weight: 700;
-            background: linear-gradient(
-                135deg,
-                var(--active-start),
-                var(--active-end)
-            );
-            box-shadow: 0 7px 20px rgba(96,165,250,.18);
-        }
-
-        .menu-item svg {
-            width: 22px;
-            height: 22px;
-            flex-shrink: 0;
-        }
-
-        .main {
-            min-height: 100vh;
-            margin-left: 265px;
-        }
-
-        .topbar {
-            height: 82px;
-            position: sticky;
-            top: 0;
-            z-index: 900;
-            display: flex;
-            align-items: center;
-            padding: 0 28px;
-            background: var(--white);
-            border-bottom: 1px solid var(--border);
-        }
-
-        .search-box {
-            width: 420px;
-            height: 46px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 0 15px;
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            background: var(--page);
-        }
-
-        .search-box svg {
-            width: 21px;
-            height: 21px;
-            color: var(--muted);
-        }
-
-        .search-box input {
-            width: 100%;
-            border: none;
-            outline: none;
-            background: transparent;
-            color: var(--text);
-            font-size: 14px;
-        }
-
-        .search-box input::placeholder {
-            color: #8997aa;
-        }
-
-        .top-actions {
-            margin-left: auto;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .icon-btn {
-            width: 43px;
-            height: 43px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-            border: 1px solid var(--border);
-            border-radius: 11px;
-            background: var(--white);
-            color: #7185a0;
-            cursor: pointer;
-            text-decoration: none;
-        }
-
-        .icon-btn:hover {
-            color: #1684d9;
-            border-color: #a9cdfd;
-            background: #f0f7ff;
-        }
-
-        .icon-btn svg {
-            width: 20px;
-            height: 20px;
-        }
-
-        .notification-dot {
-            position: absolute;
-            top: 8px;
-            right: 8px;
-            width: 8px;
-            height: 8px;
-            border: 2px solid var(--white);
-            border-radius: 50%;
-            background: #0ea5e9;
-        }
-
-        .profile-wrap {
-            position: relative;
-            margin-left: 5px;
-        }
-
-        .profile-btn {
-            width: 47px;
-            height: 47px;
-            border: none;
-            border-radius: 50%;
-            background: linear-gradient(
-                135deg,
-                #0ea5e9,
-                #2563eb
-            );
-            color: #ffffff;
-            font-size: 15px;
-            font-weight: 700;
-            cursor: pointer;
-        }
-
-        .profile-menu {
-            display: none;
-            position: absolute;
-            right: 0;
-            top: 58px;
-            width: 270px;
-            overflow: hidden;
-            background: var(--white);
-            border: 1px solid var(--border);
-            border-radius: 15px;
-            box-shadow: 0 16px 40px rgba(20,40,80,.18);
-        }
-
-        .profile-menu.show {
-            display: block;
-        }
-
-        .profile-head {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 18px;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .profile-mini-avatar {
-            width: 43px;
-            height: 43px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 50%;
-            background: linear-gradient(
-                135deg,
-                #0ea5e9,
-                #2563eb
-            );
-            color: white;
-            font-weight: 700;
-        }
-
-        .profile-info strong {
-            display: block;
-            color: var(--text);
-            font-size: 15px;
-        }
-
-        .profile-info span {
-            display: block;
-            margin-top: 3px;
-            color: var(--muted);
-            font-size: 13px;
-        }
-
-        .profile-link,
-        .logout-button {
-            width: 100%;
-            min-height: 52px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 0 18px;
-            border: 0;
-            border-bottom: 1px solid var(--border);
-            background: var(--white);
-            color: var(--text);
-            text-decoration: none;
-            font-family: inherit;
-            font-size: 14px;
-            cursor: pointer;
-            text-align: left;
-        }
-
-        .profile-link:hover,
-        .logout-button:hover {
-            background: var(--page);
-        }
-
-        .profile-link svg,
-        .logout-button svg {
-            width: 20px;
-            height: 20px;
-        }
-
-        .logout-button {
-            color: #dc2626;
-            border-bottom: 0;
-        }
-
-        .content {
-            padding: 28px;
-        }
-
-        @media (max-width: 950px) {
-            .sidebar {
-                width: 225px;
-            }
-
-            .main {
-                margin-left: 225px;
-            }
-
-            .search-box {
-                width: 300px;
-            }
-        }
-    </style>
-
-    {% block extra_css %}{% endblock %}
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}NHIMS - Diagnostic Center{% endblock %}</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--sidebar-top:#1e3a5f;--sidebar-middle:#1d4f7a;--sidebar-bottom:#17365d;--sidebar-text:#cbd9ea;--sidebar-muted:#8299b6;--active-start:#dbeafe;--active-end:#bfdbfe;--active-text:#075985;--text:#172033;--muted:#718096;--border:#e3eaf3;--page:#f5f8fc;--white:#ffffff}
+body.dark{--text:#e7edf7;--muted:#9eabc0;--border:#34445e;--page:#101827;--white:#182235}
+body{font-family:"Segoe UI",Arial,sans-serif;background:var(--page);color:var(--text)}
+.sidebar{width:265px;height:100vh;position:fixed;left:0;top:0;overflow-y:auto;z-index:1000;background:linear-gradient(180deg,var(--sidebar-top) 0%,var(--sidebar-middle) 48%,var(--sidebar-bottom) 100%);box-shadow:5px 0 20px rgba(15,45,80,.08)}
+.brand{min-height:105px;display:flex;align-items:center;gap:13px;padding:17px 18px;border-bottom:1px solid rgba(255,255,255,.10)}
+.brand-logo{width:78px;height:70px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:#fff;border-radius:14px}
+.brand-logo img{width:67px;max-height:60px;object-fit:contain}
+.brand-text h3{color:#fff;font-size:18px;font-weight:700;margin-bottom:4px}
+.brand-text p{color:#c8d8ea;font-size:12px}
+.menu{padding:24px 12px 30px}
+.menu-title{color:var(--sidebar-muted);font-size:11px;font-weight:700;letter-spacing:1px;margin:0 12px 10px}
+.menu-item{min-height:52px;display:flex;align-items:center;gap:14px;padding:10px 15px;margin-bottom:7px;border-radius:12px;color:var(--sidebar-text);text-decoration:none;font-size:15px;font-weight:500;transition:.2s ease}
+.menu-item:hover{color:#fff;background:rgba(255,255,255,.09)}
+.menu-item.active{color:var(--active-text);font-weight:700;background:linear-gradient(135deg,var(--active-start),var(--active-end));box-shadow:0 7px 20px rgba(96,165,250,.18)}
+.menu-item svg{width:22px;height:22px;flex-shrink:0}
+.main{min-height:100vh;margin-left:265px}
+.topbar{height:82px;position:sticky;top:0;z-index:900;display:flex;align-items:center;padding:0 28px;background:var(--white);border-bottom:1px solid var(--border)}
+.search-box{width:420px;height:46px;display:flex;align-items:center;gap:10px;padding:0 15px;border:1px solid var(--border);border-radius:12px;background:var(--page)}
+.search-box svg{width:21px;height:21px;color:var(--muted)}
+.search-box input{width:100%;border:none;outline:none;background:transparent;color:var(--text);font-size:14px}
+.search-box input::placeholder{color:#8997aa}
+.top-actions{margin-left:auto;display:flex;align-items:center;gap:10px}
+.icon-btn{width:43px;height:43px;display:flex;align-items:center;justify-content:center;position:relative;border:1px solid var(--border);border-radius:11px;background:var(--white);color:#7185a0;cursor:pointer;text-decoration:none}
+.icon-btn:hover{color:#1684d9;border-color:#a9cdfd;background:#f0f7ff}
+.icon-btn svg{width:20px;height:20px}
+.notification-dot{position:absolute;top:8px;right:8px;width:8px;height:8px;border:2px solid var(--white);border-radius:50%;background:#0ea5e9}
+.notify-wrap{position:relative}
+.notify-panel{display:none;position:absolute;right:0;top:52px;width:360px;max-height:420px;overflow:hidden;background:var(--white);border:1px solid var(--border);border-radius:14px;box-shadow:0 16px 40px rgba(20,40,80,.18);z-index:950}
+.notify-panel.show{display:block}
+.notify-head{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.notify-head h4{margin:0;font-size:.95rem;font-weight:700;color:var(--text)}
+.notify-count{font-size:.72rem;font-weight:600;color:#2563eb;background:#dbeafe;padding:3px 8px;border-radius:999px}
+.notify-list{max-height:360px;overflow-y:auto}
+.notify-item{padding:12px 16px;border-bottom:1px solid var(--border)}
+.notify-item:last-child{border-bottom:0}
+.notify-item:hover{background:var(--page)}
+.notify-title{font-size:.86rem;font-weight:600;color:var(--text);margin:0 0 4px}
+.notify-meta{font-size:.75rem;color:var(--muted);margin:0 0 4px}
+.notify-text{font-size:.8rem;color:#475569;line-height:1.45;margin:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.notify-empty{padding:28px 16px;text-align:center;color:var(--muted);font-size:.85rem}
+.profile-wrap{position:relative;margin-left:5px}
+.profile-btn{width:47px;height:47px;border:none;border-radius:50%;background:linear-gradient(135deg,#0ea5e9,#2563eb);color:#fff;font-size:15px;font-weight:700;cursor:pointer}
+.profile-menu{display:none;position:absolute;right:0;top:58px;width:270px;overflow:hidden;background:var(--white);border:1px solid var(--border);border-radius:15px;box-shadow:0 16px 40px rgba(20,40,80,.18)}
+.profile-menu.show{display:block}
+.profile-head{display:flex;align-items:center;gap:12px;padding:18px;border-bottom:1px solid var(--border)}
+.profile-mini-avatar{width:43px;height:43px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:linear-gradient(135deg,#0ea5e9,#2563eb);color:#fff;font-weight:700}
+.profile-info strong{display:block;color:var(--text);font-size:15px}
+.profile-info span{display:block;margin-top:3px;color:var(--muted);font-size:13px}
+.profile-link,.logout-button{width:100%;min-height:52px;display:flex;align-items:center;gap:12px;padding:0 18px;border:0;border-bottom:1px solid var(--border);background:var(--white);color:var(--text);text-decoration:none;font-family:inherit;font-size:14px;cursor:pointer;text-align:left}
+.profile-link:hover,.logout-button:hover{background:var(--page)}
+.profile-link svg,.logout-button svg{width:20px;height:20px}
+.logout-button{color:#dc2626;border-bottom:0}
+.content{padding:28px}
+@media(max-width:950px){.sidebar{width:225px}.main{margin-left:225px}.search-box{width:300px}.notify-panel{width:320px}}
+</style>
+{% block extra_css %}{% endblock %}
 </head>
-
 <body>
-
 <aside class="sidebar">
-
-    <div class="brand">
-
-        <div class="brand-logo">
-            <img src="{% static 'images/image2.png' %}" alt="NHIMS Logo">
-        </div>
-
-        <div class="brand-text">
-            <h3>NHIMS</h3>
-            <p>Diagnostic Center</p>
-        </div>
-
-    </div>
-
-    <nav class="menu">
-
-        <div class="menu-title">MAIN</div>
-
-        <!-- Dashboard -->
-        <a href="{% url 'lab_dashboard' %}"
-           class="menu-item {% if request.resolver_match.url_name == 'lab_dashboard' %}active{% endif %}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                <rect x="3" y="3" width="7" height="7" rx="1"/>
-                <rect x="14" y="3" width="7" height="7" rx="1"/>
-                <rect x="3" y="14" width="7" height="7" rx="1"/>
-                <rect x="14" y="14" width="7" height="7" rx="1"/>
-            </svg>
-            <span>Dashboard</span>
-        </a>
-
-        <!-- Upload Report -->
-        <a href="{% url 'lab_upload_report' %}"
-           class="menu-item {% if request.resolver_match.url_name == 'lab_upload_report' %}active{% endif %}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                <path d="M12 16V4"/>
-                <path d="m7 9 5-5 5 5"/>
-                <path d="M4 14v5a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5"/>
-            </svg>
-            <span>Upload Report</span>
-        </a>
-
-        <!-- Report Status -->
-        <a href="{% url 'lab_report_status' %}"
-           class="menu-item {% if request.resolver_match.url_name == 'lab_report_status' %}active{% endif %}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                <circle cx="12" cy="12" r="9"/>
-                <path d="m8 12 2.5 2.5L16 9"/>
-            </svg>
-            <span>Report Status</span>
-        </a>
-
-        <!-- Report Preview -->
-        <a href="{% url 'lab_report_preview' %}"
-           class="menu-item {% if request.resolver_match.url_name == 'lab_report_preview' %}active{% endif %}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                <path d="M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6z"/>
-                <circle cx="12" cy="12" r="2.5"/>
-            </svg>
-            <span>Report Preview</span>
-        </a>
-
-        <!-- Lab History -->
-        <a href="{% url 'lab_history' %}"
-           class="menu-item {% if request.resolver_match.url_name == 'lab_history' %}active{% endif %}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                <path d="M3 12a9 9 0 1 0 3-6.7"/>
-                <path d="M3 4v5h5"/>
-                <path d="M12 7v5l3 2"/>
-            </svg>
-            <span>Lab History</span>
-        </a>
-
-        <div class="menu-title" style="margin-top:25px;">ACCOUNT</div>
-
-        <!-- My Profile -->
-        <a href="{% url 'lab_profile' %}"
-           class="menu-item {% if request.resolver_match.url_name == 'lab_profile' %}active{% endif %}">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                <circle cx="12" cy="8" r="3"/>
-                <path d="M5 21c0-4 3-7 7-7s7 3 7 7"/>
-            </svg>
-            <span>My Profile</span>
-        </a>
-
-    </nav>
+<div class="brand">
+<div class="brand-logo"><img src="{% static 'images/image2.png' %}" alt="NHIMS Logo"></div>
+<div class="brand-text"><h3>NHIMS</h3><p>Diagnostic Center</p></div>
+</div>
+<nav class="menu">
+<div class="menu-title">MAIN</div>
+<a href="{% url 'lab_dashboard' %}" class="menu-item {% if request.resolver_match.url_name == 'lab_dashboard' %}active{% endif %}">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+<span>Dashboard</span>
+</a>
+<a href="{% url 'lab_upload_report' %}" class="menu-item {% if request.resolver_match.url_name == 'lab_upload_report' %}active{% endif %}">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 16V4"/><path d="m7 9 5-5 5 5"/><path d="M4 14v5a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5"/></svg>
+<span>Upload Report</span>
+</a>
+<a href="{% url 'lab_history' %}" class="menu-item {% if request.resolver_match.url_name == 'lab_history' %}active{% endif %}">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 7v5l3 2"/></svg>
+<span>Lab History</span>
+</a>
+<div class="menu-title" style="margin-top:25px;">ACCOUNT</div>
+<a href="{% url 'lab_profile' %}" class="menu-item {% if request.resolver_match.url_name == 'lab_profile' %}active{% endif %}">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="3"/><path d="M5 21c0-4 3-7 7-7s7 3 7 7"/></svg>
+<span>My Profile</span>
+</a>
+</nav>
 </aside>
-
-
 <main class="main">
-
-    <header class="topbar">
-
-        <!-- Search -->
-        <form class="search-box" method="get" action="{% url 'lab_report_status' %}">
-
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                <circle cx="11" cy="11" r="7"/>
-                <path d="m20 20-4-4"/>
-            </svg>
-
-            <input
-                type="text"
-                name="q"
-                value="{{ request.GET.q }}"
-                placeholder="Search reports..."
-            >
-
-        </form>
-
-
-        <div class="top-actions">
-
-            <!-- Plus → Upload Report -->
-            <a href="{% url 'lab_upload_report' %}"
-               class="icon-btn"
-               title="Upload Report">
-
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                    <path d="M12 5v14"/>
-                    <path d="M5 12h14"/>
-                </svg>
-
-            </a>
-
-
-            <!-- Bell → Report Status -->
-            <a href="{% url 'lab_report_status' %}"
-               class="icon-btn"
-               title="Report Status">
-
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                    <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/>
-                    <path d="M10 21h4"/>
-                </svg>
-
-                <span class="notification-dot"></span>
-
-            </a>
-
-
-            <!-- Dark Mode -->
-            <button type="button"
-                    class="icon-btn"
-                    id="themeButton"
-                    title="Dark mode">
-
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                    <path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/>
-                </svg>
-
-            </button>
-
-
-            <!-- Profile -->
-            <div class="profile-wrap">
-
-                <button type="button"
-                        class="profile-btn"
-                        id="profileButton">
-
-                    {% if request.user.first_name %}
-                        {{ request.user.first_name|first|upper }}
-                    {% elif request.user.username %}
-                        {{ request.user.username|first|upper }}
-                    {% else %}
-                        L
-                    {% endif %}
-
-                </button>
-
-
-                <div class="profile-menu" id="profileMenu">
-
-                    <div class="profile-head">
-
-                        <div class="profile-mini-avatar">
-
-                            {% if request.user.first_name %}
-                                {{ request.user.first_name|first|upper }}
-                            {% elif request.user.username %}
-                                {{ request.user.username|first|upper }}
-                            {% else %}
-                                L
-                            {% endif %}
-
-                        </div>
-
-                        <div class="profile-info">
-
-                            <strong>
-                                {% if request.user.get_full_name %}
-                                    {{ request.user.get_full_name }}
-                                {% else %}
-                                    {{ request.user.username }}
-                                {% endif %}
-                            </strong>
-
-                            <span>Diagnostic Center</span>
-
-                        </div>
-
-                    </div>
-
-
-                    <!-- My Profile -->
-                    <a href="{% url 'lab_profile' %}"
-                       class="profile-link">
-
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                            <circle cx="12" cy="8" r="3"/>
-                            <path d="M5 21c0-4 3-7 7-7s7 3 7 7"/>
-                        </svg>
-
-                        <span>My Profile</span>
-
-                    </a>
-
-
-                    <!-- Logout -->
-                    <form method="post" action="{% url 'logout' %}">
-
-                        {% csrf_token %}
-
-                        <button type="submit" class="logout-button">
-
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                                <path d="M10 17l5-5-5-5"/>
-                                <path d="M15 12H3"/>
-                                <path d="M14 3h6a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1h-6"/>
-                            </svg>
-
-                            <span>Sign out</span>
-
-                        </button>
-
-                    </form>
-
-                </div>
-
-            </div>
-
-        </div>
-
-    </header>
-
-
-    <section class="content">
-
-        {% block content %}
-        {% endblock %}
-
-    </section>
-
+<header class="topbar">
+<form class="search-box" method="get" action="{% url 'lab_upload_report' %}">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+<input type="text" name="q" value="{{ request.GET.q }}" placeholder="Search reports...">
+</form>
+<div class="top-actions">
+<a href="{% url 'lab_upload_report' %}" class="icon-btn" title="Upload Report">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+</a>
+<div class="notify-wrap">
+<button type="button" class="icon-btn" id="notifyButton" title="Notifications">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg>
+{% if notice_count %}<span class="notification-dot"></span>{% endif %}
+</button>
+<div class="notify-panel" id="notifyPanel">
+<div class="notify-head">
+<h4>Notifications</h4>
+{% if notice_count %}<span class="notify-count">{{ notice_count }}</span>{% endif %}
+</div>
+<div class="notify-list">
+{% for notice in notices %}
+<div class="notify-item">
+<p class="notify-title">{{ notice.title }}</p>
+<p class="notify-meta">{{ notice.get_priority_display }} · {{ notice.publish_date|date:"d M Y" }}</p>
+<p class="notify-text">{{ notice.content|truncatechars:120 }}</p>
+</div>
+{% empty %}
+<div class="notify-empty">No notices right now.</div>
+{% endfor %}
+</div>
+</div>
+</div>
+<button type="button" class="icon-btn" id="themeButton" title="Dark mode">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/></svg>
+</button>
+<div class="profile-wrap">
+<button type="button" class="profile-btn" id="profileButton">
+{% if request.user.first_name %}{{ request.user.first_name|first|upper }}{% elif request.user.username %}{{ request.user.username|first|upper }}{% else %}L{% endif %}
+</button>
+<div class="profile-menu" id="profileMenu">
+<div class="profile-head">
+<div class="profile-mini-avatar">{% if request.user.first_name %}{{ request.user.first_name|first|upper }}{% elif request.user.username %}{{ request.user.username|first|upper }}{% else %}L{% endif %}</div>
+<div class="profile-info">
+<strong>{% if request.user.get_full_name %}{{ request.user.get_full_name }}{% else %}{{ request.user.username }}{% endif %}</strong>
+<span>Diagnostic Center</span>
+</div>
+</div>
+<a href="{% url 'lab_profile' %}" class="profile-link">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="3"/><path d="M5 21c0-4 3-7 7-7s7 3 7 7"/></svg>
+<span>My Profile</span>
+</a>
+<form method="post" action="{% url 'logout' %}">{% csrf_token %}
+<button type="submit" class="logout-button">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/><path d="M14 3h6a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1h-6"/></svg>
+<span>Sign out</span>
+</button>
+</form>
+</div>
+</div>
+</div>
+</header>
+<section class="content">{% block content %}{% endblock %}</section>
 </main>
-
-
 <script>
-    const profileButton = document.getElementById("profileButton");
-    const profileMenu = document.getElementById("profileMenu");
-    const themeButton = document.getElementById("themeButton");
-
-    profileButton.addEventListener("click", function(event) {
-        event.stopPropagation();
-        profileMenu.classList.toggle("show");
-    });
-
-    profileMenu.addEventListener("click", function(event) {
-        event.stopPropagation();
-    });
-
-    document.addEventListener("click", function() {
-        profileMenu.classList.remove("show");
-    });
-
-    if (localStorage.getItem("nhimsTheme") === "dark") {
-        document.body.classList.add("dark");
-    }
-
-    themeButton.addEventListener("click", function() {
-
-        document.body.classList.toggle("dark");
-
-        if (document.body.classList.contains("dark")) {
-            localStorage.setItem("nhimsTheme", "dark");
-        } else {
-            localStorage.setItem("nhimsTheme", "light");
-        }
-
-    });
+const profileButton=document.getElementById("profileButton");
+const profileMenu=document.getElementById("profileMenu");
+const themeButton=document.getElementById("themeButton");
+const notifyButton=document.getElementById("notifyButton");
+const notifyPanel=document.getElementById("notifyPanel");
+profileButton.addEventListener("click",function(e){e.stopPropagation();profileMenu.classList.toggle("show");notifyPanel.classList.remove("show")});
+profileMenu.addEventListener("click",function(e){e.stopPropagation()});
+notifyButton.addEventListener("click",function(e){e.stopPropagation();notifyPanel.classList.toggle("show");profileMenu.classList.remove("show")});
+notifyPanel.addEventListener("click",function(e){e.stopPropagation()});
+document.addEventListener("click",function(){profileMenu.classList.remove("show");notifyPanel.classList.remove("show")});
+if(localStorage.getItem("nhimsTheme")==="dark"){document.body.classList.add("dark")}
+themeButton.addEventListener("click",function(){document.body.classList.toggle("dark");localStorage.setItem("nhimsTheme",document.body.classList.contains("dark")?"dark":"light")});
 </script>
-
 {% block extra_js %}{% endblock %}
-
 </body>
 </html>

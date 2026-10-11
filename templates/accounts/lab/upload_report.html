@@ -1,0 +1,411 @@
+{% extends "accounts/lab/base.html" %}
+{% load static %}
+
+{% block title %}Upload Report - NHIMS{% endblock %}
+
+{% block extra_css %}
+<style>
+.page-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.4rem;gap:12px;flex-wrap:wrap}
+.page-title{font-size:1.65rem;font-weight:700;color:var(--text);margin:0 0 .25rem}
+.page-subtitle{font-size:.9rem;color:#64748b;margin:0}
+.add-btn{display:flex;align-items:center;gap:7px;background:linear-gradient(135deg,#0ea5e9,#2563eb);color:#fff;border:0;padding:10px 16px;border-radius:9px;font-size:13.5px;font-weight:600;cursor:pointer}
+.add-btn:hover{transform:translateY(-1px);box-shadow:0 5px 14px rgba(37,99,235,.22)}
+.stats-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-bottom:1.4rem;max-width:480px}
+.stat-card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:1.1rem 1.2rem;box-shadow:0 1px 3px rgba(0,0,0,.05);display:flex;align-items:center;justify-content:space-between;transition:transform .25s ease,box-shadow .25s ease}
+.stat-card:hover{transform:translateY(-4px);box-shadow:0 8px 20px rgba(0,0,0,.10)}
+.stat-label{font-size:.78rem;color:#64748b;margin-bottom:.3rem}
+.stat-value{font-size:1.5rem;font-weight:700;color:#1e293b}
+.stat-icon{width:42px;height:42px;border-radius:10px;display:flex;align-items:center;justify-content:center}
+.stat-icon.blue{background:#dbeafe;color:#2563eb}
+.stat-icon.orange{background:#ffedd5;color:#ea580c}
+.card{background:#fff;border:1px solid var(--border);border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,.05);overflow:hidden}
+.card-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.card-header h2{font-size:.98rem;font-weight:600;margin:0;color:var(--text)}
+.search-form{display:flex;gap:8px}
+.search-input{height:36px;border:1px solid #cbd5e1;border-radius:8px;padding:0 12px;font-size:13px;outline:none;width:220px}
+.search-input:focus{border-color:#60a5fa}
+.search-btn{height:36px;border:0;border-radius:8px;padding:0 14px;background:linear-gradient(135deg,#0ea5e9,#2563eb);color:#fff;font-size:13px;font-weight:600;cursor:pointer}
+.table-wrap{overflow-x:auto}
+.report-table{width:100%;border-collapse:collapse}
+.report-table th{background:#f8fafc;color:#64748b;font-size:.74rem;font-weight:600;text-transform:uppercase;padding:.75rem 1rem;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
+.report-table td{padding:.85rem 1rem;font-size:.85rem;color:#334155;border-bottom:1px solid #f1f5f9;vertical-align:middle;white-space:nowrap}
+.report-table tbody tr:hover{background:#f8fafc}
+.type-badge{display:inline-flex;padding:.2rem .5rem;border-radius:999px;font-size:.71rem;font-weight:600;background:#eff6ff;color:#2563eb}
+.status-badge{display:inline-flex;padding:.2rem .55rem;border-radius:999px;font-size:.71rem;font-weight:600}
+.status-pending{background:#fef3c7;color:#b45309}
+.status-available{background:#dbeafe;color:#1d4ed8}
+.status-verified{background:#dcfce7;color:#15803d}
+.status-rejected{background:#fee2e2;color:#b91c1c}
+.action-buttons{display:flex;gap:5px}
+.action-btn{width:32px;height:32px;border-radius:7px;border:1px solid #e2e8f0;background:#fff;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;text-decoration:none;transition:all .2s}
+.action-btn.view{color:#2563eb}
+.action-btn.edit{color:#059669}
+.action-btn.download{color:#0d9488}
+.action-btn.delete{color:#dc2626}
+.action-btn:hover{transform:translateY(-1px)}
+.empty-state{text-align:center;padding:40px 16px;color:#64748b}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:9999;align-items:center;justify-content:center;padding:16px}
+.modal-overlay.show{display:flex}
+.modal{background:#fff;width:100%;max-width:520px;border-radius:14px;box-shadow:0 20px 50px rgba(0,0,0,.2);overflow:hidden;max-height:90vh;overflow-y:auto}
+.modal-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.modal-header h3{margin:0;font-size:1rem;font-weight:600}
+.modal-close{width:30px;height:30px;border:0;background:#f1f5f9;border-radius:7px;color:#64748b;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.modal-body{padding:18px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-group{display:flex;flex-direction:column;gap:5px}
+.form-group.full{grid-column:1/-1}
+.form-group label{font-size:12.5px;font-weight:600;color:#475569}
+.form-group input,.form-group select,.form-group textarea{height:38px;border:1px solid #cbd5e1;border-radius:7px;padding:0 11px;font-size:13px;outline:none}
+.form-group textarea{height:80px;padding:9px 11px;resize:vertical}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:#60a5fa}
+.view-info{display:grid;gap:8px}
+.view-item{display:flex;justify-content:space-between;align-items:flex-start;padding:10px 12px;background:#f8fafc;border-radius:8px;border:1px solid #f1f5f9;gap:12px}
+.view-label{font-size:12.5px;color:#64748b;font-weight:500;flex-shrink:0}
+.view-value{font-size:13.5px;font-weight:600;color:#1e293b;text-align:right}
+.modal-footer{padding:12px 18px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px}
+.btn-cancel,.btn-save,.btn-download,.btn-delete{padding:8px 14px;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center}
+.btn-cancel{background:#fff;color:#475569;border:1px solid #cbd5e1}
+.btn-save{background:#2563eb;color:#fff;border:1px solid #2563eb}
+.btn-download{background:#059669;color:#fff;border:1px solid #059669}
+.btn-delete{background:#dc2626;color:#fff;border:1px solid #dc2626}
+@media(max-width:600px){.form-grid{grid-template-columns:1fr}.stats-grid{grid-template-columns:1fr}.search-input{width:100%}}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-top">
+    <div>
+        <h1 class="page-title">Lab Reports</h1>
+        <p class="page-subtitle">Upload, edit, preview and manage report status</p>
+    </div>
+    <button type="button" class="add-btn" onclick="openUploadModal()">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 16V4"/><path d="m7 9 5-5 5 5"/><path d="M4 14v5a2 2 0 002 2h12a2 2 0 002-2v-5"/></svg>
+        Upload Report
+    </button>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div>
+            <div class="stat-label">Total Reports</div>
+            <div class="stat-value">{{ total }}</div>
+        </div>
+        <div class="stat-icon blue">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div>
+            <div class="stat-label">Pending</div>
+            <div class="stat-value">{{ pending_count }}</div>
+        </div>
+        <div class="stat-icon orange">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2>All Reports</h2>
+        <form method="get" class="search-form">
+            <input type="text" name="q" value="{{ search }}" class="search-input" placeholder="Search patient or title...">
+            <button type="submit" class="search-btn">Search</button>
+        </form>
+    </div>
+    <div class="table-wrap">
+        <table class="report-table">
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Patient</th>
+                    <th>Type</th>
+                    <th>Test</th>
+                    <th>Date</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in reports %}
+                <tr>
+                    <td style="font-weight:600;color:#1e293b">{{ r.title }}</td>
+                    <td>{{ r.patient_name|default:"—" }}</td>
+                    <td><span class="type-badge">{{ r.get_record_type_display }}</span></td>
+                    <td>{{ r.test_name|default:"—" }}</td>
+                    <td>{{ r.created_at|date:"d M Y" }}</td>
+                    <td><span class="status-badge status-{{ r.status }}">{{ r.get_status_display }}</span></td>
+                    <td>
+                        <div class="action-buttons">
+                            <button type="button" class="action-btn view" title="View" onclick="openViewModal('{{ r.title|escapejs }}','{{ r.patient_name|default:''|escapejs }}','{{ r.get_record_type_display }}','{{ r.test_name|default:''|escapejs }}','{% if r.report_date %}{{ r.report_date|date:'d M Y' }}{% endif %}','{{ r.created_at|date:'d M Y H:i' }}','{{ r.get_status_display }}','{{ r.notes|default:''|escapejs }}','{% if r.file %}{{ r.file.url }}{% endif %}')">
+                                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
+                            </button>
+                            <button type="button" class="action-btn edit" title="Edit" onclick="openEditModal('{{ r.id }}','{{ r.title|escapejs }}','{{ r.record_type }}','{{ r.test_name|default:''|escapejs }}','{% if r.report_date %}{{ r.report_date|date:'Y-m-d' }}{% endif %}','{{ r.status }}','{{ r.notes|default:''|escapejs }}','{{ r.patient_name|default:''|escapejs }}','{{ r.patient_phone|default:''|escapejs }}','{{ r.patient_id|default:''|escapejs }}')">
+                                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L8 18l-4 1 1-4z"/></svg>
+                            </button>
+                            {% if r.file %}
+                            <a href="{{ r.file.url }}" class="action-btn download" title="Download" download target="_blank">
+                                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+                            </a>
+                            {% endif %}
+                            <button type="button" class="action-btn delete" title="Delete" onclick="openDeleteModal('{{ r.id }}','{{ r.title|escapejs }}')">
+                                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 15H6L5 6"/></svg>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7">
+                        <div class="empty-state">
+                            <h3>No Reports</h3>
+                            <p>Click “Upload Report” to add the first one.</p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="modal-overlay" id="uploadModal">
+    <div class="modal">
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="upload">
+            <div class="modal-header">
+                <h3>Upload Report</h3>
+                <button type="button" class="modal-close" onclick="closeModal('uploadModal')">
+                    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-grid">
+                    <div class="form-group full">
+                        <label>Patient</label>
+                        <select name="patient">
+                            <option value="">Select patient (or type below)</option>
+                            {% for p in patients %}
+                            <option value="{{ p.id }}">{% if p.user %}{{ p.user.get_full_name|default:p.user.username }}{% else %}Patient #{{ p.id }}{% endif %}{% if p.patient_id %} · {{ p.patient_id }}{% endif %}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Patient Name (manual)</label>
+                        <input type="text" name="patient_name" placeholder="If not in list">
+                    </div>
+                    <div class="form-group">
+                        <label>Patient Phone</label>
+                        <input type="text" name="patient_phone" placeholder="01XXXXXXXXX">
+                    </div>
+                    <div class="form-group">
+                        <label>Patient ID</label>
+                        <input type="text" name="patient_code" placeholder="Optional">
+                    </div>
+                    <div class="form-group">
+                        <label>Report Title</label>
+                        <input type="text" name="title" required placeholder="e.g. CBC Report">
+                    </div>
+                    <div class="form-group">
+                        <label>Record Type</label>
+                        <select name="record_type">
+                            {% for value,label in record_type_choices %}
+                            <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Test Name</label>
+                        <input type="text" name="test_name" list="testList" placeholder="e.g. CBC">
+                        <datalist id="testList">{% for t in tests %}<option value="{{ t.name }}">{% endfor %}</datalist>
+                    </div>
+                    <div class="form-group">
+                        <label>Report Date</label>
+                        <input type="date" name="report_date" value="{{ today|date:'Y-m-d' }}">
+                    </div>
+                    <div class="form-group">
+                        <label>Status</label>
+                        <select name="status">
+                            {% for value,label in status_choices %}
+                            <option value="{{ value }}" {% if value == 'pending' %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group full">
+                        <label>Report File</label>
+                        <input type="file" name="file" required accept=".pdf,.jpg,.jpeg,.png,.doc,.docx">
+                    </div>
+                    <div class="form-group full">
+                        <label>Notes</label>
+                        <textarea name="notes" placeholder="Optional notes..."></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" onclick="closeModal('uploadModal')">Cancel</button>
+                <button type="submit" class="btn-save">Upload</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal-overlay" id="editModal">
+    <div class="modal">
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="edit">
+            <input type="hidden" name="report_id" id="editReportId">
+            <div class="modal-header">
+                <h3>Edit Report</h3>
+                <button type="button" class="modal-close" onclick="closeModal('editModal')">
+                    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Patient Name</label>
+                        <input type="text" name="patient_name" id="editPatientName">
+                    </div>
+                    <div class="form-group">
+                        <label>Patient Phone</label>
+                        <input type="text" name="patient_phone" id="editPatientPhone">
+                    </div>
+                    <div class="form-group">
+                        <label>Patient ID</label>
+                        <input type="text" name="patient_code" id="editPatientCode">
+                    </div>
+                    <div class="form-group">
+                        <label>Report Title</label>
+                        <input type="text" name="title" id="editTitle" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Record Type</label>
+                        <select name="record_type" id="editType">
+                            {% for value,label in record_type_choices %}
+                            <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Test Name</label>
+                        <input type="text" name="test_name" id="editTest">
+                    </div>
+                    <div class="form-group">
+                        <label>Report Date</label>
+                        <input type="date" name="report_date" id="editReportDate">
+                    </div>
+                    <div class="form-group">
+                        <label>Status</label>
+                        <select name="status" id="editStatus">
+                            {% for value,label in status_choices %}
+                            <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group full">
+                        <label>Replace File (optional)</label>
+                        <input type="file" name="file" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx">
+                    </div>
+                    <div class="form-group full">
+                        <label>Notes</label>
+                        <textarea name="notes" id="editNotes"></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" onclick="closeModal('editModal')">Cancel</button>
+                <button type="submit" class="btn-save">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal-overlay" id="viewModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>Report Preview</h3>
+            <button type="button" class="modal-close" onclick="closeModal('viewModal')">
+                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="view-info">
+                <div class="view-item"><span class="view-label">Title</span><span class="view-value" id="viewTitle"></span></div>
+                <div class="view-item"><span class="view-label">Patient</span><span class="view-value" id="viewPatient"></span></div>
+                <div class="view-item"><span class="view-label">Type</span><span class="view-value" id="viewType"></span></div>
+                <div class="view-item"><span class="view-label">Test</span><span class="view-value" id="viewTest"></span></div>
+                <div class="view-item"><span class="view-label">Report Date</span><span class="view-value" id="viewReportDate"></span></div>
+                <div class="view-item"><span class="view-label">Uploaded</span><span class="view-value" id="viewUploaded"></span></div>
+                <div class="view-item"><span class="view-label">Status</span><span class="view-value" id="viewStatus"></span></div>
+                <div class="view-item"><span class="view-label">Notes</span><span class="view-value" id="viewNotes"></span></div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-cancel" onclick="closeModal('viewModal')">Close</button>
+            <a href="#" id="viewDownloadBtn" class="btn-download" download target="_blank" style="display:none">Download</a>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="deleteModal">
+    <div class="modal" style="max-width:380px">
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="delete">
+            <input type="hidden" name="report_id" id="deleteReportId">
+            <div class="modal-header">
+                <h3>Delete Report</h3>
+                <button type="button" class="modal-close" onclick="closeModal('deleteModal')">
+                    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p style="margin:0;color:#475569;font-size:.88rem">Delete report <strong id="deleteReportTitle"></strong>?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" onclick="closeModal('deleteModal')">Cancel</button>
+                <button type="submit" class="btn-delete">Delete</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openUploadModal(){document.getElementById('uploadModal').classList.add('show')}
+function openEditModal(id,title,type,test,reportDate,status,notes,patientName,patientPhone,patientCode){
+    document.getElementById('editReportId').value=id;
+    document.getElementById('editTitle').value=title||'';
+    document.getElementById('editType').value=type||'lab';
+    document.getElementById('editTest').value=test||'';
+    document.getElementById('editReportDate').value=reportDate||'';
+    document.getElementById('editStatus').value=status||'pending';
+    document.getElementById('editNotes').value=notes||'';
+    document.getElementById('editPatientName').value=patientName||'';
+    document.getElementById('editPatientPhone').value=patientPhone||'';
+    document.getElementById('editPatientCode').value=patientCode||'';
+    document.getElementById('editModal').classList.add('show');
+}
+function openViewModal(title,patient,type,test,reportDate,uploaded,status,notes,fileUrl){
+    document.getElementById('viewTitle').textContent=title||'—';
+    document.getElementById('viewPatient').textContent=patient||'—';
+    document.getElementById('viewType').textContent=type||'—';
+    document.getElementById('viewTest').textContent=test||'—';
+    document.getElementById('viewReportDate').textContent=reportDate||'—';
+    document.getElementById('viewUploaded').textContent=uploaded||'—';
+    document.getElementById('viewStatus').textContent=status||'—';
+    document.getElementById('viewNotes').textContent=notes||'—';
+    const btn=document.getElementById('viewDownloadBtn');
+    if(fileUrl){btn.href=fileUrl;btn.style.display='inline-flex'}else{btn.style.display='none'}
+    document.getElementById('viewModal').classList.add('show');
+}
+function openDeleteModal(id,title){
+    document.getElementById('deleteReportId').value=id;
+    document.getElementById('deleteReportTitle').textContent=title;
+    document.getElementById('deleteModal').classList.add('show');
+}
+function closeModal(id){document.getElementById(id).classList.remove('show')}
+window.addEventListener('click',function(e){if(e.target.classList.contains('modal-overlay'))e.target.classList.remove('show')});
+</script>
+{% endblock %}
