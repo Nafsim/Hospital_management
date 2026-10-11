@@ -1,0 +1,181 @@
+{% extends "accounts/patient/base.html" %}
+{% load static %}
+
+{% block title %}Medical Records - NHIMS{% endblock %}
+
+{% block extra_css %}
+<style>
+.page-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.4rem;gap:12px;flex-wrap:wrap}
+.page-title{font-size:1.65rem;font-weight:700;color:var(--text);margin:0 0 .25rem}
+.page-subtitle{font-size:.9rem;color:#64748b;margin:0}
+.stat-row{display:grid;grid-template-columns:240px;gap:14px;margin-bottom:1.4rem}
+.stat-card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:1.1rem 1.2rem;box-shadow:0 1px 3px rgba(0,0,0,.05);display:flex;align-items:center;justify-content:space-between;transition:transform .25s ease,box-shadow .25s ease}
+.stat-card:hover{transform:translateY(-4px);box-shadow:0 8px 20px rgba(0,0,0,.10)}
+.stat-label{font-size:.78rem;color:#64748b;margin-bottom:.3rem}
+.stat-value{font-size:1.5rem;font-weight:700;color:#1e293b}
+.stat-icon{width:42px;height:42px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:#dbeafe;color:#2563eb}
+.card{background:#fff;border:1px solid var(--border);border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,.05);overflow:hidden}
+.card-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.card-header h2{font-size:.98rem;font-weight:600;margin:0;color:var(--text)}
+.search-form{display:flex;gap:8px}
+.search-input{height:36px;border:1px solid #cbd5e1;border-radius:8px;padding:0 12px;font-size:13px;outline:none;width:220px}
+.search-input:focus{border-color:#60a5fa}
+.search-btn{height:36px;border:0;border-radius:8px;padding:0 14px;background:linear-gradient(135deg,#0ea5e9,#2563eb);color:#fff;font-size:13px;font-weight:600;cursor:pointer}
+.table-wrap{overflow-x:auto}
+.record-table{width:100%;border-collapse:collapse}
+.record-table th{background:#f8fafc;color:#64748b;font-size:.74rem;font-weight:600;text-transform:uppercase;padding:.75rem 1rem;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
+.record-table td{padding:.85rem 1rem;font-size:.85rem;color:#334155;border-bottom:1px solid #f1f5f9;vertical-align:middle;white-space:nowrap}
+.record-table tbody tr:hover{background:#f8fafc}
+.type-badge{display:inline-flex;padding:.22rem .55rem;border-radius:999px;font-size:.71rem;font-weight:600;background:#eff6ff;color:#2563eb}
+.action-buttons{display:flex;gap:6px}
+.action-btn{width:34px;height:34px;border-radius:8px;border:1px solid #e2e8f0;background:#fff;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s;text-decoration:none}
+.action-btn.view{color:#2563eb}
+.action-btn.download{color:#059669}
+.action-btn:hover{transform:translateY(-1px);background:#f8fafc}
+.empty-state{text-align:center;padding:40px 16px;color:#64748b}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:9999;align-items:center;justify-content:center;padding:16px}
+.modal-overlay.show{display:flex}
+.modal{background:#fff;width:100%;max-width:420px;border-radius:14px;box-shadow:0 20px 50px rgba(0,0,0,.2);overflow:hidden}
+.modal-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.modal-header h3{margin:0;font-size:1rem;font-weight:600}
+.modal-close{width:30px;height:30px;border:0;background:#f1f5f9;border-radius:7px;color:#64748b;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.modal-body{padding:18px}
+.view-info{display:grid;gap:8px}
+.view-item{display:flex;justify-content:space-between;align-items:flex-start;padding:10px 12px;background:#f8fafc;border-radius:8px;border:1px solid #f1f5f9;gap:12px}
+.view-label{font-size:12.5px;color:#64748b;font-weight:500;flex-shrink:0}
+.view-value{font-size:13.5px;font-weight:600;color:#1e293b;text-align:right}
+.modal-footer{padding:12px 18px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px}
+.btn-cancel,.btn-download{padding:8px 14px;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center}
+.btn-cancel{background:#fff;color:#475569;border:1px solid #cbd5e1}
+.btn-download{background:#059669;color:#fff;border:1px solid #059669}
+@media(max-width:600px){.search-input{width:100%}.stat-row{grid-template-columns:1fr}}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-top">
+    <div>
+        <h1 class="page-title">Medical Records</h1>
+        <p class="page-subtitle">Lab reports and records uploaded by diagnostic center</p>
+    </div>
+</div>
+
+<div class="stat-row">
+    <div class="stat-card">
+        <div>
+            <div class="stat-label">Total Records</div>
+            <div class="stat-value">{{ total }}</div>
+        </div>
+        <div class="stat-icon">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2>My Records</h2>
+        <form method="get" class="search-form">
+            <input type="text" name="search" value="{{ search }}" class="search-input" placeholder="Search title or test...">
+            <button type="submit" class="search-btn">Search</button>
+        </form>
+    </div>
+    <div class="table-wrap">
+        <table class="record-table">
+            <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Type</th>
+                    <th>Test Name</th>
+                    <th>Report Date</th>
+                    <th>Uploaded</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in records %}
+                <tr>
+                    <td style="font-weight:600;color:#1e293b">{{ r.title }}</td>
+                    <td><span class="type-badge">{{ r.get_record_type_display }}</span></td>
+                    <td>{{ r.test_name|default:"—" }}</td>
+                    <td>{% if r.report_date %}{{ r.report_date|date:"d M Y" }}{% else %}—{% endif %}</td>
+                    <td>{{ r.created_at|date:"d M Y" }}</td>
+                    <td>
+                        <div class="action-buttons">
+                            <button type="button" class="action-btn view" title="View"
+                                onclick="openViewModal('{{ r.title|escapejs }}','{{ r.get_record_type_display }}','{{ r.test_name|default:''|escapejs }}','{% if r.report_date %}{{ r.report_date|date:'d M Y' }}{% endif %}','{{ r.created_at|date:'d M Y' }}','{{ r.notes|default:''|escapejs }}','{% if r.file %}{{ r.file.url }}{% endif %}')">
+                                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
+                            </button>
+                            {% if r.file %}
+                            <a href="{{ r.file.url }}" class="action-btn download" title="Download" download target="_blank">
+                                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+                            </a>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6">
+                        <div class="empty-state">
+                            <h3>No Medical Records</h3>
+                            <p>Reports will appear here after diagnostic center uploads them.</p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="modal-overlay" id="viewModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>Record Details</h3>
+            <button type="button" class="modal-close" onclick="closeModal()">
+                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="view-info">
+                <div class="view-item"><span class="view-label">Title</span><span class="view-value" id="viewTitle"></span></div>
+                <div class="view-item"><span class="view-label">Type</span><span class="view-value" id="viewType"></span></div>
+                <div class="view-item"><span class="view-label">Test Name</span><span class="view-value" id="viewTest"></span></div>
+                <div class="view-item"><span class="view-label">Report Date</span><span class="view-value" id="viewReportDate"></span></div>
+                <div class="view-item"><span class="view-label">Uploaded</span><span class="view-value" id="viewUploaded"></span></div>
+                <div class="view-item"><span class="view-label">Notes</span><span class="view-value" id="viewNotes"></span></div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-cancel" onclick="closeModal()">Close</button>
+            <a href="#" id="viewDownloadBtn" class="btn-download" download target="_blank" style="display:none">Download</a>
+        </div>
+    </div>
+</div>
+
+<script>
+function openViewModal(title,type,test,reportDate,uploaded,notes,fileUrl){
+    document.getElementById('viewTitle').textContent=title||'—';
+    document.getElementById('viewType').textContent=type||'—';
+    document.getElementById('viewTest').textContent=test||'—';
+    document.getElementById('viewReportDate').textContent=reportDate||'—';
+    document.getElementById('viewUploaded').textContent=uploaded||'—';
+    document.getElementById('viewNotes').textContent=notes||'—';
+    const btn=document.getElementById('viewDownloadBtn');
+    if(fileUrl){
+        btn.href=fileUrl;
+        btn.style.display='inline-flex';
+    }else{
+        btn.style.display='none';
+    }
+    document.getElementById('viewModal').classList.add('show');
+}
+function closeModal(){
+    document.getElementById('viewModal').classList.remove('show');
+}
+window.addEventListener('click',function(e){
+    if(e.target.classList.contains('modal-overlay'))e.target.classList.remove('show');
+});
+</script>
+{% endblock %}

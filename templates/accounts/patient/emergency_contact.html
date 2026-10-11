@@ -1,0 +1,224 @@
+{% extends "accounts/patient/base.html" %}
+{% load static %}
+
+{% block title %}Emergency Contact - NHIMS{% endblock %}
+
+{% block extra_css %}
+<style>
+.page-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.4rem;gap:12px;flex-wrap:wrap}
+.page-title{font-size:1.65rem;font-weight:700;color:var(--text);margin:0 0 .25rem}
+.page-subtitle{font-size:.9rem;color:#64748b;margin:0}
+.add-btn{display:flex;align-items:center;gap:7px;background:linear-gradient(135deg,#0ea5e9,#2563eb);color:#fff;border:0;padding:10px 16px;border-radius:9px;font-size:13.5px;font-weight:600;cursor:pointer}
+.add-btn:hover{transform:translateY(-1px);box-shadow:0 5px 14px rgba(37,99,235,.22)}
+.section-title{font-size:1rem;font-weight:600;color:var(--text);margin:0 0 12px}
+.contact-list{display:flex;flex-direction:column;gap:12px;margin-bottom:1.6rem}
+.contact-card{background:#fff;border:1px solid #e8eef5;border-radius:16px;padding:16px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.contact-left{display:flex;align-items:center;gap:14px;min-width:0}
+.contact-icon{width:44px;height:44px;border-radius:50%;background:#f1f5f9;color:#64748b;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.contact-name{font-size:.95rem;font-weight:700;color:#1e293b;margin:0 0 2px}
+.contact-relation{font-size:.82rem;color:#64748b;margin:0 0 3px}
+.contact-phone{font-size:.88rem;font-weight:600;color:#0d9488;margin:0}
+.contact-actions{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.icon-action{width:34px;height:34px;border:0;background:transparent;color:#94a3b8;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s}
+.icon-action:hover{background:#f1f5f9;color:#475569}
+.icon-action.delete:hover{background:#fef2f2;color:#dc2626}
+.icon-action.call{color:#0d9488;text-decoration:none}
+.doctor-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.doctor-card{background:#fff;border:1px solid #e8eef5;border-radius:16px;padding:16px 18px;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.doctor-name{font-size:.95rem;font-weight:700;color:#1e293b;margin:0 0 4px}
+.doctor-spec{font-size:.8rem;color:#64748b;margin:0 0 10px}
+.doctor-row{display:flex;align-items:center;gap:8px;font-size:.84rem;color:#334155;margin-bottom:6px}
+.doctor-row svg{color:#64748b;flex-shrink:0}
+.doctor-phone{color:#0d9488;font-weight:600;text-decoration:none}
+.empty-state{text-align:center;padding:28px 16px;color:#64748b;background:#fff;border:1px dashed #e2e8f0;border-radius:14px}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:9999;align-items:center;justify-content:center;padding:16px}
+.modal-overlay.show{display:flex}
+.modal{background:#fff;width:100%;max-width:420px;border-radius:14px;box-shadow:0 20px 50px rgba(0,0,0,.2);overflow:hidden}
+.modal-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.modal-header h3{margin:0;font-size:1rem;font-weight:600}
+.modal-close{width:30px;height:30px;border:0;background:#f1f5f9;border-radius:7px;color:#64748b;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.modal-body{padding:18px}
+.form-group{margin-bottom:12px}
+.form-group label{display:block;font-size:12.5px;font-weight:600;color:#475569;margin-bottom:5px}
+.form-group input,.form-group select{width:100%;height:38px;border:1px solid #cbd5e1;border-radius:7px;padding:0 11px;font-size:13px;outline:none}
+.form-group input:focus,.form-group select:focus{border-color:#60a5fa}
+.checkbox-row{display:flex;align-items:center;gap:8px}
+.checkbox-row input{width:16px;height:16px}
+.modal-footer{padding:12px 18px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px}
+.btn-cancel,.btn-save,.btn-delete{padding:8px 14px;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer}
+.btn-cancel{background:#fff;color:#475569;border:1px solid #cbd5e1}
+.btn-save{background:#2563eb;color:#fff;border:1px solid #2563eb}
+.btn-delete{background:#dc2626;color:#fff;border:1px solid #dc2626}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-top">
+    <div>
+        <h1 class="page-title">Emergency Contact</h1>
+        <p class="page-subtitle">Your family contacts and treating doctors</p>
+    </div>
+    <button type="button" class="add-btn" onclick="openAddModal()">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+        Add Contact
+    </button>
+</div>
+
+<h2 class="section-title">Family / Relative Contacts</h2>
+<div class="contact-list">
+    {% for c in contacts %}
+    <div class="contact-card">
+        <div class="contact-left">
+            <div class="contact-icon">
+                <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+            </div>
+            <div>
+                <p class="contact-name">{{ c.contact_name }}{% if c.is_primary %} · Primary{% endif %}</p>
+                <p class="contact-relation">{{ c.get_relation_display }}</p>
+                <p class="contact-phone">{{ c.phone }}</p>
+            </div>
+        </div>
+        <div class="contact-actions">
+            <a href="tel:{{ c.phone }}" class="icon-action call" title="Call">
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+            </a>
+            <button type="button" class="icon-action" title="Edit" onclick="openEditModal('{{ c.id }}','{{ c.contact_name|escapejs }}','{{ c.relation }}','{{ c.phone|escapejs }}','{{ c.is_primary|yesno:'1,0' }}')">
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L8 18l-4 1 1-4z"/></svg>
+            </button>
+            <button type="button" class="icon-action delete" title="Delete" onclick="openDeleteModal('{{ c.id }}','{{ c.contact_name|escapejs }}')">
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 15H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+            </button>
+        </div>
+    </div>
+    {% empty %}
+    <div class="empty-state">
+        <p>No emergency contacts yet. Click “Add Contact”.</p>
+    </div>
+    {% endfor %}
+</div>
+
+<h2 class="section-title">Doctors Under Treatment</h2>
+{% if doctors %}
+<div class="doctor-grid">
+    {% for d in doctors %}
+    <div class="doctor-card">
+        <p class="doctor-name">{{ d.get_full_name|default:d.username }}</p>
+        <p class="doctor-spec">
+            {% if d.doctor_profile.specialization %}{{ d.doctor_profile.specialization }}{% elif d.doctor_profile.department %}{{ d.doctor_profile.department }}{% else %}Doctor{% endif %}
+        </p>
+        {% if d.phone %}
+        <div class="doctor-row">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+            <a href="tel:{{ d.phone }}" class="doctor-phone">{{ d.phone }}</a>
+        </div>
+        {% endif %}
+        <div class="doctor-row">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><path d="M22 6l-10 7L2 6"/></svg>
+            {{ d.email }}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+    <p>No treating doctors yet. Book an appointment to see doctor contacts here.</p>
+</div>
+{% endif %}
+
+<div class="modal-overlay" id="contactModal">
+    <div class="modal">
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" id="contactAction" value="create">
+            <input type="hidden" name="contact_id" id="contactId">
+            <div class="modal-header">
+                <h3 id="contactModalTitle">Add Contact</h3>
+                <button type="button" class="modal-close" onclick="closeModal('contactModal')">
+                    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Contact Name</label>
+                    <input type="text" name="contact_name" id="contactName" required placeholder="e.g. Rehana Begum">
+                </div>
+                <div class="form-group">
+                    <label>Relation</label>
+                    <select name="relation" id="contactRelation">
+                        {% for value,label in relation_choices %}
+                        <option value="{{ value }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Phone</label>
+                    <input type="text" name="phone" id="contactPhone" required placeholder="+8801XXXXXXXXX">
+                </div>
+                <div class="checkbox-row">
+                    <input type="checkbox" name="is_primary" id="contactPrimary">
+                    <label for="contactPrimary" style="margin:0;font-size:.85rem">Primary contact</label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" onclick="closeModal('contactModal')">Cancel</button>
+                <button type="submit" class="btn-save">Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal-overlay" id="deleteModal">
+    <div class="modal" style="max-width:380px">
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="delete">
+            <input type="hidden" name="contact_id" id="deleteContactId">
+            <div class="modal-header">
+                <h3>Delete Contact</h3>
+                <button type="button" class="modal-close" onclick="closeModal('deleteModal')">
+                    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p style="margin:0;color:#475569;font-size:.88rem">Delete contact <strong id="deleteContactName"></strong>?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" onclick="closeModal('deleteModal')">Cancel</button>
+                <button type="submit" class="btn-delete">Delete</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openAddModal(){
+    document.getElementById('contactAction').value='create';
+    document.getElementById('contactId').value='';
+    document.getElementById('contactModalTitle').textContent='Add Contact';
+    document.getElementById('contactName').value='';
+    document.getElementById('contactRelation').value='mother';
+    document.getElementById('contactPhone').value='';
+    document.getElementById('contactPrimary').checked=false;
+    document.getElementById('contactModal').classList.add('show');
+}
+function openEditModal(id,name,relation,phone,primary){
+    document.getElementById('contactAction').value='edit';
+    document.getElementById('contactId').value=id;
+    document.getElementById('contactModalTitle').textContent='Edit Contact';
+    document.getElementById('contactName').value=name;
+    document.getElementById('contactRelation').value=relation;
+    document.getElementById('contactPhone').value=phone;
+    document.getElementById('contactPrimary').checked=primary==='1';
+    document.getElementById('contactModal').classList.add('show');
+}
+function openDeleteModal(id,name){
+    document.getElementById('deleteContactId').value=id;
+    document.getElementById('deleteContactName').textContent=name;
+    document.getElementById('deleteModal').classList.add('show');
+}
+function closeModal(id){document.getElementById(id).classList.remove('show')}
+window.addEventListener('click',function(e){
+    if(e.target.classList.contains('modal-overlay'))e.target.classList.remove('show');
+});
+</script>
+{% endblock %}

@@ -778,3 +778,221 @@ class NurseProfile(models.Model):
 
     def __str__(self):
         return f"{self.user.get_full_name()} - {self.registration_number}"    
+
+
+class PatientAppointment(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'Pending Approval'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+        ('completed', 'Completed'),
+        ('cancelled', 'Cancelled'),
+    ]
+
+    PAYMENT_CHOICES = [
+        ('pending', 'Payment Pending'),
+        ('paid', 'Paid'),
+        ('failed', 'Failed'),
+    ]
+
+    hospital = models.ForeignKey(
+        'hospitals.Hospital',
+        on_delete=models.CASCADE,
+        related_name='patient_appointments'
+    )
+    patient_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='my_appointments'
+    )
+    doctor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='received_patient_appointments'
+    )
+    patient_name = models.CharField(max_length=150)
+    patient_phone = models.CharField(max_length=20, blank=True)
+    appointment_date = models.DateField()
+    appointment_time = models.TimeField()
+    reason = models.TextField(blank=True)
+    amount = models.DecimalField(max_digits=10, decimal_places=2, default=500)
+    payment_status = models.CharField(max_length=20, choices=PAYMENT_CHOICES, default='pending')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    counter_note = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.patient_name} - {self.appointment_date}"    
+class MedicalRecord(models.Model):
+    RECORD_TYPE_CHOICES = [
+        ('lab', 'Lab Report'),
+        ('imaging', 'Imaging'),
+        ('prescription', 'Prescription'),
+        ('discharge', 'Discharge Summary'),
+        ('other', 'Other'),
+    ]
+
+    hospital = models.ForeignKey(
+        'hospitals.Hospital',
+        on_delete=models.CASCADE,
+        related_name='medical_records'
+    )
+    patient_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='medical_records',
+        null=True,
+        blank=True
+    )
+    patient_name = models.CharField(max_length=150)
+    patient_id = models.CharField(max_length=50, blank=True)
+    patient_phone = models.CharField(max_length=20, blank=True)
+    title = models.CharField(max_length=200)
+    record_type = models.CharField(max_length=30, choices=RECORD_TYPE_CHOICES, default='lab')
+    test_name = models.CharField(max_length=150, blank=True)
+    file = models.FileField(upload_to='medical_records/')
+    notes = models.TextField(blank=True)
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='uploaded_medical_records'
+    )
+    report_date = models.DateField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.patient_name} - {self.title}"    
+class PatientPayment(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('paid', 'Paid'),
+        ('verified', 'Verified by Counter'),
+        ('failed', 'Failed'),
+        ('refunded', 'Refunded'),
+    ]
+
+    METHOD_CHOICES = [
+        ('cash', 'Cash'),
+        ('card', 'Card'),
+        ('bkash', 'bKash'),
+        ('nagad', 'Nagad'),
+        ('rocket', 'Rocket'),
+        ('bank', 'Bank Transfer'),
+    ]
+
+    PURPOSE_CHOICES = [
+        ('appointment', 'Appointment Fee'),
+        ('lab', 'Lab / Diagnostic'),
+        ('medicine', 'Medicine'),
+        ('other', 'Other'),
+    ]
+
+    hospital = models.ForeignKey(
+        'hospitals.Hospital',
+        on_delete=models.CASCADE,
+        related_name='patient_payments'
+    )
+    patient_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='payments'
+    )
+    appointment = models.ForeignKey(
+        'PatientAppointment',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='payments'
+    )
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    purpose = models.CharField(max_length=30, choices=PURPOSE_CHOICES, default='appointment')
+    method = models.CharField(max_length=20, choices=METHOD_CHOICES, default='bkash')
+    transaction_id = models.CharField(max_length=100, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    note = models.CharField(max_length=255, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.patient_user} - ৳{self.amount} ({self.get_status_display()})"    
+class PatientEmergencyContact(models.Model):
+    RELATION_CHOICES = [
+        ('father', 'Father'),
+        ('mother', 'Mother'),
+        ('spouse', 'Spouse'),
+        ('brother', 'Brother'),
+        ('sister', 'Sister'),
+        ('son', 'Son'),
+        ('daughter', 'Daughter'),
+        ('friend', 'Friend'),
+        ('other', 'Other'),
+    ]
+
+    patient_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='patient_emergency_contacts'
+    )
+    hospital = models.ForeignKey(
+        'hospitals.Hospital',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='patient_own_emergency_contacts'
+    )
+    contact_name = models.CharField(max_length=150)
+    relation = models.CharField(max_length=20, choices=RELATION_CHOICES, default='other')
+    phone = models.CharField(max_length=20)
+    is_primary = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-is_primary', 'contact_name']
+
+    def __str__(self):
+        return f"{self.contact_name} ({self.get_relation_display()})"
+
+class PatientProfile(models.Model):
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='patient_account_profile'  
+    )
+    patient_id = models.CharField(max_length=50, blank=True)
+    date_of_birth = models.DateField(null=True, blank=True)
+    gender = models.CharField(max_length=20, blank=True)
+    blood_group = models.CharField(max_length=5, blank=True)
+    nid = models.CharField(max_length=30, blank=True, help_text="National ID")
+    address = models.TextField(blank=True)
+    city = models.CharField(max_length=100, blank=True)
+    emergency_name = models.CharField(max_length=150, blank=True)
+    emergency_phone = models.CharField(max_length=20, blank=True)
+    allergies = models.TextField(blank=True)
+    chronic_conditions = models.TextField(blank=True)
+    profile_image = models.ImageField(upload_to='patient_profiles/', blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.user.get_full_name()} Profile"
+
+    @property
+    def age(self):
+        if not self.date_of_birth:
+            return None
+        from datetime import date
+        today = date.today()
+        return today.year - self.date_of_birth.year - (
+            (today.month, today.day) < (self.date_of_birth.month, self.date_of_birth.day)
+        )    

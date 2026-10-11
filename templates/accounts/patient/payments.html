@@ -1,0 +1,245 @@
+{% extends "accounts/patient/base.html" %}
+{% load static %}
+
+{% block title %}Payments - NHIMS{% endblock %}
+
+{% block extra_css %}
+<style>
+.page-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.4rem;gap:12px;flex-wrap:wrap}
+.page-title{font-size:1.65rem;font-weight:700;color:var(--text);margin:0 0 .25rem}
+.page-subtitle{font-size:.9rem;color:#64748b;margin:0}
+.add-btn{display:flex;align-items:center;gap:7px;background:linear-gradient(135deg,#0ea5e9,#2563eb);color:#fff;border:0;padding:10px 16px;border-radius:9px;font-size:13.5px;font-weight:600;cursor:pointer}
+.add-btn:hover{transform:translateY(-1px);box-shadow:0 5px 14px rgba(37,99,235,.22)}
+.stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:1.4rem;max-width:720px}
+.stat-card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:1.1rem 1.2rem;box-shadow:0 1px 3px rgba(0,0,0,.05);display:flex;align-items:center;justify-content:space-between;transition:transform .25s ease,box-shadow .25s ease}
+.stat-card:hover{transform:translateY(-4px);box-shadow:0 8px 20px rgba(0,0,0,.10)}
+.stat-label{font-size:.78rem;color:#64748b;margin-bottom:.3rem}
+.stat-value{font-size:1.5rem;font-weight:700;color:#1e293b}
+.stat-icon{width:42px;height:42px;border-radius:10px;display:flex;align-items:center;justify-content:center}
+.stat-icon.blue{background:#dbeafe;color:#2563eb}
+.stat-icon.green{background:#dcfce7;color:#16a34a}
+.stat-icon.orange{background:#ffedd5;color:#ea580c}
+.card{background:#fff;border:1px solid var(--border);border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,.05);overflow:hidden;margin-bottom:1.2rem}
+.card-header{padding:14px 18px;border-bottom:1px solid var(--border)}
+.card-header h2{font-size:.98rem;font-weight:600;margin:0;color:var(--text)}
+.table-wrap{overflow-x:auto}
+.pay-table{width:100%;border-collapse:collapse}
+.pay-table th{background:#f8fafc;color:#64748b;font-size:.74rem;font-weight:600;text-transform:uppercase;padding:.75rem 1rem;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
+.pay-table td{padding:.85rem 1rem;font-size:.85rem;color:#334155;border-bottom:1px solid #f1f5f9;vertical-align:middle;white-space:nowrap}
+.pay-table tbody tr:hover{background:#f8fafc}
+.badge{display:inline-flex;padding:.22rem .55rem;border-radius:999px;font-size:.71rem;font-weight:600}
+.badge-pending{background:#fef3c7;color:#b45309}
+.badge-paid{background:#dbeafe;color:#1d4ed8}
+.badge-verified{background:#dcfce7;color:#15803d}
+.badge-failed{background:#fee2e2;color:#b91c1c}
+.badge-refunded{background:#f1f5f9;color:#64748b}
+.action-btn{height:32px;padding:0 10px;border-radius:7px;border:1px solid #a7f3d0;background:#ecfdf5;color:#059669;font-size:12px;font-weight:600;cursor:pointer}
+.action-btn:hover{transform:translateY(-1px)}
+.empty-state{text-align:center;padding:36px 16px;color:#64748b}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:9999;align-items:center;justify-content:center;padding:16px}
+.modal-overlay.show{display:flex}
+.modal{background:#fff;width:100%;max-width:460px;border-radius:14px;box-shadow:0 20px 50px rgba(0,0,0,.2);overflow:hidden;max-height:90vh;overflow-y:auto}
+.modal-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.modal-header h3{margin:0;font-size:1rem;font-weight:600}
+.modal-close{width:30px;height:30px;border:0;background:#f1f5f9;border-radius:7px;color:#64748b;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.modal-body{padding:18px}
+.form-group{margin-bottom:12px}
+.form-group label{display:block;font-size:12.5px;font-weight:600;color:#475569;margin-bottom:5px}
+.form-group input,.form-group select,.form-group textarea{width:100%;height:38px;border:1px solid #cbd5e1;border-radius:7px;padding:0 11px;font-size:13px;outline:none}
+.form-group textarea{height:70px;padding:9px 11px;resize:vertical}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:#60a5fa}
+.info-box{background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:12px;margin-bottom:12px;font-size:.84rem;color:#1e40af}
+.modal-footer{padding:12px 18px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px}
+.btn-cancel,.btn-save{padding:8px 14px;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer}
+.btn-cancel{background:#fff;color:#475569;border:1px solid #cbd5e1}
+.btn-save{background:#2563eb;color:#fff;border:1px solid #2563eb}
+@media(max-width:700px){.stats-grid{grid-template-columns:1fr}}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-top">
+    <div>
+        <h1 class="page-title">Payments</h1>
+        <p class="page-subtitle">Pay fees online — amount is received by hospital counter</p>
+    </div>
+    <button type="button" class="add-btn" onclick="openPayModal()">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+        Make Payment
+    </button>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div>
+            <div class="stat-label">Total Paid</div>
+            <div class="stat-value">৳{{ total_paid }}</div>
+        </div>
+        <div class="stat-icon green">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/><path d="M7 15h4"/></svg>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div>
+            <div class="stat-label">Successful</div>
+            <div class="stat-value">{{ paid_count }}</div>
+        </div>
+        <div class="stat-icon blue">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12 2.5 2.5L16 9"/></svg>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div>
+            <div class="stat-label">Unpaid Appointments</div>
+            <div class="stat-value">{{ unpaid_appointments|length }}</div>
+        </div>
+        <div class="stat-icon orange">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+        </div>
+    </div>
+</div>
+
+{% if unpaid_appointments %}
+<div class="card">
+    <div class="card-header">
+        <h2>Unpaid Appointments</h2>
+    </div>
+    <div class="table-wrap">
+        <table class="pay-table">
+            <thead>
+                <tr>
+                    <th>Doctor</th>
+                    <th>Date</th>
+                    <th>Amount</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for a in unpaid_appointments %}
+                <tr>
+                    <td style="font-weight:600">{{ a.doctor.get_full_name|default:a.doctor.username }}</td>
+                    <td>{{ a.appointment_date|date:"d M Y" }} · {{ a.appointment_time|time:"h:i A" }}</td>
+                    <td>৳{{ a.amount }}</td>
+                    <td>
+                        <button type="button" class="action-btn"
+                            onclick="openPayModal('{{ a.id }}','{{ a.amount }}','appointment')">
+                            Pay Now
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<div class="card">
+    <div class="card-header">
+        <h2>Payment History</h2>
+    </div>
+    <div class="table-wrap">
+        <table class="pay-table">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Purpose</th>
+                    <th>Method</th>
+                    <th>Txn ID</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in payments %}
+                <tr>
+                    <td>{{ p.created_at|date:"d M Y H:i" }}</td>
+                    <td>{{ p.get_purpose_display }}</td>
+                    <td>{{ p.get_method_display }}</td>
+                    <td>{{ p.transaction_id|default:"—" }}</td>
+                    <td style="font-weight:600">৳{{ p.amount }}</td>
+                    <td><span class="badge badge-{{ p.status }}">{{ p.get_status_display }}</span></td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6">
+                        <div class="empty-state">
+                            <h3>No Payments Yet</h3>
+                            <p>Make a payment using the button above.</p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="modal-overlay" id="payModal">
+    <div class="modal">
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="pay">
+            <input type="hidden" name="appointment_id" id="payAppointmentId">
+            <div class="modal-header">
+                <h3>Make Payment</h3>
+                <button type="button" class="modal-close" onclick="closeModal()">
+                    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="info-box">
+                    After payment, hospital counter will receive and verify the amount.
+                </div>
+                <div class="form-group">
+                    <label>Purpose</label>
+                    <select name="purpose" id="payPurpose">
+                        {% for value,label in purpose_choices %}
+                        <option value="{{ value }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Amount (৳)</label>
+                    <input type="number" name="amount" id="payAmount" min="1" step="1" required>
+                </div>
+                <div class="form-group">
+                    <label>Payment Method</label>
+                    <select name="method" required>
+                        {% for value,label in method_choices %}
+                        <option value="{{ value }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Transaction ID</label>
+                    <input type="text" name="transaction_id" placeholder="e.g. TXN123456">
+                </div>
+                <div class="form-group">
+                    <label>Note (optional)</label>
+                    <textarea name="note" placeholder="Any note..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" onclick="closeModal()">Cancel</button>
+                <button type="submit" class="btn-save">Confirm Payment</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openPayModal(appointmentId,amount,purpose){
+    document.getElementById('payAppointmentId').value=appointmentId||'';
+    document.getElementById('payAmount').value=amount||'';
+    if(purpose){document.getElementById('payPurpose').value=purpose}
+    document.getElementById('payModal').classList.add('show');
+}
+function closeModal(){
+    document.getElementById('payModal').classList.remove('show');
+}
+window.addEventListener('click',function(e){
+    if(e.target.classList.contains('modal-overlay'))e.target.classList.remove('show');
+});
+</script>
+{% endblock %}

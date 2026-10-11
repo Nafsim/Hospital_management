@@ -1,0 +1,89 @@
+{% extends "accounts/patient/base.html" %}
+{% load static %}
+
+{% block title %}Departments - NHIMS{% endblock %}
+
+{% block extra_css %}
+<style>
+.page-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.4rem;gap:12px;flex-wrap:wrap}
+.page-title{font-size:1.65rem;font-weight:700;color:var(--text);margin:0 0 .25rem}
+.page-subtitle{font-size:.9rem;color:#64748b;margin:0}
+.hospital-name{font-size:.82rem;color:#2563eb;font-weight:600;margin-top:.3rem}
+.stat-row{display:grid;grid-template-columns:240px;gap:14px;margin-bottom:1.4rem}
+.stat-card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:1.1rem 1.2rem;box-shadow:0 1px 3px rgba(0,0,0,.05);display:flex;align-items:center;justify-content:space-between;transition:transform .25s ease,box-shadow .25s ease}
+.stat-card:hover{transform:translateY(-4px);box-shadow:0 8px 20px rgba(0,0,0,.10)}
+.stat-label{font-size:.78rem;color:#64748b;margin-bottom:.3rem}
+.stat-value{font-size:1.5rem;font-weight:700;color:#1e293b}
+.stat-icon{width:42px;height:42px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:#dbeafe;color:#2563eb}
+.card{background:#fff;border:1px solid var(--border);border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,.05);overflow:hidden}
+.card-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.card-header h2{font-size:.98rem;font-weight:600;margin:0;color:var(--text)}
+.search-form{display:flex;gap:8px}
+.search-input{height:36px;border:1px solid #cbd5e1;border-radius:8px;padding:0 12px;font-size:13px;outline:none;width:220px}
+.search-input:focus{border-color:#60a5fa}
+.search-btn{height:36px;border:0;border-radius:8px;padding:0 14px;background:linear-gradient(135deg,#0ea5e9,#2563eb);color:#fff;font-size:13px;font-weight:600;cursor:pointer}
+.dept-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;padding:18px}
+.dept-card{background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:18px;transition:all .2s}
+.dept-card:hover{transform:translateY(-3px);box-shadow:0 6px 16px rgba(15,23,42,.08);border-color:#bfdbfe;background:#fff}
+.dept-icon{width:42px;height:42px;border-radius:10px;background:#dbeafe;color:#2563eb;display:flex;align-items:center;justify-content:center;margin-bottom:12px}
+.dept-name{font-size:1rem;font-weight:700;color:#1e293b;margin:0 0 4px}
+.dept-hospital{font-size:.8rem;color:#64748b;margin:0}
+.empty-state{text-align:center;padding:40px 16px;color:#64748b}
+@media(max-width:600px){.search-input{width:100%}.stat-row{grid-template-columns:1fr}}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-top">
+    <div>
+        <h1 class="page-title">Departments</h1>
+        <p class="page-subtitle">Hospital departments available in NHIMS</p>
+        {% if hospital %}
+        <div class="hospital-name">{{ hospital.name }}</div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="stat-row">
+    <div class="stat-card">
+        <div>
+            <div class="stat-label">Total Departments</div>
+            <div class="stat-value">{{ total }}</div>
+        </div>
+        <div class="stat-icon">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 21V8l8-5 8 5v13"/><path d="M8 21v-6h8v6"/></svg>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2>All Departments</h2>
+        <form method="get" class="search-form">
+            <input type="text" name="search" value="{{ search }}" class="search-input" placeholder="Search department...">
+            <button type="submit" class="search-btn">Search</button>
+        </form>
+    </div>
+
+    {% if departments %}
+    <div class="dept-grid">
+        {% for d in departments %}
+        <div class="dept-card">
+            <div class="dept-icon">
+                <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 21V8l8-5 8 5v13"/><path d="M8 21v-6h8v6"/></svg>
+            </div>
+            <h3 class="dept-name">{{ d.get_name_display }}</h3>
+            {% if hospital %}
+            <p class="dept-hospital">{{ hospital.name }}</p>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <h3>No Departments Found</h3>
+        <p>{% if hospital %}No active departments in this hospital yet.{% else %}No hospital assigned to your account.{% endif %}</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,152 @@
+{% extends "accounts/patient/base.html" %}
+{% load static %}
+
+{% block title %}Doctors - NHIMS{% endblock %}
+
+{% block extra_css %}
+<style>
+.page-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.4rem;gap:12px;flex-wrap:wrap}
+.page-title{font-size:1.65rem;font-weight:700;color:var(--text);margin:0 0 .25rem}
+.page-subtitle{font-size:.9rem;color:#64748b;margin:0}
+.hospital-name{font-size:.82rem;color:#2563eb;font-weight:600;margin-top:.3rem}
+.stat-row{display:grid;grid-template-columns:240px;gap:14px;margin-bottom:1.4rem}
+.stat-card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:1.1rem 1.2rem;box-shadow:0 1px 3px rgba(0,0,0,.05);display:flex;align-items:center;justify-content:space-between;transition:transform .25s ease,box-shadow .25s ease}
+.stat-card:hover{transform:translateY(-4px);box-shadow:0 8px 20px rgba(0,0,0,.10)}
+.stat-label{font-size:.78rem;color:#64748b;margin-bottom:.3rem}
+.stat-value{font-size:1.5rem;font-weight:700;color:#1e293b}
+.stat-icon{width:42px;height:42px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:#dbeafe;color:#2563eb}
+.card{background:#fff;border:1px solid var(--border);border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,.05);overflow:hidden}
+.card-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.card-header h2{font-size:.98rem;font-weight:600;margin:0;color:var(--text)}
+.search-form{display:flex;gap:8px}
+.search-input{height:36px;border:1px solid #cbd5e1;border-radius:8px;padding:0 12px;font-size:13px;outline:none;width:240px}
+.search-input:focus{border-color:#60a5fa}
+.search-btn{height:36px;border:0;border-radius:8px;padding:0 14px;background:linear-gradient(135deg,#0ea5e9,#2563eb);color:#fff;font-size:13px;font-weight:600;cursor:pointer}
+.doctor-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;padding:18px}
+.doctor-card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:18px;transition:all .2s}
+.doctor-card:hover{transform:translateY(-3px);box-shadow:0 6px 16px rgba(15,23,42,.08)}
+.doctor-top{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.doctor-avatar{width:48px;height:48px;border-radius:12px;background:#dbeafe;color:#2563eb;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.1rem;flex-shrink:0;overflow:hidden}
+.doctor-avatar img{width:100%;height:100%;object-fit:cover}
+.doctor-name{font-size:1rem;font-weight:700;color:#1e293b;margin:0 0 3px}
+.doctor-spec{font-size:.8rem;color:#64748b;margin:0}
+.doctor-info{display:flex;flex-direction:column;gap:8px}
+.info-row{display:flex;align-items:center;gap:8px;font-size:.84rem;color:#334155}
+.info-row svg{color:#64748b;flex-shrink:0}
+.call-btn{margin-top:12px;display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border-radius:8px;background:#eff6ff;color:#2563eb;font-size:.8rem;font-weight:600;text-decoration:none;border:1px solid #bfdbfe}
+.call-btn:hover{background:#dbeafe}
+.empty-state{text-align:center;padding:40px 16px;color:#64748b}
+@media(max-width:600px){.search-input{width:100%}.stat-row{grid-template-columns:1fr}}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-top">
+    <div>
+        <h1 class="page-title">Doctors</h1>
+        <p class="page-subtitle">Find doctors and their contact information</p>
+        {% if hospital %}
+        <div class="hospital-name">{{ hospital.name }}</div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="stat-row">
+    <div class="stat-card">
+        <div>
+            <div class="stat-label">Total Doctors</div>
+            <div class="stat-value">{{ total }}</div>
+        </div>
+        <div class="stat-icon">
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6"/></svg>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2>All Doctors</h2>
+        <form method="get" class="search-form">
+            <input type="text" name="q" value="{{ search }}" class="search-input" placeholder="Search name, specialty, phone...">
+            <button type="submit" class="search-btn">Search</button>
+        </form>
+    </div>
+
+    {% if doctors %}
+    <div class="doctor-grid">
+        {% for d in doctors %}
+        <div class="doctor-card">
+            <div class="doctor-top">
+                <div class="doctor-avatar">
+                    {% if d.doctor_profile.profile_image %}
+                    <img src="{{ d.doctor_profile.profile_image.url }}" alt="">
+                    {% else %}
+                    {{ d.first_name|slice:":1"|upper|default:d.username|slice:":1"|upper }}
+                    {% endif %}
+                </div>
+                <div>
+                    <h3 class="doctor-name">{{ d.get_full_name|default:d.username }}</h3>
+                    <p class="doctor-spec">
+                        {% if d.doctor_profile.specialization %}
+                            {{ d.doctor_profile.specialization }}
+                        {% elif d.doctor_profile.department %}
+                            {{ d.doctor_profile.department }}
+                        {% else %}
+                            Doctor
+                        {% endif %}
+                    </p>
+                </div>
+            </div>
+            <div class="doctor-info">
+                {% if hospital %}
+                <div class="info-row">
+                    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6"/></svg>
+                    {{ hospital.name }}
+                </div>
+                {% endif %}
+                {% if d.doctor_profile.department %}
+                <div class="info-row">
+                    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 21V8l8-5 8 5v13"/><path d="M8 21v-6h8v6"/></svg>
+                    {{ d.doctor_profile.department }}
+                </div>
+                {% endif %}
+                {% if d.doctor_profile.qualification %}
+                <div class="info-row">
+                    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/></svg>
+                    {{ d.doctor_profile.qualification }}
+                </div>
+                {% endif %}
+                {% if d.phone %}
+                <div class="info-row">
+                    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+                    {{ d.phone }}
+                </div>
+                {% endif %}
+                <div class="info-row">
+                    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><path d="M22 6l-10 7L2 6"/></svg>
+                    {{ d.email }}
+                </div>
+                {% if d.doctor_profile.registration_number %}
+                <div class="info-row">
+                    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>
+                    Reg: {{ d.doctor_profile.registration_number }}
+                </div>
+                {% endif %}
+            </div>
+            {% if d.phone %}
+            <a href="tel:{{ d.phone }}" class="call-btn">
+                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+                Call Doctor
+            </a>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <h3>No Doctors Found</h3>
+        <p>{% if hospital %}No active doctors in this hospital yet.{% else %}No hospital assigned to your account.{% endif %}</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

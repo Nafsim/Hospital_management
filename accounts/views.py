@@ -32,7 +32,8 @@ from .models import Facility, MOHJoinRequest
 from django.contrib import messages
 from .models import VitalSign 
 from .models import NursingNote 
-from .models import NurseProfile
+from .models import NurseProfile 
+from .models import PatientAppointment
 from .models import User, Notice, Department, DoctorPatient, DoctorSchedule, DoctorPrescription, DoctorReferral
 def login_view(request):
     if request.user.is_authenticated:
@@ -2506,12 +2507,108 @@ def nurse_profile(request):
     return render(request, 'accounts/nurse/profile.html', context)
 
 # Patient
+User = get_user_model()
+
+User = get_user_model()
+
 def patient_dashboard(request):
     if not request.user.is_authenticated:
         return redirect('login')
     if request.user.role != 'patient':
         return redirect('dashboard')
-    return render(request, 'accounts/patient/dashboard.html')
+
+    hospital = request.user.hospital
+    today = timezone.now().date()
+    user = request.user
+
+    patient = None
+    if hospital:
+        filters = Q()
+        if user.phone:
+            filters |= Q(phone=user.phone)
+        name = user.get_full_name()
+        if name:
+            if hasattr(Patient, 'patient_name'):
+                filters |= Q(patient_name__icontains=name)
+            elif hasattr(Patient, 'name'):
+                filters |= Q(name__icontains=name)
+        if filters:
+            patient = Patient.objects.filter(hospital=hospital).filter(filters).first()
+
+    total_doctors = 0
+    total_departments = 0
+    upcoming_appointments = 0
+    completed_appointments = 0
+    recent_appointments = []
+    notices = []
+
+    if hospital:
+        total_doctors = User.objects.filter(
+            hospital=hospital,
+            role='doctor',
+            is_active=True
+        ).count()
+
+        try:
+            total_departments = Department.objects.filter(
+                hospital=hospital,
+                is_active=True
+            ).count()
+        except Exception:
+            total_departments = 0
+
+        appt_qs = DoctorSchedule.objects.filter(hospital=hospital)
+
+        if patient:
+            patient_name = getattr(patient, 'patient_name', None) or getattr(patient, 'name', '') or ''
+            patient_id = getattr(patient, 'patient_id', '') or ''
+            name_filter = Q()
+            if patient_id:
+                name_filter |= Q(patient_id=patient_id)
+            if patient_name:
+                name_filter |= Q(patient_name__icontains=patient_name)
+            if name_filter:
+                appt_qs = appt_qs.filter(name_filter)
+        else:
+            name = user.get_full_name() or user.username
+            appt_qs = appt_qs.filter(patient_name__icontains=name)
+
+        upcoming_appointments = appt_qs.filter(
+            schedule_date__gte=today,
+            status='scheduled'
+        ).count()
+
+        completed_appointments = appt_qs.filter(
+            status='completed'
+        ).count()
+
+        recent_appointments = appt_qs.order_by(
+            '-schedule_date',
+            '-start_time'
+        )[:5]
+
+        notices = Notice.objects.filter(
+            status='published'
+        ).filter(
+            Q(hospital=hospital) | Q(hospital__isnull=True)
+        ).order_by(
+            '-publish_date',
+            '-created_at'
+        )[:5]
+
+    context = {
+        'user': user,
+        'hospital': hospital,
+        'patient': patient,
+        'total_doctors': total_doctors,
+        'total_departments': total_departments,
+        'upcoming_appointments': upcoming_appointments,
+        'completed_appointments': completed_appointments,
+        'recent_appointments': recent_appointments,
+        'notices': notices,
+        'today': today,
+    }
+    return render(request, 'accounts/patient/dashboard.html', context)
 
 def patient_notices(request):
     if not request.user.is_authenticated:
@@ -2525,49 +2622,378 @@ def patient_departments(request):
         return redirect('login')
     if request.user.role != 'patient':
         return redirect('dashboard')
-    return render(request, 'accounts/patient/departments.html')
+
+    hospital = request.user.hospital
+    search = request.GET.get('search', '').strip()
+
+    departments = Department.objects.none()
+    if hospital:
+        departments = Department.objects.filter(hospital=hospital, is_active=True).order_by('name')
+        if search:
+            departments = departments.filter(name__icontains=search)
+
+    context = {
+        'hospital': hospital,
+        'departments': departments,
+        'total': departments.count(),
+        'search': search,
+    }
+    return render(request, 'accounts/patient/departments.html', context)
 
 def patient_doctors(request):
     if not request.user.is_authenticated:
         return redirect('login')
     if request.user.role != 'patient':
         return redirect('dashboard')
-    return render(request, 'accounts/patient/doctors.html')
+
+    hospital = request.user.hospital
+    search = request.GET.get('q', '').strip() or request.GET.get('search', '').strip()
+
+    doctors = User.objects.none()
+    if hospital:
+        doctors = User.objects.filter(
+            hospital=hospital,
+            role='doctor',
+            is_active=True
+        ).order_by('first_name', 'last_name')
+
+        if search:
+            doctors = doctors.filter(
+                Q(first_name__icontains=search) |
+                Q(last_name__icontains=search) |
+                Q(email__icontains=search) |
+                Q(phone__icontains=search)
+            )
+
+    context = {
+        'hospital': hospital,
+        'doctors': doctors,
+        'total': doctors.count(),
+        'search': search,
+    }
+    return render(request, 'accounts/patient/doctors.html', context)
+User = get_user_model()
 
 def patient_appointments(request):
     if not request.user.is_authenticated:
         return redirect('login')
     if request.user.role != 'patient':
         return redirect('dashboard')
-    return render(request, 'accounts/patient/appointments.html')
+
+    hospital = request.user.hospital
+    user = request.user
+
+    doctors = User.objects.none()
+    if hospital:
+        doctors = User.objects.filter(
+            hospital=hospital,
+            role='doctor',
+            is_active=True
+        ).order_by('first_name', 'last_name')
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action == 'book':
+            doctor_id = request.POST.get('doctor')
+            appt_date = request.POST.get('appointment_date')
+            appt_time = request.POST.get('appointment_time')
+            reason = request.POST.get('reason', '').strip()
+            amount = request.POST.get('amount') or 500
+            pay_now = request.POST.get('pay_now') == 'on'
+
+            if not (hospital and doctor_id and appt_date and appt_time):
+                messages.error(request, 'Please fill all required fields.')
+                return redirect('patient_appointments')
+
+            PatientAppointment.objects.create(
+                hospital=hospital,
+                patient_user=user,
+                doctor_id=doctor_id,
+                patient_name=user.get_full_name() or user.username,
+                patient_phone=user.phone or '',
+                appointment_date=appt_date,
+                appointment_time=appt_time,
+                reason=reason,
+                amount=Decimal(str(amount)),
+                payment_status='paid' if pay_now else 'pending',
+                status='pending'
+            )
+            if pay_now:
+                messages.success(request, 'Payment successful. Appointment submitted for counter approval.')
+            else:
+                messages.success(request, 'Appointment submitted. Please complete payment.')
+            return redirect('patient_appointments')
+
+        if action == 'pay':
+            appt = get_object_or_404(
+                PatientAppointment,
+                id=request.POST.get('appointment_id'),
+                patient_user=user
+            )
+            appt.payment_status = 'paid'
+            appt.save()
+            messages.success(request, 'Payment successful. Waiting for counter approval.')
+            return redirect('patient_appointments')
+
+        if action == 'cancel':
+            appt = get_object_or_404(
+                PatientAppointment,
+                id=request.POST.get('appointment_id'),
+                patient_user=user
+            )
+            if appt.status in ['pending', 'approved']:
+                appt.status = 'cancelled'
+                appt.save()
+                messages.success(request, 'Appointment cancelled.')
+            return redirect('patient_appointments')
+
+    appointments = PatientAppointment.objects.filter(
+        patient_user=user
+    ).select_related('doctor', 'hospital')
+
+    context = {
+        'hospital': hospital,
+        'doctors': doctors,
+        'appointments': appointments,
+        'total': appointments.count(),
+        'pending': appointments.filter(status='pending').count(),
+        'approved': appointments.filter(status='approved').count(),
+    }
+    return render(request, 'accounts/patient/appointments.html', context)
+
+from .models import MedicalRecord
 
 def patient_medical_records(request):
     if not request.user.is_authenticated:
         return redirect('login')
     if request.user.role != 'patient':
         return redirect('dashboard')
-    return render(request, 'accounts/patient/medical_records.html')
 
+    user = request.user
+    hospital = user.hospital
+    search = request.GET.get('search', '').strip()
+
+    records = MedicalRecord.objects.filter(
+        Q(patient_user=user) |
+        Q(patient_phone=user.phone) |
+        Q(patient_name__icontains=user.get_full_name() or user.username)
+    ).select_related('hospital', 'uploaded_by')
+
+    if hospital:
+        records = records.filter(hospital=hospital)
+
+    if search:
+        records = records.filter(
+            Q(title__icontains=search) |
+            Q(test_name__icontains=search) |
+            Q(record_type__icontains=search)
+        )
+
+    context = {
+        'hospital': hospital,
+        'records': records,
+        'total': records.count(),
+        'search': search,
+    }
+    return render(request, 'accounts/patient/medical_records.html', context)
+
+from .models import PatientPayment, PatientAppointment
+from decimal import Decimal
 def patient_payments(request):
     if not request.user.is_authenticated:
         return redirect('login')
     if request.user.role != 'patient':
         return redirect('dashboard')
-    return render(request, 'accounts/patient/payments.html')
+
+    user = request.user
+    hospital = user.hospital
+
+    unpaid_appointments = PatientAppointment.objects.filter(
+        patient_user=user,
+        payment_status='pending'
+    ).exclude(status='cancelled')
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action == 'pay':
+            amount = request.POST.get('amount') or 0
+            purpose = request.POST.get('purpose', 'appointment')
+            method = request.POST.get('method', 'bkash')
+            transaction_id = request.POST.get('transaction_id', '').strip()
+            note = request.POST.get('note', '').strip()
+            appointment_id = request.POST.get('appointment_id') or None
+
+            if not hospital:
+                messages.error(request, 'No hospital assigned.')
+                return redirect('patient_payments')
+
+            payment = PatientPayment.objects.create(
+                hospital=hospital,
+                patient_user=user,
+                appointment_id=appointment_id if appointment_id else None,
+                amount=Decimal(str(amount)),
+                purpose=purpose,
+                method=method,
+                transaction_id=transaction_id,
+                note=note,
+                status='paid'
+            )
+
+            if appointment_id:
+                appt = PatientAppointment.objects.filter(
+                    id=appointment_id,
+                    patient_user=user
+                ).first()
+                if appt:
+                    appt.payment_status = 'paid'
+                    appt.save()
+
+            messages.success(request, 'Payment submitted. Counter will verify and receive the amount.')
+            return redirect('patient_payments')
+
+    payments = PatientPayment.objects.filter(
+        patient_user=user
+    ).select_related('appointment', 'hospital')
+
+    total_paid = sum(p.amount for p in payments if p.status in ['paid', 'verified'])
+    pending_count = payments.filter(status='pending').count()
+    paid_count = payments.filter(status__in=['paid', 'verified']).count()
+
+    context = {
+        'hospital': hospital,
+        'payments': payments,
+        'unpaid_appointments': unpaid_appointments,
+        'total_paid': total_paid,
+        'pending_count': pending_count,
+        'paid_count': paid_count,
+        'method_choices': PatientPayment.METHOD_CHOICES,
+        'purpose_choices': PatientPayment.PURPOSE_CHOICES,
+    }
+    return render(request, 'accounts/patient/payments.html', context)
+
+from .models import PatientEmergencyContact, PatientAppointment
+User = get_user_model()
 
 def patient_emergency_contact(request):
     if not request.user.is_authenticated:
         return redirect('login')
     if request.user.role != 'patient':
         return redirect('dashboard')
-    return render(request, 'accounts/patient/emergency_contact.html')
+
+    user = request.user
+    hospital = user.hospital
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action == 'create':
+            PatientEmergencyContact.objects.create(
+                patient_user=user,
+                hospital=hospital,
+                contact_name=request.POST.get('contact_name', '').strip(),
+                relation=request.POST.get('relation', 'other'),
+                phone=request.POST.get('phone', '').strip(),
+                is_primary=request.POST.get('is_primary') == 'on'
+            )
+            messages.success(request, 'Contact added.')
+            return redirect('patient_emergency_contact')
+
+        if action == 'edit':
+            contact = get_object_or_404(
+                PatientEmergencyContact,
+                id=request.POST.get('contact_id'),
+                patient_user=user
+            )
+            contact.contact_name = request.POST.get('contact_name', '').strip()
+            contact.relation = request.POST.get('relation', 'other')
+            contact.phone = request.POST.get('phone', '').strip()
+            contact.is_primary = request.POST.get('is_primary') == 'on'
+            contact.save()
+            messages.success(request, 'Contact updated.')
+            return redirect('patient_emergency_contact')
+
+        if action == 'delete':
+            PatientEmergencyContact.objects.filter(
+                id=request.POST.get('contact_id'),
+                patient_user=user
+            ).delete()
+            messages.success(request, 'Contact deleted.')
+            return redirect('patient_emergency_contact')
+
+    contacts = PatientEmergencyContact.objects.filter(patient_user=user)
+
+    doctor_ids = PatientAppointment.objects.filter(
+        patient_user=user,
+        status__in=['pending', 'approved', 'completed']
+    ).values_list('doctor_id', flat=True).distinct()
+
+    doctors = User.objects.filter(id__in=doctor_ids, role='doctor').select_related('doctor_profile')
+
+    context = {
+        'hospital': hospital,
+        'contacts': contacts,
+        'doctors': doctors,
+        'relation_choices': PatientEmergencyContact.RELATION_CHOICES,
+    }
+    return render(request, 'accounts/patient/emergency_contact.html', context)
+from .models import PatientProfile
 
 def patient_profile(request):
     if not request.user.is_authenticated:
         return redirect('login')
     if request.user.role != 'patient':
         return redirect('dashboard')
-    return render(request, 'accounts/patient/profile.html')
+
+    profile, created = PatientProfile.objects.get_or_create(user=request.user)
+
+    if request.method == 'POST':
+        action = request.POST.get('action', 'update')
+
+        if action == 'remove_photo':
+            if profile.profile_image:
+                profile.profile_image.delete(save=False)
+                profile.profile_image = None
+                profile.save()
+            messages.success(request, 'Profile photo removed.')
+            return redirect('patient_profile')
+
+        user = request.user
+        user.first_name = request.POST.get('first_name', '').strip()
+        user.last_name = request.POST.get('last_name', '').strip()
+        user.phone = request.POST.get('phone', '').strip()
+        user.save()
+
+        profile.patient_id = request.POST.get('patient_id', '').strip()
+        profile.gender = request.POST.get('gender', '').strip()
+        profile.blood_group = request.POST.get('blood_group', '').strip()
+        profile.nid = request.POST.get('nid', '').strip()
+        profile.address = request.POST.get('address', '').strip()
+        profile.city = request.POST.get('city', '').strip()
+        profile.emergency_name = request.POST.get('emergency_name', '').strip()
+        profile.emergency_phone = request.POST.get('emergency_phone', '').strip()
+        profile.allergies = request.POST.get('allergies', '').strip()
+        profile.chronic_conditions = request.POST.get('chronic_conditions', '').strip()
+
+        dob = request.POST.get('date_of_birth')
+        profile.date_of_birth = dob if dob else None
+
+        if request.FILES.get('profile_image'):
+            if profile.profile_image:
+                profile.profile_image.delete(save=False)
+            profile.profile_image = request.FILES['profile_image']
+
+        profile.save()
+        messages.success(request, 'Profile updated successfully.')
+        return redirect('patient_profile')
+
+    context = {
+        'profile': profile,
+        'user': request.user,
+        'hospital': request.user.hospital,
+    }
+    return render(request, 'accounts/patient/profile.html', context)
 # Diagnostic Center
 
 def lab_dashboard(request):
