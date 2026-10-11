@@ -1,0 +1,270 @@
+{% extends 'accounts/counter/base.html' %}
+
+{% block title %}Appointments - NHIMS{% endblock %}
+
+{% block extra_css %}
+<style>
+.page-header{display:flex;justify-content:space-between;align-items:center;gap:15px;margin-bottom:22px;flex-wrap:wrap}
+.page-header h1{font-size:25px;font-weight:700;color:var(--text);margin-bottom:6px}
+.page-header p{font-size:14px;color:var(--muted)}
+.stats-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:22px}
+.stat-card{background:var(--white);border:1px solid var(--border);border-radius:14px;padding:1.1rem 1.2rem;min-height:100px;box-shadow:0 1px 3px rgba(0,0,0,.05);display:flex;align-items:center;justify-content:space-between;transition:transform .25s ease,box-shadow .25s ease}
+.stat-card:hover{transform:translateY(-3px);box-shadow:0 8px 20px rgba(0,0,0,.09);border-color:#bfdbfe}
+.stat-label{font-size:.78rem;color:var(--muted);margin-bottom:.3rem}
+.stat-value{font-size:1.55rem;font-weight:700;color:var(--text);line-height:1.15}
+.stat-icon{width:44px;height:44px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.stat-icon svg{width:23px;height:23px}
+.icon-blue{background:#dbeafe;color:#2563eb}
+.icon-orange{background:#ffedd5;color:#ea580c}
+.icon-green{background:#dcfce7;color:#16a34a}
+.icon-red{background:#fee2e2;color:#dc2626}
+.appointment-panel{background:var(--white);border:1px solid var(--border);border-radius:15px;box-shadow:0 2px 8px rgba(15,23,42,.04);overflow:hidden}
+.panel-header{display:flex;align-items:center;justify-content:space-between;gap:15px;padding:20px 22px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.panel-header h2{font-size:17px;font-weight:700;color:var(--text)}
+.panel-header p{font-size:13px;color:var(--muted);margin-top:5px}
+.filters{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.search-box-small{width:250px;max-width:100%;height:40px;display:flex;align-items:center;gap:9px;padding:0 12px;border:1px solid var(--border);border-radius:10px;background:var(--page)}
+.search-box-small svg{width:18px;height:18px;color:var(--muted);flex-shrink:0}
+.search-box-small input{width:100%;border:0;outline:none;background:transparent;color:var(--text);font-size:13px}
+.status-filter{height:40px;padding:0 12px;border:1px solid var(--border);border-radius:10px;background:var(--white);color:var(--text);font-size:13px;outline:none}
+.table-wrap{width:100%;overflow-x:auto}
+.appointment-table{width:100%;border-collapse:collapse;white-space:nowrap}
+.appointment-table th{background:var(--page);color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:700;text-align:left;padding:14px 16px;border-bottom:1px solid var(--border)}
+.appointment-table td{padding:14px 16px;border-bottom:1px solid var(--border);font-size:13px;color:var(--text)}
+.appointment-table tbody tr{transition:background .2s ease}
+.appointment-table tbody tr:hover{background:var(--page)}
+.appointment-table tbody tr:last-child td{border-bottom:0}
+.patient-name{font-weight:700;color:var(--text)}
+.secondary-text{font-size:12px;color:var(--muted);margin-top:4px}
+.doctor-name{font-weight:600;color:var(--text)}
+.status-badge{display:inline-block;padding:5px 10px;border-radius:7px;font-size:11px;font-weight:700}
+.status-pending{background:#ffedd5;color:#c2410c}
+.status-approved,.status-confirmed{background:#dcfce7;color:#15803d}
+.status-rejected,.status-cancelled{background:#fee2e2;color:#b91c1c}
+.status-completed{background:#dbeafe;color:#1d4ed8}
+.action-buttons{display:flex;align-items:center;gap:7px}
+.action-btn{display:inline-flex;align-items:center;justify-content:center;gap:5px;padding:7px 10px;border:0;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;transition:transform .2s ease,box-shadow .2s ease}
+.action-btn:hover{transform:translateY(-2px);box-shadow:0 4px 10px rgba(0,0,0,.1)}
+.action-btn svg{width:15px;height:15px}
+.approve-btn{background:#dcfce7;color:#15803d}
+.reject-btn{background:#fee2e2;color:#b91c1c}
+.processed-text{font-size:12px;color:var(--muted)}
+.empty-state{padding:45px 20px;text-align:center;color:var(--muted)}
+.empty-state svg{width:42px;height:42px;margin-bottom:12px;color:#94a3b8}
+.empty-state h3{font-size:15px;color:var(--text);margin-bottom:6px}
+.empty-state p{font-size:13px}
+@media(max-width:1100px){.stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:640px){.stats-grid{grid-template-columns:1fr}.page-header h1{font-size:22px}.panel-header{align-items:flex-start}.search-box-small{width:100%}.filters{width:100%}.status-filter{flex:1}}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Appointments</h1>
+        <p>Review patient appointment requests and manage approvals.</p>
+    </div>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div>
+            <div class="stat-label">Total Appointments</div>
+            <div class="stat-value">{{ total_appointments }}</div>
+        </div>
+        <div class="stat-icon icon-blue">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <rect x="3" y="5" width="18" height="16" rx="2"/>
+                <path d="M16 3v4M8 3v4M3 10h18"/>
+            </svg>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div>
+            <div class="stat-label">Pending Requests</div>
+            <div class="stat-value">{{ pending_appointments }}</div>
+        </div>
+        <div class="stat-icon icon-orange">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <circle cx="12" cy="12" r="9"/>
+                <path d="M12 7v5l3 2"/>
+            </svg>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div>
+            <div class="stat-label">Approved</div>
+            <div class="stat-value">{{ approved_appointments }}</div>
+        </div>
+        <div class="stat-icon icon-green">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <circle cx="12" cy="12" r="9"/>
+                <path d="m8 12 3 3 5-6"/>
+            </svg>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div>
+            <div class="stat-label">Rejected</div>
+            <div class="stat-value">{{ rejected_appointments }}</div>
+        </div>
+        <div class="stat-icon icon-red">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <circle cx="12" cy="12" r="9"/>
+                <path d="m9 9 6 6m0-6-6 6"/>
+            </svg>
+        </div>
+    </div>
+</div>
+
+<div class="appointment-panel">
+    <div class="panel-header">
+        <div>
+            <h2>Appointment Requests</h2>
+            <p>Appointments submitted for your hospital.</p>
+        </div>
+        <div class="filters">
+            <label class="search-box-small">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                    <circle cx="11" cy="11" r="7"/>
+                    <path d="m20 20-4-4"/>
+                </svg>
+                <input type="text" id="appointmentSearch" placeholder="Search appointments...">
+            </label>
+            <select id="statusFilter" class="status-filter">
+                <option value="all">All Statuses</option>
+                <option value="pending">Pending</option>
+                <option value="approved">Approved</option>
+                <option value="confirmed">Confirmed</option>
+                <option value="rejected">Rejected</option>
+                <option value="completed">Completed</option>
+                <option value="cancelled">Cancelled</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="table-wrap">
+        <table class="appointment-table">
+            <thead>
+                <tr>
+                    <th>Patient</th>
+                    <th>Doctor</th>
+                    <th>Date</th>
+                    <th>Time</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="appointmentTableBody">
+                {% for appointment in appointments %}
+                <tr data-status="{{ appointment.status|lower }}">
+                    <td>
+                        <div class="patient-name">{{ appointment.patient_name|default:"Unknown Patient" }}</div>
+                        <div class="secondary-text">Appointment ID: {{ appointment.id }}</div>
+                    </td>
+                    <td>
+                        <div class="doctor-name">
+                            {% if appointment.doctor %}
+                                {{ appointment.doctor.get_full_name|default:appointment.doctor.username }}
+                            {% else %}
+                                Not assigned
+                            {% endif %}
+                        </div>
+                    </td>
+                    <td>{{ appointment.appointment_date|date:"d M Y" }}</td>
+                    <td>{{ appointment.appointment_time|time:"h:i A" }}</td>
+                    <td>
+                        <span class="status-badge status-{{ appointment.status|lower }}">
+                            {{ appointment.get_status_display }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if appointment.status == 'pending' %}
+                        <div class="action-buttons">
+                            <form method="post">
+                                {% csrf_token %}
+                                <input type="hidden" name="appointment_id" value="{{ appointment.id }}">
+                                <input type="hidden" name="action" value="approve">
+                                <button type="submit" class="action-btn approve-btn" onclick="return confirm('Approve this appointment?')">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="m5 12 4 4L19 6"/>
+                                    </svg>
+                                    Approve
+                                </button>
+                            </form>
+                            <form method="post">
+                                {% csrf_token %}
+                                <input type="hidden" name="appointment_id" value="{{ appointment.id }}">
+                                <input type="hidden" name="action" value="reject">
+                                <button type="submit" class="action-btn reject-btn" onclick="return confirm('Reject this appointment?')">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="m18 6-12 12M6 6l12 12"/>
+                                    </svg>
+                                    Reject
+                                </button>
+                            </form>
+                        </div>
+                        {% else %}
+                            <span class="processed-text">No action available</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6">
+                        <div class="empty-state">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <rect x="3" y="5" width="18" height="16" rx="2"/>
+                                <path d="M16 3v4M8 3v4M3 10h18"/>
+                            </svg>
+                            <h3>No Appointments Found</h3>
+                            <p>No appointments have been submitted for your hospital yet.</p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+                <tr id="noSearchResults" style="display:none">
+                    <td colspan="6">
+                        <div class="empty-state">
+                            <h3>No Matching Appointments</h3>
+                            <p>Try changing your search or status filter.</p>
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+(function() {
+    const searchInput = document.getElementById("appointmentSearch");
+    const statusFilter = document.getElementById("statusFilter");
+    const rows = Array.from(document.querySelectorAll("#appointmentTableBody tr[data-status]"));
+    const noResults = document.getElementById("noSearchResults");
+
+    function filterAppointments() {
+        const query = searchInput.value.trim().toLowerCase();
+        const selectedStatus = statusFilter.value;
+        let visibleCount = 0;
+
+        rows.forEach(row => {
+            const matchesSearch = row.textContent.toLowerCase().includes(query);
+            const matchesStatus = selectedStatus === "all" || row.dataset.status === selectedStatus;
+            const visible = matchesSearch && matchesStatus;
+
+            row.style.display = visible ? "" : "none";
+
+            if (visible) {
+                visibleCount++;
+            }
+        });
+
+        noResults.style.display = visibleCount === 0 && rows.length > 0 ? "" : "none";
+    }
+
+    searchInput.addEventListener("input", filterAppointments);
+    statusFilter.addEventListener("change", filterAppointments);
+})();
+</script>
+{% endblock %}

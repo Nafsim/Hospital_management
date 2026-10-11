@@ -1,0 +1,224 @@
+{% extends 'accounts/counter/base.html' %}
+
+{% block title %}Patients - NHIMS{% endblock %}
+
+{% block extra_css %}
+<style>
+.page-header{display:flex;justify-content:space-between;align-items:center;gap:15px;margin-bottom:22px;flex-wrap:wrap}
+.page-header h1{font-size:25px;font-weight:700;color:var(--text);margin-bottom:6px}
+.page-header p{font-size:14px;color:var(--muted)}
+.patient-count{background:#dbeafe;color:#1d4ed8;padding:8px 14px;border-radius:10px;font-size:13px;font-weight:700}
+.stats-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:22px}
+.stat-card{background:var(--white);border:1px solid var(--border);border-radius:14px;padding:1.1rem 1.2rem;min-height:100px;box-shadow:0 1px 3px rgba(0,0,0,.05);display:flex;align-items:center;justify-content:space-between;transition:transform .25s ease,box-shadow .25s ease}
+.stat-card:hover{transform:translateY(-3px);box-shadow:0 8px 20px rgba(0,0,0,.09);border-color:#bfdbfe}
+.stat-label{font-size:.78rem;color:var(--muted);margin-bottom:.3rem}
+.stat-value{font-size:1.55rem;font-weight:700;color:var(--text);line-height:1.15}
+.stat-icon{width:44px;height:44px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.stat-icon svg{width:23px;height:23px}
+.icon-blue{background:#dbeafe;color:#2563eb}
+.icon-green{background:#dcfce7;color:#16a34a}
+.icon-purple{background:#ede9fe;color:#7c3aed}
+.icon-orange{background:#ffedd5;color:#ea580c}
+.patient-panel{background:var(--white);border:1px solid var(--border);border-radius:15px;box-shadow:0 2px 8px rgba(15,23,42,.04);overflow:hidden}
+.panel-header{display:flex;align-items:center;justify-content:space-between;gap:15px;padding:20px 22px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.panel-header h2{font-size:17px;font-weight:700;color:var(--text)}
+.panel-header p{font-size:13px;color:var(--muted);margin-top:5px}
+.patient-search{width:280px;max-width:100%;height:40px;display:flex;align-items:center;gap:9px;padding:0 12px;border:1px solid var(--border);border-radius:10px;background:var(--page)}
+.patient-search svg{width:18px;height:18px;color:var(--muted);flex-shrink:0}
+.patient-search input{width:100%;border:0;outline:none;background:transparent;color:var(--text);font-size:13px}
+.table-wrap{width:100%;overflow-x:auto}
+.patient-table{width:100%;border-collapse:collapse;white-space:nowrap}
+.patient-table th{background:var(--page);color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:700;text-align:left;padding:14px 18px;border-bottom:1px solid var(--border)}
+.patient-table td{padding:15px 18px;border-bottom:1px solid var(--border);font-size:13px;color:var(--text)}
+.patient-table tbody tr{transition:background .2s ease}
+.patient-table tbody tr:hover{background:var(--page)}
+.patient-table tbody tr:last-child td{border-bottom:0}
+.patient-name{font-weight:700;color:var(--text)}
+.patient-id{font-size:12px;color:var(--muted);margin-top:4px}
+.patient-avatar{width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:10px;background:#dbeafe;color:#1d4ed8;font-size:13px;font-weight:700;flex-shrink:0}
+.patient-info{display:flex;align-items:center;gap:11px}
+.gender-badge{display:inline-block;padding:5px 9px;border-radius:7px;background:#eff6ff;color:#1d4ed8;font-size:11px;font-weight:700}
+.empty-state{padding:45px 20px;text-align:center;color:var(--muted)}
+.empty-state svg{width:42px;height:42px;margin-bottom:12px;color:#94a3b8}
+.empty-state h3{font-size:15px;color:var(--text);margin-bottom:6px}
+.empty-state p{font-size:13px}
+@media(max-width:1100px){.stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:640px){.stats-grid{grid-template-columns:1fr}.page-header h1{font-size:22px}.panel-header{align-items:flex-start}.patient-search{width:100%}}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Patients</h1>
+        <p>View and manage patients registered at your hospital.</p>
+    </div>
+    <div class="patient-count">Total Patients: {{ patients|length }}</div>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div>
+            <div class="stat-label">Total Patients</div>
+            <div class="stat-value">{{ patients|length }}</div>
+        </div>
+        <div class="stat-icon icon-blue">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <circle cx="9" cy="8" r="3"/>
+                <path d="M3 21v-1a6 6 0 0 1 12 0v1"/>
+                <path d="M16 5.5a2.5 2.5 0 0 1 0 5"/>
+                <path d="M18 14a5 5 0 0 1 3 4.5V20"/>
+            </svg>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div>
+            <div class="stat-label">Male Patients</div>
+            <div class="stat-value" id="maleCount">0</div>
+        </div>
+        <div class="stat-icon icon-green">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <circle cx="10" cy="14" r="5"/>
+                <path d="m14 10 6-6"/>
+                <path d="M15 4h5v5"/>
+            </svg>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div>
+            <div class="stat-label">Female Patients</div>
+            <div class="stat-value" id="femaleCount">0</div>
+        </div>
+        <div class="stat-icon icon-purple">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <circle cx="12" cy="8" r="5"/>
+                <path d="M12 13v8"/>
+                <path d="M8 17h8"/>
+            </svg>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div>
+            <div class="stat-label">Displayed Patients</div>
+            <div class="stat-value" id="displayedCount">{{ patients|length }}</div>
+        </div>
+        <div class="stat-icon icon-orange">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M4 4h16v16H4z"/>
+                <path d="M8 9h8M8 13h8M8 17h5"/>
+            </svg>
+        </div>
+    </div>
+</div>
+
+<div class="patient-panel">
+    <div class="panel-header">
+        <div>
+            <h2>Hospital Patients</h2>
+            <p>All patients associated with your hospital.</p>
+        </div>
+        <label class="patient-search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <circle cx="11" cy="11" r="7"/>
+                <path d="m20 20-4-4"/>
+            </svg>
+            <input type="text" id="patientSearch" placeholder="Search patients...">
+        </label>
+    </div>
+
+    <div class="table-wrap">
+        <table class="patient-table">
+            <thead>
+                <tr>
+                    <th>Patient</th>
+                    <th>Gender</th>
+                    <th>Phone</th>
+                    <th>Address</th>
+                    <th>Registration Date</th>
+                </tr>
+            </thead>
+            <tbody id="patientTableBody">
+                {% for patient in patients %}
+                <tr data-gender="{{ patient.gender|default:''|lower }}">
+                    <td>
+                        <div class="patient-info">
+                            <div class="patient-avatar">
+                                {% if patient.full_name %}
+                                    {{ patient.full_name|first|upper }}
+                                {% else %}
+                                    P
+                                {% endif %}
+                            </div>
+                            <div>
+                                <div class="patient-name">{{ patient.full_name|default:"Unknown" }}</div>
+                                <div class="patient-id">ID: {{ patient.patient_id|default:patient.id }}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td><span class="gender-badge">{{ patient.gender|default:"—" }}</span></td>
+                    <td>{{ patient.phone|default:"—" }}</td>
+                    <td>{{ patient.address|default:"—" }}</td>
+                    <td>{{ patient.created_at|date:"d M Y"|default:"—" }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5">
+                        <div class="empty-state">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <circle cx="9" cy="8" r="3"/>
+                                <path d="M3 21v-1a6 6 0 0 1 12 0v1"/>
+                                <path d="M16 5.5a2.5 2.5 0 0 1 0 5"/>
+                            </svg>
+                            <h3>No Patients Found</h3>
+                            <p>No patients are currently registered at your hospital.</p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+                <tr id="noSearchResults" style="display:none">
+                    <td colspan="5">
+                        <div class="empty-state">
+                            <h3>No Matching Patients</h3>
+                            <p>Try another name, patient ID, or phone number.</p>
+                        </div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+(function() {
+    const searchInput = document.getElementById("patientSearch");
+    const rows = Array.from(document.querySelectorAll("#patientTableBody tr[data-gender]"));
+    const noResults = document.getElementById("noSearchResults");
+    const maleCount = document.getElementById("maleCount");
+    const femaleCount = document.getElementById("femaleCount");
+    const displayedCount = document.getElementById("displayedCount");
+
+    function updateCounts() {
+        const visibleRows = rows.filter(row => row.style.display !== "none");
+        maleCount.textContent = visibleRows.filter(row => ["male", "m"].includes(row.dataset.gender)).length;
+        femaleCount.textContent = visibleRows.filter(row => ["female", "f"].includes(row.dataset.gender)).length;
+        displayedCount.textContent = visibleRows.length;
+    }
+
+    searchInput.addEventListener("input", function() {
+        const query = this.value.trim().toLowerCase();
+        let visibleCount = 0;
+
+        rows.forEach(row => {
+            const matches = row.textContent.toLowerCase().includes(query);
+            row.style.display = matches ? "" : "none";
+            if (matches) visibleCount++;
+        });
+
+        noResults.style.display = visibleCount === 0 && rows.length > 0 ? "" : "none";
+        updateCounts();
+    });
+
+    updateCounts();
+})();
+</script>
+{% endblock %}

@@ -33,7 +33,10 @@ from django.contrib import messages
 from .models import VitalSign 
 from .models import NursingNote 
 from .models import NurseProfile 
+from django.db.models import Sum
+from django.contrib.auth.decorators import login_required
 from .models import PatientAppointment
+from django.shortcuts import render, redirect, get_object_or_404
 from .models import User, Notice, Department, DoctorPatient, DoctorSchedule, DoctorPrescription, DoctorReferral
 def login_view(request):
     if request.user.is_authenticated:
@@ -3326,18 +3329,81 @@ def lab_profile(request):
 
     return render(request, 'accounts/lab/profile.html', context)
 # Counter
+from .models import PatientAppointment, PatientPayment
+@login_required(login_url='login')
 def counter_dashboard(request):
-    if not request.user.is_authenticated:
-        return redirect('login')
     if request.user.role != 'counter':
         return redirect('dashboard')
-    hospital = request.user.hospital
-    context = {
-        'hospital': hospital,
-        'patients_count': Patient.objects.filter(hospital=hospital).count() if hospital else 0,
-    }
-    return render(request, 'accounts/counter/dashboard.html', context)
 
+    today = timezone.localdate()
+    hospital = request.user.hospital
+    User = get_user_model()
+
+    if hospital:
+        patients = Patient.objects.filter(hospital=hospital)
+        appointments = PatientAppointment.objects.filter(hospital=hospital)
+        doctors = User.objects.filter(
+            hospital=hospital,
+            role='doctor',
+            is_active=True
+        )
+        payments = PatientPayment.objects.filter(
+            hospital=hospital,
+            created_at__date=today,
+            status__in=['paid', 'verified']
+        )
+    else:
+        patients = Patient.objects.none()
+        appointments = PatientAppointment.objects.none()
+        doctors = User.objects.none()
+        payments = PatientPayment.objects.none()
+
+    today_appointments = appointments.filter(
+        appointment_date=today
+    ).select_related('doctor').order_by('appointment_time')
+
+    appointment_rows = []
+
+    for appointment in today_appointments:
+        doctor = appointment.doctor
+
+        doctor_name = doctor.get_full_name() or doctor.username
+
+        status_labels = {
+            'pending': 'Waiting',
+            'approved': 'Confirmed',
+            'confirmed': 'Confirmed',
+            'rejected': 'Rejected',
+            'completed': 'Completed',
+            'cancelled': 'Cancelled',
+        }
+
+        appointment_rows.append({
+            'patient_name': appointment.patient_name,
+            'doctor_name': doctor_name,
+            'time': appointment.appointment_time,
+            'status': status_labels.get(
+                appointment.status,
+                appointment.get_status_display()
+            ),
+            'status_value': appointment.status,
+        })
+
+    context = {
+        'total_patients': patients.count(),
+        'today_appointments_count': today_appointments.count(),
+        'available_doctors': doctors.count(),
+        'today_collection': payments.aggregate(
+            total=Sum('amount')
+        )['total'] or 0,
+        'today_appointments': appointment_rows,
+    }
+
+    return render(
+        request,
+        'accounts/counter/dashboard.html',
+        context
+    )
 def counter_patients(request):
     if not request.user.is_authenticated:
         return redirect('login')
@@ -3348,34 +3414,114 @@ def counter_patients(request):
     context = {'patients': patients}
     return render(request, 'accounts/counter/patients.html', context)
 
+@login_required(login_url='login')
 def counter_appointments(request):
-    if not request.user.is_authenticated:
-        return redirect('login')
     if request.user.role != 'counter':
         return redirect('dashboard')
-    hospital = request.user.hospital
-    patients = Patient.objects.filter(hospital=hospital) if hospital else []
-    context = {'patients': patients}
-    return render(request, 'accounts/counter/appointments.html', context)
 
+    hospital = request.user.hospital
+
+    if not hospital:
+        appointments = PatientAppointment.objects.none()
+    else:
+        appointments = PatientAppointment.objects.filter(
+            hospital=hospital
+        ).select_related('doctor').order_by(
+            '-appointment_date',
+            '-appointment_time'
+        )
+
+    if request.method == 'POST':
+        appointment_id = request.POST.get('appointment_id')
+        action = request.POST.get('action')
+
+        if not hospital:
+            return redirect('counter_appointments')
+
+        appointment = get_object_or_404(
+            PatientAppointment,
+            id=appointment_id,
+            hospital=hospital
+        )
+
+        if action == 'approve' and appointment.status == 'pending':
+            appointment.status = 'approved'
+            appointment.save(update_fields=['status'])
+
+        elif action == 'reject' and appointment.status == 'pending':
+            appointment.status = 'rejected'
+            appointment.save(update_fields=['status'])
+
+        return redirect('counter_appointments')
+
+    context = {
+        'appointments': appointments,
+        'total_appointments': appointments.count(),
+        'pending_appointments': appointments.filter(status='pending').count(),
+        'approved_appointments': appointments.filter(status='approved').count(),
+        'rejected_appointments': appointments.filter(status='rejected').count(),
+    }
+
+    return render(
+        request,
+        'accounts/counter/appointments.html',
+        context
+    )
+
+@login_required(login_url='login')
 def counter_doctors(request):
-    if not request.user.is_authenticated:
-        return redirect('login')
     if request.user.role != 'counter':
         return redirect('dashboard')
+
     hospital = request.user.hospital
-    doctors = Staff.objects.filter(hospital=hospital, user__role='doctor') if hospital else []
-    context = {'doctors': doctors}
+
+    if hospital:
+        doctors = Staff.objects.filter(
+            hospital=hospital,
+            user__role='doctor'
+        ).select_related('user').order_by('user__first_name', 'user__last_name')
+    else:
+        doctors = Staff.objects.none()
+
+    departments = doctors.values_list('department', flat=True).distinct()
+
+    context = {
+        'doctors': doctors,
+        'total_doctors': doctors.count(),
+        'active_doctors': doctors.filter(is_active=True).count(),
+        'inactive_doctors': doctors.filter(is_active=False).count(),
+        'total_departments': departments.count(),
+        'departments': departments,
+    }
+
     return render(request, 'accounts/counter/doctors.html', context)
 
+@login_required(login_url='login')
 def counter_billing(request):
-    if not request.user.is_authenticated:
-        return redirect('login')
     if request.user.role != 'counter':
         return redirect('dashboard')
+
     hospital = request.user.hospital
-    patients = Patient.objects.filter(hospital=hospital) if hospital else []
-    context = {'patients': patients}
+
+    if hospital:
+        patients = Patient.objects.filter(hospital=hospital)
+        payments = PatientPayment.objects.filter(hospital=hospital).order_by('-created_at')
+    else:
+        patients = Patient.objects.none()
+        payments = PatientPayment.objects.none()
+
+    paid_payments = payments.filter(status__in=['paid', 'verified'])
+    pending_payments = payments.filter(status='pending')
+
+    context = {
+        'patients': patients,
+        'payments': payments,
+        'total_payments': payments.count(),
+        'paid_payments_count': paid_payments.count(),
+        'pending_payments_count': pending_payments.count(),
+        'total_revenue': paid_payments.aggregate(total=Sum('amount'))['total'] or 0,
+    }
+
     return render(request, 'accounts/counter/billing.html', context)
 
 def counter_notices(request):
@@ -3385,12 +3531,39 @@ def counter_notices(request):
         return redirect('dashboard')
     return render(request, 'accounts/counter/notices.html')
 
+
+@login_required(login_url='login')
 def counter_profile(request):
-    if not request.user.is_authenticated:
-        return redirect('login')
     if request.user.role != 'counter':
         return redirect('dashboard')
-    return render(request, 'accounts/counter/profile.html')
+
+    user = request.user
+    staff = Staff.objects.filter(user=user).first()
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action == 'update':
+            user.first_name = request.POST.get('first_name', '').strip()
+            user.last_name = request.POST.get('last_name', '').strip()
+            user.email = request.POST.get('email', '').strip()
+            user.phone = request.POST.get('phone', '').strip()
+            user.save()
+
+            if staff:
+                staff.qualification = request.POST.get('qualification', '').strip()
+                staff.save(update_fields=['qualification'])
+
+            return redirect('counter_profile')
+
+    context = {
+        'profile': staff,
+        'user': user,
+        'hospital': user.hospital,
+    }
+
+    return render(request, 'accounts/counter/profile.html', context)
+
 #blood bank
 def bloodbank_dashboard(request):
     if not request.user.is_authenticated:

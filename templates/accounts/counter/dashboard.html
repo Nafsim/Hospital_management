@@ -1,378 +1,574 @@
 {% extends 'accounts/counter/base.html' %}
 
-{% block title %}Reception Dashboard - NHIMS{% endblock %}
+{% block title %}NHIMS - Counter Dashboard{% endblock %}
 
 {% block content %}
-
-<div class="page-header">
-    <div>
-        <h1>Reception Dashboard</h1>
-        <p>Manage patients, appointments and front desk activities</p>
-    </div>
-
-    <a href="{% url 'counter_appointments' %}" class="primary-btn">
-        + New Appointment
-    </a>
-</div>
-
-<div class="stats-grid">
-
-    <div class="stat-card">
-        <div class="stat-icon">♙</div>
-        <div>
-            <span>Total Patients</span>
-            <h2>1,248</h2>
-        </div>
-    </div>
-
-    <div class="stat-card">
-        <div class="stat-icon">▣</div>
-        <div>
-            <span>Today's Appointments</span>
-            <h2>36</h2>
-        </div>
-    </div>
-
-    <div class="stat-card">
-        <div class="stat-icon">⚕</div>
-        <div>
-            <span>Available Doctors</span>
-            <h2>18</h2>
-        </div>
-    </div>
-
-    <div class="stat-card">
-        <div class="stat-icon">৳</div>
-        <div>
-            <span>Today's Collection</span>
-            <h2>৳42,500</h2>
-        </div>
-    </div>
-
-</div>
-
-<div class="dashboard-grid">
-
-    <div class="content-card">
-
-        <div class="card-header">
-            <div>
-                <h2>Today's Appointments</h2>
-                <p>Upcoming patient appointments</p>
-            </div>
-
-            <a href="{% url 'counter_appointments' %}" class="view-btn">
-                View All
-            </a>
-        </div>
-
-        <div class="table-container">
-
-            <table>
-                <thead>
-                    <tr>
-                        <th>Patient</th>
-                        <th>Doctor</th>
-                        <th>Time</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-
-                <tbody>
-
-                    <tr>
-                        <td>Rahim Ahmed</td>
-                        <td>Dr. Hasan</td>
-                        <td>10:00 AM</td>
-                        <td>
-                            <span class="status confirmed">Confirmed</span>
-                        </td>
-                    </tr>
-
-                    <tr>
-                        <td>Fatema Akter</td>
-                        <td>Dr. Nusrat</td>
-                        <td>11:30 AM</td>
-                        <td>
-                            <span class="status waiting">Waiting</span>
-                        </td>
-                    </tr>
-
-                    <tr>
-                        <td>Karim Hossain</td>
-                        <td>Dr. Rahman</td>
-                        <td>01:00 PM</td>
-                        <td>
-                            <span class="status confirmed">Confirmed</span>
-                        </td>
-                    </tr>
-
-                    <tr>
-                        <td>Nusrat Jahan</td>
-                        <td>Dr. Ahmed</td>
-                        <td>03:30 PM</td>
-                        <td>
-                            <span class="status pending">Pending</span>
-                        </td>
-                    </tr>
-
-                </tbody>
-            </table>
-
-        </div>
-
-    </div>
-
-    <div class="content-card">
-
-        <div class="card-header">
-            <div>
-                <h2>Quick Actions</h2>
-                <p>Frequently used reception tasks</p>
-            </div>
-        </div>
-
-        <div class="quick-actions">
-
-            <a href="{% url 'counter_patients' %}">
-                <span>♙</span>
-                Register Patient
-            </a>
-
-            <a href="{% url 'counter_appointments' %}">
-                <span>▣</span>
-                Book Appointment
-            </a>
-
-            <a href="{% url 'counter_doctors' %}">
-                <span>⚕</span>
-                View Doctors
-            </a>
-
-            <a href="{% url 'counter_billing' %}">
-                <span>৳</span>
-                Billing & Payment
-            </a>
-
-        </div>
-
-    </div>
-
-</div>
-
 <style>
-.page-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 28px;
+.counter-dashboard{
+    color:#1e293b;
 }
-
-.page-header h1 {
-    margin: 0;
-    font-size: 28px;
-    color: #172554;
+.counter-page-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:1.4rem;
+    gap:16px;
 }
-
-.page-header p {
-    margin: 6px 0 0;
-    color: #64748b;
+.counter-page-header h1{
+    font-size:1.65rem;
+    font-weight:700;
+    margin:0 0 .25rem;
+    color:var(--text);
 }
-
-.primary-btn,
-.view-btn {
-    text-decoration: none;
-    border-radius: 9px;
-    padding: 11px 18px;
-    font-weight: 600;
+.counter-page-header p{
+    font-size:.9rem;
+    color:#64748b;
+    margin:0;
 }
-
-.primary-btn {
-    color: white;
-    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+.counter-date{
+    background:#fff;
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:11px 15px;
+    color:#475569;
+    font-size:13px;
+    white-space:nowrap;
 }
-
-.view-btn {
-    color: #2563eb;
-    background: #eff6ff;
+.counter-stats{
+    display:grid;
+    grid-template-columns:repeat(4,minmax(0,1fr));
+    gap:14px;
+    margin-bottom:1.4rem;
 }
-
-.stats-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 18px;
-    margin-bottom: 24px;
+.counter-stat-card{
+    background:#fff;
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:1.1rem 1.2rem;
+    min-height:100px;
+    box-shadow:0 1px 3px rgba(0,0,0,.05);
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    min-width:0;
+    transition:transform .25s ease,box-shadow .25s ease,border-color .25s ease;
 }
-
-.stat-card {
-    background: white;
-    border: 1px solid #e2e8f0;
-    border-radius: 14px;
-    padding: 20px;
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    box-shadow: 0 3px 12px rgba(15, 23, 42, .05);
+.counter-stat-card:hover{
+    transform:translateY(-3px);
+    box-shadow:0 8px 20px rgba(0,0,0,.09);
+    border-color:#bfdbfe;
 }
-
-.stat-icon {
-    width: 48px;
-    height: 48px;
-    border-radius: 12px;
-    background: #eff6ff;
-    color: #2563eb;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 20px;
+.counter-stat-icon{
+    width:44px;
+    height:44px;
+    min-width:44px;
+    border-radius:11px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    flex-shrink:0;
+    transition:transform .25s ease;
 }
-
-.stat-card span {
-    color: #64748b;
-    font-size: 13px;
+.counter-stat-card:hover .counter-stat-icon{
+    transform:scale(1.08);
 }
-
-.stat-card h2 {
-    margin: 5px 0 0;
-    color: #172554;
-    font-size: 24px;
+.counter-stat-icon svg{
+    width:20px;
+    height:20px;
 }
-
-.dashboard-grid {
-    display: grid;
-    grid-template-columns: 2fr 1fr;
-    gap: 22px;
+.counter-icon-blue{
+    background:#dbeafe;
+    color:#2563eb;
 }
-
-.content-card {
-    background: white;
-    border: 1px solid #e2e8f0;
-    border-radius: 14px;
-    padding: 22px;
-    box-shadow: 0 3px 12px rgba(15, 23, 42, .05);
+.counter-icon-green{
+    background:#dcfce7;
+    color:#16a34a;
 }
-
-.card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 18px;
+.counter-icon-purple{
+    background:#ede9fe;
+    color:#7c3aed;
 }
-
-.card-header h2 {
-    margin: 0;
-    color: #172554;
-    font-size: 19px;
+.counter-icon-orange{
+    background:#ffedd5;
+    color:#ea580c;
 }
-
-.card-header p {
-    margin: 5px 0 0;
-    color: #64748b;
-    font-size: 13px;
+.counter-stat-info{
+    min-width:0;
 }
-
-.table-container {
-    overflow-x: auto;
+.counter-stat-info p{
+    font-size:.78rem;
+    color:#64748b;
+    margin:0 0 .3rem;
 }
-
-table {
-    width: 100%;
-    border-collapse: collapse;
+.counter-stat-info h2{
+    font-size:1.55rem;
+    font-weight:700;
+    color:#1e293b;
+    line-height:1.15;
+    margin:0;
+    overflow-wrap:anywhere;
 }
-
-th {
-    text-align: left;
-    background: #f8fafc;
-    color: #475569;
-    font-size: 13px;
-    padding: 13px;
+.counter-main-grid{
+    display:grid;
+    grid-template-columns:minmax(0,1.6fr) minmax(280px,1fr);
+    gap:16px;
+    margin-bottom:1.4rem;
+    align-items:start;
 }
-
-td {
-    padding: 14px 13px;
-    border-bottom: 1px solid #e2e8f0;
-    color: #334155;
-    font-size: 13px;
+.counter-panel{
+    background:#fff;
+    border:1px solid var(--border);
+    border-radius:14px;
+    box-shadow:0 1px 3px rgba(0,0,0,.05);
+    overflow:hidden;
+    min-width:0;
 }
-
-.status {
-    display: inline-block;
-    padding: 5px 10px;
-    border-radius: 20px;
-    font-size: 12px;
-    font-weight: 600;
+.counter-panel-header{
+    padding:14px 18px;
+    border-bottom:1px solid var(--border);
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:12px;
 }
-
-.confirmed {
-    background: #dcfce7;
-    color: #166534;
+.counter-panel-title{
+    font-size:.98rem;
+    font-weight:600;
+    margin:0;
+    color:var(--text);
 }
-
-.waiting {
-    background: #fef3c7;
-    color: #92400e;
+.counter-panel-subtitle{
+    font-size:.78rem;
+    color:#64748b;
+    margin:5px 0 0;
 }
-
-.pending {
-    background: #dbeafe;
-    color: #1d4ed8;
+.counter-view-all{
+    color:#2563eb;
+    font-size:13px;
+    font-weight:600;
+    text-decoration:none;
+    white-space:nowrap;
 }
-
-.quick-actions {
-    display: grid;
-    gap: 12px;
+.counter-view-all:hover{
+    color:#1d4ed8;
+    text-decoration:underline;
 }
-
-.quick-actions a {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 14px;
-    border: 1px solid #e2e8f0;
-    border-radius: 10px;
-    text-decoration: none;
-    color: #334155;
-    font-size: 14px;
-    font-weight: 600;
+.counter-table-wrap{
+    width:100%;
+    overflow-x:auto;
 }
-
-.quick-actions a:hover {
-    background: #eff6ff;
-    color: #2563eb;
+.counter-table{
+    width:100%;
+    border-collapse:collapse;
+    text-align:left;
 }
-
-.quick-actions span {
-    width: 34px;
-    height: 34px;
-    border-radius: 8px;
-    background: #eff6ff;
-    color: #2563eb;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+.counter-table th{
+    padding:.7rem .9rem;
+    text-align:left;
+    font-size:.74rem;
+    color:#64748b;
+    font-weight:600;
+    background:#f8fafc;
+    border-bottom:1px solid var(--border);
+    white-space:nowrap;
 }
-
-@media (max-width: 1000px) {
-    .stats-grid {
-        grid-template-columns: repeat(2, 1fr);
+.counter-table td{
+    padding:.8rem .9rem;
+    font-size:.84rem;
+    color:#334155;
+    border-bottom:1px solid #f1f5f9;
+    white-space:nowrap;
+}
+.counter-table tbody tr:last-child td{
+    border-bottom:0;
+}
+.counter-table tbody tr{
+    transition:background .2s ease;
+}
+.counter-table tbody tr:hover{
+    background:#f8fbff;
+}
+.counter-patient-name{
+    font-weight:600;
+    color:#1e293b;
+}
+.counter-doctor-name{
+    color:#475569;
+}
+.counter-time{
+    color:#334155;
+    font-weight:500;
+}
+.counter-status{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    padding:.22rem .5rem;
+    border-radius:999px;
+    font-size:.7rem;
+    font-weight:600;
+}
+.counter-status-confirmed{
+    background:#dcfce7;
+    color:#15803d;
+}
+.counter-status-waiting{
+    background:#fef3c7;
+    color:#b45309;
+}
+.counter-status-completed{
+    background:#dbeafe;
+    color:#1d4ed8;
+}
+.counter-status-rejected,
+.counter-status-cancelled{
+    background:#fee2e2;
+    color:#b91c1c;
+}
+.counter-status-default{
+    background:#f1f5f9;
+    color:#475569;
+}
+.counter-empty{
+    text-align:center;
+    padding:2rem!important;
+    color:#64748b!important;
+    font-size:.88rem!important;
+    white-space:normal!important;
+}
+.counter-empty svg{
+    width:34px;
+    height:34px;
+    display:block;
+    margin:0 auto 12px;
+    color:#94a3b8;
+}
+.counter-empty strong{
+    display:block;
+    color:#475569;
+    margin-bottom:6px;
+    font-size:14px;
+}
+.counter-empty span{
+    font-size:12px;
+}
+.counter-quick-actions{
+    padding:16px 18px;
+}
+.counter-action-list{
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+}
+.counter-action{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:12px 14px;
+    border:1px solid #e2e8f0;
+    border-radius:10px;
+    background:#f8fafc;
+    color:#334155;
+    text-decoration:none;
+    transition:background .2s,border-color .2s,color .2s,transform .2s,box-shadow .2s;
+}
+.counter-action:hover{
+    background:#eff6ff;
+    border-color:#93c5fd;
+    color:#2563eb;
+    transform:translateY(-2px);
+    box-shadow:0 5px 12px rgba(37,99,235,.08);
+}
+.counter-action-icon{
+    width:38px;
+    height:38px;
+    min-width:38px;
+    border-radius:10px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:#dbeafe;
+    color:#2563eb;
+    transition:transform .2s ease;
+}
+.counter-action:hover .counter-action-icon{
+    transform:scale(1.06);
+}
+.counter-action-icon svg{
+    width:20px;
+    height:20px;
+    stroke:currentColor;
+}
+.counter-action-text{
+    flex:1;
+    min-width:0;
+}
+.counter-action-text strong{
+    display:block;
+    color:#334155;
+    font-size:.85rem;
+    font-weight:600;
+    margin-bottom:4px;
+}
+.counter-action:hover .counter-action-text strong{
+    color:#2563eb;
+}
+.counter-action-text span{
+    display:block;
+    color:#64748b;
+    font-size:.74rem;
+    line-height:1.5;
+}
+.counter-action-arrow{
+    width:17px;
+    height:17px;
+    color:#94a3b8;
+    flex-shrink:0;
+    transition:transform .2s ease,color .2s ease;
+}
+.counter-action:hover .counter-action-arrow{
+    color:#2563eb;
+    transform:translateX(3px);
+}
+@media(max-width:1100px){
+    .counter-stats{
+        grid-template-columns:repeat(2,minmax(0,1fr));
     }
-
-    .dashboard-grid {
-        grid-template-columns: 1fr;
+    .counter-main-grid{
+        grid-template-columns:1fr;
     }
 }
-
-@media (max-width: 600px) {
-    .page-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 15px;
+@media(max-width:640px){
+    .counter-stats{
+        grid-template-columns:1fr;
     }
-
-    .stats-grid {
-        grid-template-columns: 1fr;
+    .counter-page-header{
+        align-items:flex-start;
+        flex-direction:column;
+    }
+    .counter-date{
+        align-self:flex-start;
+    }
+    .counter-panel-header{
+        padding:14px;
+    }
+    .counter-table th,
+    .counter-table td{
+        padding:12px;
     }
 }
 </style>
 
+<div class="counter-dashboard">
+    <div class="counter-page-header">
+        <div>
+            <h1>Counter Dashboard</h1>
+            <p>Manage patients, appointments and billing activities.</p>
+        </div>
+        <div class="counter-date">
+            {% now "l, d F Y" %}
+        </div>
+    </div>
+
+    <div class="counter-stats">
+        <div class="counter-stat-card">
+            <div class="counter-stat-info">
+                <p>Total Patients</p>
+                <h2>{{ total_patients }}</h2>
+            </div>
+            <div class="counter-stat-icon counter-icon-blue">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                    <circle cx="9" cy="7" r="4"/>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
+            </div>
+        </div>
+
+        <div class="counter-stat-card">
+            <div class="counter-stat-info">
+                <p>Today's Appointments</p>
+                <h2>{{ today_appointments_count }}</h2>
+            </div>
+            <div class="counter-stat-icon counter-icon-green">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="4" width="18" height="18" rx="2"/>
+                    <path d="M16 2v4M8 2v4M3 10h18"/>
+                </svg>
+            </div>
+        </div>
+
+        <div class="counter-stat-card">
+            <div class="counter-stat-info">
+                <p>Available Doctors</p>
+                <h2>{{ available_doctors }}</h2>
+            </div>
+            <div class="counter-stat-icon counter-icon-purple">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="7" r="4"/>
+                    <path d="M5 21v-2a7 7 0 0 1 14 0v2"/>
+                    <path d="M19 8h3M20.5 6.5v3"/>
+                </svg>
+            </div>
+        </div>
+
+        <div class="counter-stat-card">
+            <div class="counter-stat-info">
+                <p>Today's Collection</p>
+                <h2>৳{{ today_collection|floatformat:2 }}</h2>
+            </div>
+            <div class="counter-stat-icon counter-icon-orange">
+                <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                </svg>
+            </div>
+        </div>
+    </div>
+
+    <div class="counter-main-grid">
+        <section class="counter-panel">
+            <div class="counter-panel-header">
+                <div>
+                    <h2 class="counter-panel-title">Today's Appointments</h2>
+                    <p class="counter-panel-subtitle">Upcoming patient appointments</p>
+                </div>
+                <a href="{% url 'counter_appointments' %}" class="counter-view-all">View All</a>
+            </div>
+
+            <div class="counter-table-wrap">
+                <table class="counter-table">
+                    <thead>
+                        <tr>
+                            <th>Patient</th>
+                            <th>Doctor</th>
+                            <th>Time</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for appointment in today_appointments %}
+                        <tr>
+                            <td>
+                                <span class="counter-patient-name">{{ appointment.patient_name }}</span>
+                            </td>
+                            <td>
+                                <span class="counter-doctor-name">{{ appointment.doctor_name }}</span>
+                            </td>
+                            <td>
+                                <span class="counter-time">{{ appointment.time|time:"h:i A" }}</span>
+                            </td>
+                            <td>
+                                {% if appointment.status_value == 'approved' or appointment.status_value == 'confirmed' %}
+                                    <span class="counter-status counter-status-confirmed">{{ appointment.status }}</span>
+                                {% elif appointment.status_value == 'pending' %}
+                                    <span class="counter-status counter-status-waiting">{{ appointment.status }}</span>
+                                {% elif appointment.status_value == 'completed' %}
+                                    <span class="counter-status counter-status-completed">{{ appointment.status }}</span>
+                                {% elif appointment.status_value == 'rejected' or appointment.status_value == 'cancelled' %}
+                                    <span class="counter-status counter-status-rejected">{{ appointment.status }}</span>
+                                {% else %}
+                                    <span class="counter-status counter-status-default">{{ appointment.status }}</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="counter-empty">
+                                <svg fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="3" y="4" width="18" height="18" rx="2"/>
+                                    <path d="M16 2v4M8 2v4M3 10h18"/>
+                                </svg>
+                                <strong>No appointments today</strong>
+                                <span>Today's appointments will appear here when available.</span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="counter-panel">
+            <div class="counter-panel-header">
+                <div>
+                    <h2 class="counter-panel-title">Quick Actions</h2>
+                    <p class="counter-panel-subtitle">Frequently used reception tasks</p>
+                </div>
+            </div>
+
+            <div class="counter-quick-actions">
+                <div class="counter-action-list">
+                    <a href="{% url 'counter_patients' %}" class="counter-action">
+                        <div class="counter-action-icon">
+                            <svg fill="none" stroke-width="1.8" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="9" cy="8" r="4"/>
+                                <path d="M2.5 21v-2a6.5 6.5 0 0 1 13 0v2"/>
+                                <path d="M19 8v6M16 11h6"/>
+                            </svg>
+                        </div>
+                        <div class="counter-action-text">
+                            <strong>Register Patient</strong>
+                            <span>Add a new patient record</span>
+                        </div>
+                        <svg class="counter-action-arrow" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="m9 18 6-6-6-6"/>
+                        </svg>
+                    </a>
+
+                    <a href="{% url 'counter_appointments' %}" class="counter-action">
+                        <div class="counter-action-icon">
+                            <svg fill="none" stroke-width="1.8" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="3" y="4" width="18" height="18" rx="2"/>
+                                <path d="M16 2v4M8 2v4M3 10h18M12 13v5M9.5 15.5h5"/>
+                            </svg>
+                        </div>
+                        <div class="counter-action-text">
+                            <strong>Book Appointment</strong>
+                            <span>Schedule a patient visit</span>
+                        </div>
+                        <svg class="counter-action-arrow" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="m9 18 6-6-6-6"/>
+                        </svg>
+                    </a>
+
+                    <a href="{% url 'counter_doctors' %}" class="counter-action">
+                        <div class="counter-action-icon">
+                            <svg fill="none" stroke-width="1.8" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="7" r="4"/>
+                                <path d="M5 21v-2a7 7 0 0 1 14 0v2"/>
+                                <path d="m9 15 3 3 3-3"/>
+                            </svg>
+                        </div>
+                        <div class="counter-action-text">
+                            <strong>View Doctors</strong>
+                            <span>Check doctors and availability</span>
+                        </div>
+                        <svg class="counter-action-arrow" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="m9 18 6-6-6-6"/>
+                        </svg>
+                    </a>
+
+                    <a href="{% url 'counter_billing' %}" class="counter-action">
+                        <div class="counter-action-icon">
+                            <svg fill="none" stroke-width="1.8" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="3" y="4" width="18" height="17" rx="2"/>
+                                <path d="M7 8h10M7 12h3M7 16h6"/>
+                                <circle cx="17" cy="15" r="2.5"/>
+                                <path d="M17 13.5v3M15.5 15h3"/>
+                            </svg>
+                        </div>
+                        <div class="counter-action-text">
+                            <strong>Billing &amp; Payment</strong>
+                            <span>Manage patient bills and payments</span>
+                        </div>
+                        <svg class="counter-action-arrow" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="m9 18 6-6-6-6"/>
+                        </svg>
+                    </a>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
 {% endblock %}

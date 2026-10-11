@@ -238,7 +238,104 @@
             border-radius: 50%;
             background: #0ea5e9;
         }
+        .notification-menu {
+    display: none;
+    position: absolute;
+    top: 58px;
+    right: 60px;
+    width: 320px;
+    max-height: 400px;
+    overflow-y: auto;
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 15px;
+    box-shadow: 0 16px 40px rgba(20,40,80,.18);
+    z-index: 1000;
+}
 
+.notification-menu.show {
+    display: block;
+}
+
+.notification-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 18px;
+    border-bottom: 1px solid var(--border);
+}
+
+.notification-header h3 {
+    font-size: 15px;
+    font-weight: 700;
+    margin: 0;
+    color: var(--text);
+}
+
+.notification-item {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+}
+
+.notification-item:hover {
+    background: var(--page);
+}
+
+.notification-item-title {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 4px;
+    color: var(--text);
+}
+
+.notification-item-message {
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 6px;
+    line-height: 1.4;
+}
+
+.notification-item-time {
+    font-size: 12px;
+    color: #8997aa;
+}
+
+.notification-item-priority {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
+.priority-urgent {
+    background: #fee2e2;
+    color: #dc2626;
+}
+
+.priority-high {
+    background: #ffedd5;
+    color: #ea580c;
+}
+
+.priority-medium {
+    background: #dbeafe;
+    color: #2563eb;
+}
+
+.priority-low {
+    background: #f1f5f9;
+    color: #64748b;
+}
+
+.notification-empty {
+    padding: 40px 20px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 14px;
+}
         .profile-wrap {
             position: relative;
             margin-left: 5px;
@@ -464,18 +561,6 @@
             <span>Billing & Payments</span>
         </a>
 
-        <!-- Notices -->
-        <a href="{% url 'counter_notices' %}"
-           class="menu-item {% if request.resolver_match.url_name == 'counter_notices' %}active{% endif %}">
-
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/>
-                <path d="M10 21h4"/>
-            </svg>
-
-            <span>Notices & Announcement</span>
-        </a>
-
         <div class="menu-title" style="margin-top:25px;">ACCOUNT</div>
 
         <!-- My Profile -->
@@ -529,19 +614,57 @@
 
             </a>
 
-            <!-- Bell → Notices -->
-            <a href="{% url 'counter_notices' %}"
-               class="icon-btn"
-               title="Notices">
+            <!-- Notifications -->
+<button type="button"
+        class="icon-btn"
+        id="notificationButton"
+        title="Notifications"
+        aria-label="Notifications">
 
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                    <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/>
-                    <path d="M10 21h4"/>
-                </svg>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/>
+        <path d="M10 21h4"/>
+    </svg>
 
-                <span class="notification-dot"></span>
+    <span class="notification-dot"></span>
 
-            </a>
+</button>
+
+<div class="notification-menu" id="notificationMenu">
+
+    <div class="notification-header">
+        <h3>Notifications</h3>
+    </div>
+
+    {% if notices %}
+        {% for notice in notices %}
+            <div class="notification-item">
+
+                <span class="notification-item-priority priority-{{ notice.priority }}">
+                    {{ notice.get_priority_display }}
+                </span>
+
+                <div class="notification-item-title">
+                    {{ notice.title }}
+                </div>
+
+                <div class="notification-item-message">
+                    {{ notice.content|truncatewords:15 }}
+                </div>
+
+                <div class="notification-item-time">
+                    {{ notice.created_at|timesince }} ago
+                </div>
+
+            </div>
+        {% endfor %}
+    {% else %}
+        <div class="notification-empty">
+            No notifications
+        </div>
+    {% endif %}
+
+</div>
 
             <!-- Dark Mode -->
             <button type="button"
@@ -657,11 +780,28 @@
     const profileButton = document.getElementById("profileButton");
     const profileMenu = document.getElementById("profileMenu");
     const themeButton = document.getElementById("themeButton");
+    const notificationButton = document.getElementById("notificationButton");
+    const notificationMenu = document.getElementById("notificationMenu");
 
     profileButton.addEventListener("click", function(event) {
         event.stopPropagation();
         profileMenu.classList.toggle("show");
+        if (notificationMenu) {
+            notificationMenu.classList.remove("show");
+        }
     });
+
+    if (notificationButton && notificationMenu) {
+        notificationButton.addEventListener("click", function(event) {
+            event.stopPropagation();
+            notificationMenu.classList.toggle("show");
+            profileMenu.classList.remove("show");
+        });
+
+        notificationMenu.addEventListener("click", function(event) {
+            event.stopPropagation();
+        });
+    }
 
     profileMenu.addEventListener("click", function(event) {
         event.stopPropagation();
@@ -669,6 +809,9 @@
 
     document.addEventListener("click", function() {
         profileMenu.classList.remove("show");
+        if (notificationMenu) {
+            notificationMenu.classList.remove("show");
+        }
     });
 
     if (localStorage.getItem("nhimsTheme") === "dark") {
@@ -676,7 +819,6 @@
     }
 
     themeButton.addEventListener("click", function() {
-
         document.body.classList.toggle("dark");
 
         if (document.body.classList.contains("dark")) {
@@ -684,10 +826,8 @@
         } else {
             localStorage.setItem("nhimsTheme", "light");
         }
-
     });
 </script>
-
 {% block extra_js %}{% endblock %}
 
 </body>
