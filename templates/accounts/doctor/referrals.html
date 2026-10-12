@@ -637,7 +637,7 @@ textarea.form-control{
                             </div>
                             <div class="specialist-details">
                                 {% if specialist.staff_profile %}
-                                {{ specialist.staff_profile.get_department_display }}
+                                {{ specialist.staff_profile.department_label|default:specialist.staff_profile.get_department_display }}
                                 {% else %}
                                 Specialist
                                 {% endif %}

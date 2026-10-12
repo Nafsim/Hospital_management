@@ -29,7 +29,7 @@ from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4 
-from django.db import models
+from django.db import models, IntegrityError
 from .models import Blood
 from .models import DiagnosticTest 
 from .models import Facility, MOHJoinRequest
@@ -599,8 +599,7 @@ def hospital_admin_dashboard(request):
         total_nurses = Staff.objects.filter(hospital=hospital, user__role='nurse', user__is_active=True).count()
         total_patients = Patient.objects.filter(hospital=hospital).count()
         total_staff = Staff.objects.filter(hospital=hospital).count()
-        
-        total_departments = 0
+        total_departments = Department.objects.filter(hospital=hospital).count()
 
     context = {
         'hospital': hospital,
@@ -679,6 +678,20 @@ def hospital_doctors(request):
         return redirect('dashboard')
 
     hospital = request.user.hospital
+    hospital_departments = Department.objects.filter(
+        hospital=hospital,
+        is_active=True
+    ).order_by('name')
+    hospital_department_labels = {
+        dept.name: dept.get_name_display() for dept in hospital_departments
+    }
+
+    if hospital_department_labels:
+        department_choices = list(hospital_department_labels.items())
+    else:
+        department_choices = list(Staff.DEPARTMENT_CHOICES)
+        hospital_department_labels = dict(Staff.DEPARTMENT_CHOICES)
+
     if request.method == 'POST':
         action = request.POST.get('action')
 
@@ -692,8 +705,11 @@ def hospital_doctors(request):
                 messages.error(request, 'A user with this email already exists.')
                 return redirect('hospital_doctors')
 
-            department = request.POST.get('department', 'general')
-            department_name = dict(Staff.DEPARTMENT_CHOICES).get(department, 'General Medicine')
+            department = request.POST.get('department', '').strip()
+            department_name = hospital_department_labels.get(department)
+            if not department_name:
+                messages.error(request, 'Please select a valid department.')
+                return redirect('hospital_doctors')
 
             user = User.objects.create_user(
                 username=email,
@@ -733,8 +749,11 @@ def hospital_doctors(request):
             user.is_active = True if request.POST.get('is_active') == 'on' else False
             user.save()
 
-            department = request.POST.get('department')
-            department_name = dict(Staff.DEPARTMENT_CHOICES).get(department, 'General Medicine')
+            department = request.POST.get('department', '').strip()
+            department_name = hospital_department_labels.get(department)
+            if not department_name:
+                messages.error(request, 'Please select a valid department.')
+                return redirect('hospital_doctors')
 
             staff.employee_id = request.POST.get('employee_id')
             staff.license = request.POST.get('license')
@@ -768,7 +787,7 @@ def hospital_doctors(request):
     context = {
         'doctors': doctors,
         'hospital': hospital,
-        'departments': Staff.DEPARTMENT_CHOICES,
+        'departments': department_choices,
     }
 
     return render(request, 'accounts/hospital_admin/doctors.html', context)
@@ -985,31 +1004,63 @@ def hospital_departments(request):
         action = request.POST.get('action')
 
         if action == 'create':
-            name = request.POST.get('name')
+            name = request.POST.get('name', '').strip()
             is_active = request.POST.get('is_active') == 'on'
 
-            if name:
-                Department.objects.create(
+            if not name:
+                messages.error(request, 'Please select a department name.')
+                return redirect('hospital_departments')
+
+            try:
+                department, created = Department.objects.get_or_create(
                     hospital=hospital,
                     name=name,
-                    is_active=is_active
+                    defaults={'is_active': is_active},
                 )
+            except IntegrityError:
+                created = False
+                department = Department.objects.filter(
+                    hospital=hospital,
+                    name=name
+                ).first()
+
+            if created:
+                messages.success(request, 'Department created successfully.')
+            else:
+                if department and department.is_active != is_active:
+                    department.is_active = is_active
+                    department.save(update_fields=['is_active', 'updated_at'])
+                    messages.info(request, 'Department already existed. Status was updated.')
+                else:
+                    messages.warning(request, 'This department already exists for your hospital.')
 
             return redirect('hospital_departments')
 
         if action == 'edit':
             department_id = request.POST.get('department_id')
-            name = request.POST.get('name')
+            name = request.POST.get('name', '').strip()
             is_active = request.POST.get('is_active') == 'on'
 
-            department = Department.objects.get(
+            if not name:
+                messages.error(request, 'Please select a department name.')
+                return redirect('hospital_departments')
+
+            department = get_object_or_404(
+                Department,
                 id=department_id,
                 hospital=hospital
             )
 
-            department.name = name
-            department.is_active = is_active
-            department.save()
+            try:
+                department.name = name
+                department.is_active = is_active
+                department.save()
+                messages.success(request, 'Department updated successfully.')
+            except IntegrityError:
+                messages.error(
+                    request,
+                    'Another department with this name already exists in your hospital.'
+                )
 
             return redirect('hospital_departments')
 
@@ -1020,6 +1071,7 @@ def hospital_departments(request):
                 id=department_id,
                 hospital=hospital
             ).delete()
+            messages.success(request, 'Department deleted successfully.')
 
             return redirect('hospital_departments')
 
@@ -2358,10 +2410,25 @@ def doctor_referrals(request):
 
     specialists = request.user.__class__.objects.filter(
         role='doctor',
-        is_active=True
+        is_active=True,
+        hospital=hospital
     ).exclude(
         id=doctor.id
-    ).select_related('hospital')
+    ).select_related('hospital', 'staff_profile')
+
+    specialist_department_labels = {}
+    if hospital:
+        specialist_department_labels = {
+            dept.name: dept.get_name_display()
+            for dept in Department.objects.filter(hospital=hospital)
+        }
+    for specialist in specialists:
+        staff_profile = getattr(specialist, 'staff_profile', None)
+        if staff_profile:
+            staff_profile.department_label = specialist_department_labels.get(
+                staff_profile.department,
+                staff_profile.get_department_display()
+            )
 
     if request.method == 'POST':
         action = request.POST.get('action')
@@ -2381,7 +2448,8 @@ def doctor_referrals(request):
             specialist = request.user.__class__.objects.filter(
                 id=specialist_id,
                 role='doctor',
-                is_active=True
+                is_active=True,
+                hospital=hospital
             ).exclude(
                 id=doctor.id
             ).first()
@@ -2420,7 +2488,8 @@ def doctor_referrals(request):
                 specialist = request.user.__class__.objects.filter(
                     id=specialist_id,
                     role='doctor',
-                    is_active=True
+                    is_active=True,
+                    hospital=hospital
                 ).exclude(
                     id=doctor.id
                 ).first()
@@ -2919,12 +2988,10 @@ def patient_dashboard(request):
         is_active=True
     ).count()
 
-    try:
-        total_departments = Department.objects.filter(
-            is_active=True
-        ).count()
-    except Exception:
-        total_departments = 0
+    department_queryset = Department.objects.filter(is_active=True)
+    if hospital:
+        department_queryset = department_queryset.filter(hospital=hospital)
+    total_departments = department_queryset.count()
 
     if hospital:
         appt_qs = DoctorSchedule.objects.filter(hospital=hospital)
@@ -2997,7 +3064,12 @@ def patient_departments(request):
     hospital = request.user.hospital
     search = request.GET.get('search', '').strip()
 
-    departments = Department.objects.filter(is_active=True).order_by('name')
+    departments = Department.objects.filter(
+        is_active=True
+    )
+    if hospital:
+        departments = departments.filter(hospital=hospital)
+    departments = departments.order_by('name')
     if search:
         departments = departments.filter(name__icontains=search)
 
@@ -3810,13 +3882,16 @@ def counter_doctors(request):
         doctors = Staff.objects.none()
 
     departments = doctors.values_list('department', flat=True).distinct()
+    total_departments = Department.objects.filter(
+        hospital=hospital
+    ).count() if hospital else 0
 
     context = {
         'doctors': doctors,
         'total_doctors': doctors.count(),
         'active_doctors': doctors.filter(is_active=True).count(),
         'inactive_doctors': doctors.filter(is_active=False).count(),
-        'total_departments': departments.count(),
+        'total_departments': total_departments,
         'departments': departments,
     }
 
