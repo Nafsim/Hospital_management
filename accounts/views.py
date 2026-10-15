@@ -9,7 +9,7 @@ from datetime import datetime, timedelta, date
 from django.apps import apps
 from patients.models import Patient, Visit
 from staff.models import Staff
-from .models import BloodCollection, Medicine
+from .models import Billing, BloodCollection, Medicine
 from hospitals.models import Hospital
 from django.utils import timezone
 from datetime import timedelta
@@ -39,7 +39,9 @@ from .models import NursingNote
 from .models import NurseProfile 
 from django.db.models import Sum
 from django.contrib.auth.decorators import login_required
+import csv
 from .models import PatientAppointment
+from django.db import IntegrityError
 from django.shortcuts import render, redirect, get_object_or_404
 from .models import (
     User, Notice, Department, DoctorPatient, DoctorSchedule,
@@ -4467,16 +4469,71 @@ def bloodbank_profile(request):
 
 
 # accountant
+from django.db.models import Sum, Count, Q
 def accountant_dashboard(request):
     if not request.user.is_authenticated:
         return redirect('login')
     if request.user.role != 'accountant':
         return redirect('dashboard')
+
     hospital = request.user.hospital
+    today = timezone.now().date()
+    month_start = today.replace(day=1)
+
+    total_billing = Decimal('0')
+    total_payments = Decimal('0')
+    total_expenses = Decimal('0')
+    pending_invoices = 0
+    today_payments = Decimal('0')
+    month_income = Decimal('0')
+    month_expense = Decimal('0')
+    recent_payments = []
+    recent_expenses = []
+
+    if hospital:
+        # PatientPayment (from patient module) if exists
+        try:
+            from .models import PatientPayment
+            pay_qs = PatientPayment.objects.filter(hospital=hospital)
+            total_payments = pay_qs.filter(status='paid').aggregate(t=Sum('amount'))['t'] or Decimal('0')
+            today_payments = pay_qs.filter(status='paid', created_at__date=today).aggregate(t=Sum('amount'))['t'] or Decimal('0')
+            month_income = pay_qs.filter(status='paid', created_at__date__gte=month_start).aggregate(t=Sum('amount'))['t'] or Decimal('0')
+            recent_payments = pay_qs.order_by('-created_at')[:5]
+        except Exception:
+            pass
+
+        try:
+            from .models import Invoice
+            inv_qs = Invoice.objects.filter(hospital=hospital)
+            total_billing = inv_qs.aggregate(t=Sum('total_amount'))['t'] or Decimal('0')
+            pending_invoices = inv_qs.filter(status='pending').count()
+        except Exception:
+            pass
+
+        try:
+            from .models import Expense
+            exp_qs = Expense.objects.filter(hospital=hospital)
+            total_expenses = exp_qs.aggregate(t=Sum('amount'))['t'] or Decimal('0')
+            month_expense = exp_qs.filter(expense_date__gte=month_start).aggregate(t=Sum('amount'))['t'] or Decimal('0')
+            recent_expenses = exp_qs.order_by('-expense_date')[:5]
+        except Exception:
+            pass
+
+    net_balance = (month_income or Decimal('0')) - (month_expense or Decimal('0'))
+
     context = {
         'hospital': hospital,
-        'patients_count': Patient.objects.filter(hospital=hospital).count() if hospital else 0,
-        'staff_count': Staff.objects.filter(hospital=hospital).count() if hospital else 0,
+        'user': request.user,
+        'total_billing': total_billing,
+        'total_payments': total_payments,
+        'total_expenses': total_expenses,
+        'pending_invoices': pending_invoices,
+        'today_payments': today_payments,
+        'month_income': month_income,
+        'month_expense': month_expense,
+        'net_balance': net_balance,
+        'recent_payments': recent_payments,
+        'recent_expenses': recent_expenses,
     }
     return render(request, 'accounts/accountant/dashboard.html', context)
 def accountant_billing(request):
@@ -4484,36 +4541,558 @@ def accountant_billing(request):
         return redirect('login')
     if request.user.role != 'accountant':
         return redirect('dashboard')
+
     hospital = request.user.hospital
-    patients = Patient.objects.filter(hospital=hospital) if hospital else []
-    context = {'patients': patients}
+    search = request.GET.get('q', '').strip()
+    patients = Patient.objects.filter(hospital=hospital) if hospital else Patient.objects.none()
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action == 'create':
+            patient_id = request.POST.get('patient')
+            patient = None
+            patient_name = request.POST.get('patient_name', '').strip()
+            patient_phone = request.POST.get('patient_phone', '').strip()
+            if patient_id:
+                patient = Patient.objects.filter(id=patient_id, hospital=hospital).first()
+                if patient:
+                    patient_name = getattr(patient, 'patient_name', None) or getattr(patient, 'name', None) or str(patient)
+                    patient_phone = getattr(patient, 'phone', '') or patient_phone
+
+            amount = Decimal(request.POST.get('amount') or 0)
+            discount = Decimal(request.POST.get('discount') or 0)
+            Billing.objects.create(
+                hospital=hospital,
+                patient=patient,
+                patient_name=patient_name,
+                patient_phone=patient_phone,
+                service=request.POST.get('service', '').strip(),
+                amount=amount,
+                discount=discount,
+                status=request.POST.get('status', 'pending'),
+                notes=request.POST.get('notes', '').strip(),
+                bill_date=request.POST.get('bill_date') or timezone.now().date(),
+                created_by=request.user,
+            )
+            messages.success(request, 'Bill created.')
+            return redirect('accountant_billing')
+
+        if action == 'edit':
+            bill = get_object_or_404(Billing, id=request.POST.get('bill_id'), hospital=hospital)
+            bill.patient_name = request.POST.get('patient_name', '').strip()
+            bill.patient_phone = request.POST.get('patient_phone', '').strip()
+            bill.service = request.POST.get('service', '').strip()
+            bill.amount = Decimal(request.POST.get('amount') or 0)
+            bill.discount = Decimal(request.POST.get('discount') or 0)
+            bill.status = request.POST.get('status', bill.status)
+            bill.notes = request.POST.get('notes', '').strip()
+            bill.bill_date = request.POST.get('bill_date') or bill.bill_date
+            bill.save()
+            messages.success(request, 'Bill updated.')
+            return redirect('accountant_billing')
+
+        if action == 'delete':
+            Billing.objects.filter(id=request.POST.get('bill_id'), hospital=hospital).delete()
+            messages.success(request, 'Bill deleted.')
+            return redirect('accountant_billing')
+
+    bills = Billing.objects.none()
+    total_amount = 0
+    pending_count = 0
+    paid_count = 0
+    if hospital:
+        bills = Billing.objects.filter(hospital=hospital)
+        if search:
+            bills = bills.filter(
+                Q(bill_no__icontains=search) |
+                Q(patient_name__icontains=search) |
+                Q(service__icontains=search) |
+                Q(patient_phone__icontains=search)
+            )
+        total_amount = bills.aggregate(t=Sum('total'))['t'] or 0
+        pending_count = bills.filter(status='pending').count()
+        paid_count = bills.filter(status='paid').count()
+
+    context = {
+        'hospital': hospital,
+        'bills': bills,
+        'patients': patients,
+        'total': bills.count() if hospital else 0,
+        'total_amount': total_amount,
+        'pending_count': pending_count,
+        'paid_count': paid_count,
+        'search': search,
+        'status_choices': Billing.STATUS_CHOICES,
+        'today': timezone.now().date(),
+    }
     return render(request, 'accounts/accountant/billing.html', context)
+
+
+def accountant_billing_pdf(request, bill_id):
+    if not request.user.is_authenticated:
+        return redirect('login')
+    if request.user.role != 'accountant':
+        return redirect('dashboard')
+
+    hospital = request.user.hospital
+    bill = get_object_or_404(Billing, id=bill_id, hospital=hospital)
+
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{bill.bill_no}.pdf"'
+
+    p = canvas.Canvas(response, pagesize=A4)
+    width, height = A4
+    y = height - 50
+
+    p.setFont("Helvetica-Bold", 16)
+    p.drawString(50, y, hospital.name if hospital else "NHIMS")
+    y -= 22
+    p.setFont("Helvetica", 11)
+    p.drawString(50, y, "Hospital Bill / Invoice")
+    y -= 30
+    p.setFont("Helvetica-Bold", 12)
+    p.drawString(50, y, f"Bill No: {bill.bill_no}")
+    y -= 18
+    p.setFont("Helvetica", 11)
+    p.drawString(50, y, f"Date: {bill.bill_date.strftime('%d %b %Y')}")
+    y -= 18
+    p.drawString(50, y, f"Patient: {bill.patient_name}")
+    y -= 18
+    p.drawString(50, y, f"Phone: {bill.patient_phone or '—'}")
+    y -= 18
+    p.drawString(50, y, f"Service: {bill.service}")
+    y -= 18
+    p.drawString(50, y, f"Amount: BDT {bill.amount}")
+    y -= 18
+    p.drawString(50, y, f"Discount: BDT {bill.discount}")
+    y -= 18
+    p.setFont("Helvetica-Bold", 12)
+    p.drawString(50, y, f"Total: BDT {bill.total}")
+    y -= 18
+    p.setFont("Helvetica", 11)
+    p.drawString(50, y, f"Status: {bill.get_status_display()}")
+    if bill.notes:
+        y -= 24
+        p.drawString(50, y, f"Notes: {bill.notes[:80]}")
+    y -= 40
+    p.setFont("Helvetica", 9)
+    p.drawString(50, y, "Generated by NHIMS Accountant Module")
+    p.showPage()
+    p.save()
+    return response
+from .models import PaymentRecord, Billing
 def accountant_payments(request):
     if not request.user.is_authenticated:
         return redirect('login')
     if request.user.role != 'accountant':
         return redirect('dashboard')
+
     hospital = request.user.hospital
-    patients = Patient.objects.filter(hospital=hospital) if hospital else []
-    context = {'patients': patients}
+    search = request.GET.get('q', '').strip()
+    bills = Billing.objects.filter(hospital=hospital, status__in=['pending', 'partial']) if hospital else Billing.objects.none()
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action == 'create':
+            bill_id = request.POST.get('billing')
+            billing = None
+            patient_name = request.POST.get('patient_name', '').strip()
+            patient_phone = request.POST.get('patient_phone', '').strip()
+            if bill_id:
+                billing = Billing.objects.filter(id=bill_id, hospital=hospital).first()
+                if billing:
+                    patient_name = billing.patient_name
+                    patient_phone = billing.patient_phone or patient_phone
+
+            PaymentRecord.objects.create(
+                hospital=hospital,
+                billing=billing,
+                patient_name=patient_name,
+                patient_phone=patient_phone,
+                amount=Decimal(request.POST.get('amount') or 0),
+                method=request.POST.get('method', 'cash'),
+                status=request.POST.get('status', 'completed'),
+                reference=request.POST.get('reference', '').strip(),
+                notes=request.POST.get('notes', '').strip(),
+                payment_date=request.POST.get('payment_date') or timezone.now().date(),
+                received_by=request.user,
+            )
+            if billing and request.POST.get('status') == 'completed':
+                billing.status = 'paid'
+                billing.save()
+            messages.success(request, 'Payment recorded.')
+            return redirect('accountant_payments')
+
+        if action == 'edit':
+            pay = get_object_or_404(PaymentRecord, id=request.POST.get('payment_id'), hospital=hospital)
+            pay.patient_name = request.POST.get('patient_name', '').strip()
+            pay.patient_phone = request.POST.get('patient_phone', '').strip()
+            pay.amount = Decimal(request.POST.get('amount') or 0)
+            pay.method = request.POST.get('method', 'cash')
+            pay.status = request.POST.get('status', pay.status)
+            pay.reference = request.POST.get('reference', '').strip()
+            pay.notes = request.POST.get('notes', '').strip()
+            pay.payment_date = request.POST.get('payment_date') or pay.payment_date
+            pay.save()
+            messages.success(request, 'Payment updated.')
+            return redirect('accountant_payments')
+
+        if action == 'delete':
+            PaymentRecord.objects.filter(id=request.POST.get('payment_id'), hospital=hospital).delete()
+            messages.success(request, 'Payment deleted.')
+            return redirect('accountant_payments')
+
+    payments = PaymentRecord.objects.none()
+    total_amount = 0
+    today_amount = 0
+    completed = 0
+    if hospital:
+        payments = PaymentRecord.objects.filter(hospital=hospital)
+        if search:
+            payments = payments.filter(
+                Q(payment_no__icontains=search) |
+                Q(patient_name__icontains=search) |
+                Q(reference__icontains=search)
+            )
+        total_amount = payments.filter(status='completed').aggregate(t=Sum('amount'))['t'] or 0
+        today_amount = payments.filter(status='completed', payment_date=timezone.now().date()).aggregate(t=Sum('amount'))['t'] or 0
+        completed = payments.filter(status='completed').count()
+
+    context = {
+        'hospital': hospital,
+        'payments': payments,
+        'bills': bills,
+        'total': payments.count() if hospital else 0,
+        'total_amount': total_amount,
+        'today_amount': today_amount,
+        'completed': completed,
+        'search': search,
+        'method_choices': PaymentRecord.METHOD_CHOICES,
+        'status_choices': PaymentRecord.STATUS_CHOICES,
+        'today': timezone.now().date(),
+    }
     return render(request, 'accounts/accountant/payments.html', context)
+
+
+def accountant_payment_pdf(request, payment_id):
+    if not request.user.is_authenticated:
+        return redirect('login')
+    if request.user.role != 'accountant':
+        return redirect('dashboard')
+
+    hospital = request.user.hospital
+    pay = get_object_or_404(PaymentRecord, id=payment_id, hospital=hospital)
+
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{pay.payment_no}.pdf"'
+
+    p = canvas.Canvas(response, pagesize=A4)
+    width, height = A4
+    y = height - 50
+
+    p.setFont("Helvetica-Bold", 16)
+    p.drawString(50, y, hospital.name if hospital else "NHIMS")
+    y -= 22
+    p.setFont("Helvetica", 11)
+    p.drawString(50, y, "Payment Receipt")
+    y -= 30
+    p.setFont("Helvetica-Bold", 12)
+    p.drawString(50, y, f"Payment No: {pay.payment_no}")
+    y -= 18
+    p.setFont("Helvetica", 11)
+    p.drawString(50, y, f"Date: {pay.payment_date.strftime('%d %b %Y')}")
+    y -= 18
+    p.drawString(50, y, f"Patient: {pay.patient_name}")
+    y -= 18
+    p.drawString(50, y, f"Phone: {pay.patient_phone or '—'}")
+    y -= 18
+    p.drawString(50, y, f"Amount: BDT {pay.amount}")
+    y -= 18
+    p.drawString(50, y, f"Method: {pay.get_method_display()}")
+    y -= 18
+    p.drawString(50, y, f"Status: {pay.get_status_display()}")
+    y -= 18
+    p.drawString(50, y, f"Reference: {pay.reference or '—'}")
+    y -= 40
+    p.setFont("Helvetica", 9)
+    p.drawString(50, y, "Generated by NHIMS Accountant Module")
+    p.showPage()
+    p.save()
+    return response
+from .models import Invoice
 def accountant_invoices(request):
     if not request.user.is_authenticated:
         return redirect('login')
     if request.user.role != 'accountant':
         return redirect('dashboard')
+
     hospital = request.user.hospital
-    patients = Patient.objects.filter(hospital=hospital) if hospital else []
-    context = {'patients': patients}
+    search = request.GET.get('q', '').strip()
+    patients = Patient.objects.filter(hospital=hospital) if hospital else Patient.objects.none()
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action == 'create':
+            patient_id = request.POST.get('patient')
+            patient_name = request.POST.get('patient_name', '').strip()
+            patient_phone = request.POST.get('patient_phone', '').strip()
+            if patient_id:
+                patient = Patient.objects.filter(id=patient_id, hospital=hospital).first()
+                if patient:
+                    patient_name = getattr(patient, 'patient_name', None) or getattr(patient, 'name', None) or str(patient)
+                    patient_phone = getattr(patient, 'phone', '') or patient_phone
+
+            Invoice.objects.create(
+                hospital=hospital,
+                patient_name=patient_name,
+                patient_phone=patient_phone,
+                patient_address=request.POST.get('patient_address', '').strip(),
+                description=request.POST.get('description', '').strip(),
+                amount=Decimal(request.POST.get('amount') or 0),
+                tax=Decimal(request.POST.get('tax') or 0),
+                status=request.POST.get('status', 'draft'),
+                due_date=request.POST.get('due_date') or None,
+                invoice_date=request.POST.get('invoice_date') or timezone.now().date(),
+                notes=request.POST.get('notes', '').strip(),
+                created_by=request.user,
+            )
+            messages.success(request, 'Invoice created.')
+            return redirect('accountant_invoices')
+
+        if action == 'edit':
+            inv = get_object_or_404(Invoice, id=request.POST.get('invoice_id'), hospital=hospital)
+            inv.patient_name = request.POST.get('patient_name', '').strip()
+            inv.patient_phone = request.POST.get('patient_phone', '').strip()
+            inv.patient_address = request.POST.get('patient_address', '').strip()
+            inv.description = request.POST.get('description', '').strip()
+            inv.amount = Decimal(request.POST.get('amount') or 0)
+            inv.tax = Decimal(request.POST.get('tax') or 0)
+            inv.status = request.POST.get('status', inv.status)
+            inv.due_date = request.POST.get('due_date') or None
+            inv.invoice_date = request.POST.get('invoice_date') or inv.invoice_date
+            inv.notes = request.POST.get('notes', '').strip()
+            inv.save()
+            messages.success(request, 'Invoice updated.')
+            return redirect('accountant_invoices')
+
+        if action == 'delete':
+            Invoice.objects.filter(id=request.POST.get('invoice_id'), hospital=hospital).delete()
+            messages.success(request, 'Invoice deleted.')
+            return redirect('accountant_invoices')
+
+    invoices = Invoice.objects.none()
+    total_amount = 0
+    pending = 0
+    paid = 0
+    if hospital:
+        invoices = Invoice.objects.filter(hospital=hospital)
+        if search:
+            invoices = invoices.filter(
+                Q(invoice_no__icontains=search) |
+                Q(patient_name__icontains=search) |
+                Q(description__icontains=search)
+            )
+        total_amount = invoices.aggregate(t=Sum('total_amount'))['t'] or 0
+        pending = invoices.filter(status__in=['draft', 'sent', 'overdue']).count()
+        paid = invoices.filter(status='paid').count()
+
+    context = {
+        'hospital': hospital,
+        'invoices': invoices,
+        'patients': patients,
+        'total': invoices.count() if hospital else 0,
+        'total_amount': total_amount,
+        'pending': pending,
+        'paid': paid,
+        'search': search,
+        'status_choices': Invoice.STATUS_CHOICES,
+        'today': timezone.now().date(),
+    }
     return render(request, 'accounts/accountant/invoices.html', context)
+
+
+def accountant_invoice_pdf(request, invoice_id):
+    if not request.user.is_authenticated:
+        return redirect('login')
+    if request.user.role != 'accountant':
+        return redirect('dashboard')
+
+    hospital = request.user.hospital
+    inv = get_object_or_404(Invoice, id=invoice_id, hospital=hospital)
+
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{inv.invoice_no}.pdf"'
+
+    p = canvas.Canvas(response, pagesize=A4)
+    width, height = A4
+    y = height - 50
+
+    p.setFont("Helvetica-Bold", 16)
+    p.drawString(50, y, hospital.name if hospital else "NHIMS")
+    y -= 22
+    p.setFont("Helvetica", 11)
+    p.drawString(50, y, "Tax Invoice")
+    y -= 30
+    p.setFont("Helvetica-Bold", 12)
+    p.drawString(50, y, f"Invoice No: {inv.invoice_no}")
+    y -= 18
+    p.setFont("Helvetica", 11)
+    p.drawString(50, y, f"Date: {inv.invoice_date.strftime('%d %b %Y')}")
+    y -= 18
+    if inv.due_date:
+        p.drawString(50, y, f"Due Date: {inv.due_date.strftime('%d %b %Y')}")
+        y -= 18
+    p.drawString(50, y, f"Bill To: {inv.patient_name}")
+    y -= 18
+    p.drawString(50, y, f"Phone: {inv.patient_phone or '—'}")
+    y -= 18
+    p.drawString(50, y, f"Description: {inv.description}")
+    y -= 18
+    p.drawString(50, y, f"Amount: BDT {inv.amount}")
+    y -= 18
+    p.drawString(50, y, f"Tax: BDT {inv.tax}")
+    y -= 18
+    p.setFont("Helvetica-Bold", 12)
+    p.drawString(50, y, f"Total: BDT {inv.total_amount}")
+    y -= 18
+    p.setFont("Helvetica", 11)
+    p.drawString(50, y, f"Status: {inv.get_status_display()}")
+    y -= 40
+    p.setFont("Helvetica", 9)
+    p.drawString(50, y, "Generated by NHIMS Accountant Module")
+    p.showPage()
+    p.save()
+    return response
+
 def accountant_expenses(request):
     if not request.user.is_authenticated:
         return redirect('login')
     if request.user.role != 'accountant':
         return redirect('dashboard')
     hospital = request.user.hospital
-    context = {'hospital': hospital}
+    expenses = Expense.objects.filter(hospital=hospital) if hospital else Expense.objects.none()
+    search = request.GET.get('q', '').strip()
+    if search:
+        expenses = expenses.filter(Q(expense_no__icontains=search) | Q(title__icontains=search) | Q(paid_to__icontains=search) | Q(description__icontains=search) | Q(reference__icontains=search))
+    if request.method == 'POST':
+        action = request.POST.get('action')
+        if not hospital:
+            messages.error(request, 'Your account is not linked to a hospital.')
+            return redirect('accountant_expenses')
+        if action == 'delete':
+            expense = get_object_or_404(Expense, id=request.POST.get('expense_id'), hospital=hospital)
+            expense.delete()
+            messages.success(request, 'Expense deleted.')
+            return redirect('accountant_expenses')
+        if action in ['create', 'edit']:
+            try:
+                amount = Decimal(request.POST.get('amount') or '0')
+                if amount < 0:
+                    raise InvalidOperation
+                expense_date = request.POST.get('expense_date') or timezone.localdate().isoformat()
+                title = request.POST.get('title', '').strip()
+                if not title:
+                    raise ValueError('Expense title is required.')
+                category = request.POST.get('category', 'other')
+                payment_method = request.POST.get('payment_method', 'cash')
+                status = request.POST.get('status', 'pending')
+                if category not in dict(Expense.CATEGORY_CHOICES):
+                    raise ValueError('Select a valid category.')
+                if payment_method not in dict(Expense.PAYMENT_CHOICES):
+                    raise ValueError('Select a valid payment method.')
+                if status not in dict(Expense.STATUS_CHOICES):
+                    raise ValueError('Select a valid status.')
+                if action == 'create':
+                    expense = Expense(hospital=hospital, created_by=request.user)
+                else:
+                    expense = get_object_or_404(Expense, id=request.POST.get('expense_id'), hospital=hospital)
+                expense.title = title
+                expense.category = category
+                expense.description = request.POST.get('description', '').strip()
+                expense.amount = amount
+                expense.payment_method = payment_method
+                expense.status = status
+                expense.expense_date = expense_date
+                expense.paid_to = request.POST.get('paid_to', '').strip()
+                expense.reference = request.POST.get('reference', '').strip()
+                expense.notes = request.POST.get('notes', '').strip()
+                expense.save()
+                messages.success(request, 'Expense created.' if action == 'create' else 'Expense updated.')
+            except (InvalidOperation, ValueError, TypeError):
+                messages.error(request, 'Please enter valid expense details and a non-negative amount.')
+            return redirect('accountant_expenses')
+    all_expenses = Expense.objects.filter(hospital=hospital) if hospital else Expense.objects.none()
+    context = {
+        'hospital': hospital,
+        'expenses': expenses,
+        'total': all_expenses.count(),
+        'total_amount': all_expenses.aggregate(total=Sum('amount'))['total'] or Decimal('0'),
+        'pending': all_expenses.filter(status='pending').count(),
+        'paid': all_expenses.filter(status='paid').count(),
+        'search': search,
+        'category_choices': Expense.CATEGORY_CHOICES,
+        'payment_choices': Expense.PAYMENT_CHOICES,
+        'status_choices': Expense.STATUS_CHOICES,
+        'today': timezone.localdate(),
+    }
     return render(request, 'accounts/accountant/expenses.html', context)
+from decimal import Decimal, InvalidOperation
+from .models import Expense
+from patients.models import Patient
+
+
+def accountant_expense_pdf(request, expense_id):
+    if not request.user.is_authenticated:
+        return redirect('login')
+    if request.user.role != 'accountant':
+        return redirect('dashboard')
+    hospital = request.user.hospital
+    expense = get_object_or_404(Expense, id=expense_id, hospital=hospital)
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{expense.expense_no}.pdf"'
+    pdf = canvas.Canvas(response, pagesize=A4)
+    width, height = A4
+    y = height - 55
+    pdf.setFont('Helvetica-Bold', 17)
+    pdf.drawString(50, y, (hospital.name if hospital else 'NHIMS')[:80])
+    y -= 30
+    pdf.setFont('Helvetica-Bold', 14)
+    pdf.drawString(50, y, 'Expense Report')
+    y -= 30
+    pdf.setFont('Helvetica', 11)
+    details = [
+        ('Expense No', expense.expense_no),
+        ('Title', expense.title),
+        ('Category', expense.get_category_display()),
+        ('Description', expense.description),
+        ('Amount', f'BDT {expense.amount}'),
+        ('Payment Method', expense.get_payment_method_display()),
+        ('Status', expense.get_status_display()),
+        ('Expense Date', expense.expense_date.strftime('%d %b %Y')),
+        ('Paid To', expense.paid_to or '-'),
+        ('Reference', expense.reference or '-'),
+        ('Notes', expense.notes or '-'),
+    ]
+    for label, value in details:
+        lines = pdf.beginText(50, y)
+        lines.setFont('Helvetica', 11)
+        lines.textLine(f'{label}:')
+        pdf.drawText(lines)
+        value_lines = str(value).encode('ascii', 'replace').decode('ascii')
+        pdf.setFont('Helvetica', 11)
+        pdf.drawString(160, y, value_lines[:95])
+        y -= 24
+        if y < 60:
+            pdf.showPage()
+            y = height - 55
+    pdf.setFont('Helvetica', 9)
+    pdf.drawString(50, 35, 'Generated by NHIMS Accountant Module')
+    pdf.save()
+    return response
+
 def accountant_payroll(request):
     if not request.user.is_authenticated:
         return redirect('login')
@@ -4523,22 +5102,347 @@ def accountant_payroll(request):
     staff = Staff.objects.filter(hospital=hospital) if hospital else []
     context = {'staff': staff}
     return render(request, 'accounts/accountant/payroll.html', context)
+from decimal import Decimal, InvalidOperation
+from .models import BankAccount, BankTransaction
+@login_required(login_url='login')
 def accountant_accounts(request):
-    if not request.user.is_authenticated:
-        return redirect('login')
     if request.user.role != 'accountant':
         return redirect('dashboard')
+
     hospital = request.user.hospital
-    context = {'hospital': hospital}
+    if not hospital:
+        return render(request, 'accounts/accountant/accounts.html', {
+            'hospital': None,
+            'accounts': [],
+            'transactions': [],
+            'total_accounts': 0,
+            'active_accounts': 0,
+            'total_balance': Decimal('0.00'),
+            'total_transactions': 0,
+            'search': '',
+            'account_types': BankAccount.ACCOUNT_TYPES,
+        })
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action in ['create_account', 'edit_account']:
+            account_id = request.POST.get('account_id')
+            bank_name = request.POST.get('bank_name', '').strip()
+            account_name = request.POST.get('account_name', '').strip()
+            account_number = request.POST.get('account_number', '').strip()
+            branch_name = request.POST.get('branch_name', '').strip()
+            account_type = request.POST.get('account_type', 'current')
+            notes = request.POST.get('notes', '').strip()
+
+            try:
+                opening_balance = Decimal(request.POST.get('opening_balance', '0'))
+                if opening_balance < 0:
+                    raise InvalidOperation
+                if not bank_name or not account_name or not account_number:
+                    raise ValueError
+                if account_type not in dict(BankAccount.ACCOUNT_TYPES):
+                    raise ValueError
+
+                if action == 'create_account':
+                    account = BankAccount(
+                        hospital=hospital,
+                        created_by=request.user,
+                    )
+                else:
+                    account = get_object_or_404(
+                        BankAccount,
+                        id=account_id,
+                        hospital=hospital,
+                    )
+
+                account.bank_name = bank_name
+                account.account_name = account_name
+                account.account_number = account_number
+                account.branch_name = branch_name
+                account.account_type = account_type
+                account.notes = notes
+
+                if action == 'create_account':
+                    account.opening_balance = opening_balance
+                elif account.opening_balance != opening_balance:
+                    messages.error(request, 'Opening balance cannot be changed after the account is created.')
+                    return redirect('accountant_accounts')
+
+                account.save()
+                messages.success(request, 'Bank account saved successfully.')
+
+            except (InvalidOperation, ValueError, TypeError):
+                messages.error(request, 'Please enter valid account information and a non-negative opening balance.')
+
+        elif action == 'add_transaction':
+            account = get_object_or_404(
+                BankAccount,
+                id=request.POST.get('account_id'),
+                hospital=hospital,
+                status='active',
+            )
+            transaction_type = request.POST.get('transaction_type')
+            description = request.POST.get('description', '').strip()
+            reference = request.POST.get('reference', '').strip()
+
+            try:
+                amount = Decimal(request.POST.get('amount', '0'))
+                transaction_date = datetime.strptime(
+                    request.POST.get('transaction_date', ''),
+                    '%Y-%m-%d'
+                ).date()
+
+                if amount <= 0 or transaction_type not in dict(BankTransaction.TRANSACTION_TYPES) or not description:
+                    raise ValueError
+
+                if transaction_type == 'withdrawal' and amount > account.current_balance:
+                    messages.error(request, 'Withdrawal amount cannot exceed the current account balance.')
+                else:
+                    BankTransaction.objects.create(
+                        account=account,
+                        transaction_type=transaction_type,
+                        amount=amount,
+                        transaction_date=transaction_date,
+                        reference=reference,
+                        description=description,
+                        recorded_by=request.user,
+                    )
+                    messages.success(request, 'Transaction recorded successfully.')
+
+            except (InvalidOperation, ValueError, TypeError):
+                messages.error(request, 'Enter a valid amount, date, transaction type, and description.')
+
+        elif action == 'toggle_status':
+            account = get_object_or_404(
+                BankAccount,
+                id=request.POST.get('account_id'),
+                hospital=hospital,
+            )
+            account.status = 'inactive' if account.status == 'active' else 'active'
+            account.save(update_fields=['status', 'updated_at'])
+            messages.success(request, f'Account marked {account.status}.')
+
+        return redirect('accountant_accounts')
+
+    search = request.GET.get('search', '').strip()
+    accounts = BankAccount.objects.filter(hospital=hospital).prefetch_related('transactions')
+
+    if search:
+        accounts = accounts.filter(
+            Q(bank_name__icontains=search) |
+            Q(account_name__icontains=search) |
+            Q(account_number__icontains=search) |
+            Q(branch_name__icontains=search)
+        )
+
+    all_accounts = BankAccount.objects.filter(hospital=hospital).prefetch_related('transactions')
+    transactions = BankTransaction.objects.filter(
+        account__hospital=hospital
+    ).select_related('account', 'recorded_by')[:20]
+
+    total_balance = sum(
+        (account.current_balance for account in all_accounts),
+        Decimal('0.00')
+    )
+
+    context = {
+        'hospital': hospital,
+        'accounts': accounts,
+        'transactions': transactions,
+        'total_accounts': all_accounts.count(),
+        'active_accounts': all_accounts.filter(status='active').count(),
+        'total_balance': total_balance,
+        'total_transactions': BankTransaction.objects.filter(account__hospital=hospital).count(),
+        'search': search,
+        'account_types': BankAccount.ACCOUNT_TYPES,
+        'transaction_types': BankTransaction.TRANSACTION_TYPES,
+        'today': timezone.localdate().isoformat(),
+    }
     return render(request, 'accounts/accountant/accounts.html', context)
+
+
+@login_required(login_url='login')
 def accountant_reports(request):
-    if not request.user.is_authenticated:
-        return redirect('login')
     if request.user.role != 'accountant':
         return redirect('dashboard')
+
     hospital = request.user.hospital
-    context = {'hospital': hospital}
+    today = timezone.localdate()
+    current_month_start = today.replace(day=1)
+
+    expenses = Expense.objects.filter(
+        hospital=hospital
+    ).exclude(status='cancelled')
+
+    transactions = BankTransaction.objects.filter(
+        account__hospital=hospital
+    )
+
+    total_expenses = expenses.filter(
+        status='paid'
+    ).aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+
+    total_deposits = transactions.filter(
+        transaction_type='deposit'
+    ).aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+
+    total_withdrawals = transactions.filter(
+        transaction_type='withdrawal'
+    ).aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+
+    total_transactions = transactions.count()
+    net_cash_movement = total_deposits - total_withdrawals
+
+    monthly_labels = []
+    monthly_deposits = []
+    monthly_expenses = []
+    report_rows = []
+
+    for offset in range(5, -1, -1):
+        month_number = current_month_start.month - offset
+        year_number = current_month_start.year
+
+        while month_number <= 0:
+            month_number += 12
+            year_number -= 1
+
+        month_start = date(year_number, month_number, 1)
+        last_day = calendar.monthrange(year_number, month_number)[1]
+        month_end = date(year_number, month_number, last_day)
+
+        month_deposits = transactions.filter(
+            transaction_type='deposit',
+            transaction_date__gte=month_start,
+            transaction_date__lte=month_end
+        ).aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+
+        month_expenses = expenses.filter(
+            status='paid',
+            expense_date__gte=month_start,
+            expense_date__lte=month_end
+        ).aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+
+        month_withdrawals = transactions.filter(
+            transaction_type='withdrawal',
+            transaction_date__gte=month_start,
+            transaction_date__lte=month_end
+        ).aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+
+        monthly_labels.append(month_start.strftime('%b %Y'))
+        monthly_deposits.append(float(month_deposits))
+        monthly_expenses.append(float(month_expenses))
+
+        report_rows.append({
+            'year': year_number,
+            'month': month_number,
+            'report_name': 'Monthly Financial Summary',
+            'period': month_start.strftime('%B %Y'),
+            'deposits': month_deposits,
+            'expenses': month_expenses,
+            'withdrawals': month_withdrawals,
+            'net': month_deposits - month_withdrawals,
+        })
+
+    category_data = []
+    category_totals = expenses.filter(
+        status='paid',
+        expense_date__year=today.year
+    ).values('category').annotate(
+        total=Sum('amount')
+    ).order_by('-total')
+
+    for item in category_totals:
+        category_display = dict(Expense._meta.get_field('category').choices).get(
+            item['category'], item['category']
+        )
+        category_data.append({
+            'label': category_display,
+            'amount': float(item['total'] or 0)
+        })
+
+    context = {
+        'hospital': hospital,
+        'today': today,
+        'total_deposits': total_deposits,
+        'total_expenses': total_expenses,
+        'total_withdrawals': total_withdrawals,
+        'net_cash_movement': net_cash_movement,
+        'total_transactions': total_transactions,
+        'monthly_labels': monthly_labels,
+        'monthly_deposits': monthly_deposits,
+        'monthly_expenses': monthly_expenses,
+        'category_data': category_data,
+        'report_rows': report_rows,
+    }
+
     return render(request, 'accounts/accountant/reports.html', context)
+
+
+@login_required(login_url='login')
+def accountant_report_download(request, year, month):
+    if request.user.role != 'accountant':
+        return redirect('dashboard')
+
+    if month < 1 or month > 12:
+        return redirect('accountant_reports')
+
+    hospital = request.user.hospital
+    last_day = calendar.monthrange(year, month)[1]
+    month_start = date(year, month, 1)
+    month_end = date(year, month, last_day)
+
+    expenses = Expense.objects.filter(
+        hospital=hospital,
+        status='paid',
+        expense_date__gte=month_start,
+        expense_date__lte=month_end
+    )
+
+    transactions = BankTransaction.objects.filter(
+        account__hospital=hospital,
+        transaction_date__gte=month_start,
+        transaction_date__lte=month_end
+    )
+
+    writer = csv.writer(response)
+    response = HttpResponse(content_type='text/csv; charset=utf-8')
+    response.write('\ufeff')
+    response['Content-Disposition'] = (
+        f'attachment; filename="financial_report_{year}_{month:02d}.csv"'
+    )
+
+    writer = csv.writer(response)
+    writer.writerow(['NHIMS - Hospital Financial Report'])
+    writer.writerow(['Hospital', str(hospital)])
+    writer.writerow(['Reporting Period', month_start.strftime('%B %Y')])
+    writer.writerow([])
+    writer.writerow(['Record Type', 'Date', 'Account / Expense', 'Category / Transaction Type', 'Reference', 'Amount (BDT)', 'Description'])
+
+    for transaction in transactions:
+        writer.writerow([
+            'Bank Transaction',
+            transaction.transaction_date.strftime('%Y-%m-%d'),
+            transaction.account.account_name,
+            transaction.get_transaction_type_display(),
+            transaction.reference,
+            transaction.amount,
+            transaction.description,
+        ])
+
+    for expense in expenses:
+        writer.writerow([
+            'Expense',
+            expense.expense_date.strftime('%Y-%m-%d'),
+            expense.title,
+            expense.get_category_display(),
+            expense.reference,
+            expense.amount,
+            expense.description,
+        ])
+
+    return response
+
 def accountant_notices(request):
     if not request.user.is_authenticated:
         return redirect('login')
@@ -4551,13 +5455,40 @@ def accountant_notifications(request):
     if request.user.role != 'accountant':
         return redirect('dashboard')
     return render(request, 'accounts/accountant/notifications.html')
+
+
 def accountant_profile(request):
     if not request.user.is_authenticated:
         return redirect('login')
+
     if request.user.role != 'accountant':
         return redirect('dashboard')
-    return render(request, 'accounts/accountant/profile.html')
 
+    user = request.user
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action == 'update':
+            user.first_name = request.POST.get('first_name', '').strip()
+            user.last_name = request.POST.get('last_name', '').strip()
+            user.email = request.POST.get('email', '').strip()
+            user.phone = request.POST.get('phone', '').strip()
+            user.save()
+
+            return redirect('accountant_profile')
+
+    context = {
+        'user': user,
+        'profile': None,
+        'hospital': user.hospital,
+    }
+
+    return render(
+        request,
+        'accounts/accountant/profile.html',
+        context
+    )
 
 # Pharmacy
 from .models import Medicine, PharmacyProfile

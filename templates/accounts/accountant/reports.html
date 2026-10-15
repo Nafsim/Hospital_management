@@ -1,0 +1,405 @@
+{% extends "accounts/accountant/base.html" %}
+{% load static %}
+
+{% block title %}Financial Reports - NHIMS{% endblock %}
+
+{% block extra_css %}
+<style>
+.page-top{display:flex;justify-content:space-between;align-items:center;gap:15px;flex-wrap:wrap;margin-bottom:1.4rem}
+.page-title{font-size:1.65rem;font-weight:700;color:var(--text);margin:0 0 .25rem}
+.page-subtitle{font-size:.9rem;color:var(--muted);margin:0}
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:1.4rem}
+.stat-card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:1.1rem 1.2rem;box-shadow:0 1px 3px rgba(0,0,0,.05);display:flex;align-items:center;justify-content:space-between;gap:10px;transition:transform .25s ease,box-shadow .25s ease;min-width:0}
+.stat-card:hover{transform:translateY(-4px);box-shadow:0 8px 20px rgba(0,0,0,.10)}
+.stat-label{font-size:.78rem;color:#64748b;margin-bottom:.3rem}
+.stat-value{font-size:1.4rem;font-weight:700;color:#1e293b;overflow-wrap:anywhere}
+.stat-icon{width:42px;height:42px;min-width:42px;border-radius:10px;display:flex;align-items:center;justify-content:center}
+.stat-icon svg{width:22px;height:22px}
+.stat-icon.blue{background:#dbeafe;color:#2563eb}
+.stat-icon.green{background:#dcfce7;color:#16a34a}
+.stat-icon.orange{background:#ffedd5;color:#ea580c}
+.stat-icon.purple{background:#ede9fe;color:#7c3aed}
+.report-grid{display:grid;grid-template-columns:1.4fr 1fr;gap:16px;margin-bottom:1.4rem}
+.card{background:#fff;border:1px solid var(--border);border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,.05);overflow:hidden;min-width:0}
+.card-header{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:1rem 1.2rem;border-bottom:1px solid var(--border)}
+.card-header h3{font-size:1rem;font-weight:700;color:#1e293b;margin:0}
+.card-body{padding:1.2rem}
+.chart-wrap{position:relative;height:290px;width:100%}
+.table-filters{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.filter-select{min-width:130px;padding:9px 12px;border:1px solid #d1d5db;border-radius:8px;background:#fff;color:#334155;font-size:.85rem;outline:none}
+.filter-select:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+.table-wrap{width:100%;overflow-x:auto}
+table{width:100%;border-collapse:collapse;white-space:nowrap}
+th{background:#f8fafc;color:#64748b;font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.03em;padding:13px 14px;text-align:left;border-bottom:1px solid var(--border)}
+td{padding:14px;border-bottom:1px solid #edf0f4;color:#334155;font-size:.84rem}
+tbody tr:hover{background:#f8fafc}
+tbody tr:last-child td{border-bottom:none}
+.amount{font-weight:600;color:#1e293b}
+.positive{color:#16a34a}
+.negative{color:#dc2626}
+.badge{display:inline-flex;align-items:center;padding:5px 9px;border-radius:20px;font-size:.72rem;font-weight:600}
+.badge.completed{background:#dcfce7;color:#15803d}
+.badge.neutral{background:#f1f5f9;color:#475569}
+.action-buttons{display:flex;align-items:center;gap:8px}
+.action-btn{width:34px;height:34px;border:1px solid #bfdbfe;background:#eff6ff;color:#2563eb;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;text-decoration:none;cursor:pointer;transition:all .2s}
+.action-btn:hover{background:#2563eb;color:#fff;border-color:#2563eb}
+.action-btn svg{width:17px;height:17px}
+.empty-state{text-align:center;padding:35px 15px;color:#94a3b8;font-size:.9rem}
+.empty-state svg{width:38px;height:38px;margin-bottom:8px;color:#cbd5e1}
+@media(max-width:1100px){.stats-grid{grid-template-columns:repeat(2,1fr)}.report-grid{grid-template-columns:1fr}}
+@media(max-width:600px){.stats-grid{grid-template-columns:1fr}.stat-value{font-size:1.25rem}.card-header{align-items:flex-start}.table-filters{width:100%}.filter-select{flex:1;min-width:0}}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-top">
+    <div>
+        <h1 class="page-title">Financial Reports</h1>
+        <p class="page-subtitle">Review monthly financial activity and expense summaries.</p>
+    </div>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div>
+            <div class="stat-label">Total Bank Deposits</div>
+            <div class="stat-value">৳{{ total_deposits|default:0|floatformat:2 }}</div>
+        </div>
+        <div class="stat-icon blue">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="5" width="18" height="14" rx="2"/>
+                <path d="M3 10h18M7 15h3"/>
+            </svg>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div>
+            <div class="stat-label">Total Paid Expenses</div>
+            <div class="stat-value">৳{{ total_expenses|default:0|floatformat:2 }}</div>
+        </div>
+        <div class="stat-icon green">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+            </svg>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div>
+            <div class="stat-label">Bank Withdrawals</div>
+            <div class="stat-value">৳{{ total_withdrawals|default:0|floatformat:2 }}</div>
+        </div>
+        <div class="stat-icon orange">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 19V5M5 12l7-7 7 7"/>
+            </svg>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div>
+            <div class="stat-label">Net Cash Movement</div>
+            <div class="stat-value">৳{{ net_cash_movement|default:0|floatformat:2 }}</div>
+        </div>
+        <div class="stat-icon purple">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 3v18h18"/>
+                <path d="m19 9-5 5-4-4-5 5"/>
+            </svg>
+        </div>
+    </div>
+</div>
+
+<div class="report-grid">
+    <div class="card">
+        <div class="card-header">
+            <h3>Monthly Deposits vs. Expenses</h3>
+        </div>
+        <div class="card-body">
+            <div class="chart-wrap">
+                <canvas id="monthlyChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h3>Paid Expenses by Category</h3>
+        </div>
+        <div class="card-body">
+            <div class="chart-wrap">
+                <canvas id="categoryChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3>Monthly Financial Reports</h3>
+        <div class="table-filters">
+            <select id="yearFilter" class="filter-select" aria-label="Filter by year">
+                <option value="">All Years</option>
+                {% for row in report_rows %}
+                    {% ifchanged row.year %}
+                        <option value="{{ row.year }}">{{ row.year }}</option>
+                    {% endifchanged %}
+                {% endfor %}
+            </select>
+
+            <select id="monthFilter" class="filter-select" aria-label="Filter by month">
+                <option value="">All Months</option>
+                <option value="1">January</option>
+                <option value="2">February</option>
+                <option value="3">March</option>
+                <option value="4">April</option>
+                <option value="5">May</option>
+                <option value="6">June</option>
+                <option value="7">July</option>
+                <option value="8">August</option>
+                <option value="9">September</option>
+                <option value="10">October</option>
+                <option value="11">November</option>
+                <option value="12">December</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="table-wrap">
+        <table id="reportsTable">
+            <thead>
+                <tr>
+                    <th>Report Name</th>
+                    <th>Period</th>
+                    <th>Deposits (BDT)</th>
+                    <th>Paid Expenses (BDT)</th>
+                    <th>Withdrawals (BDT)</th>
+                    <th>Net Cash Movement (BDT)</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in report_rows %}
+                <tr data-year="{{ row.year }}" data-month="{{ row.month }}">
+                    <td>
+                        <strong>Financial Report</strong>
+                    </td>
+                    <td>{{ row.month_name }} {{ row.year }}</td>
+                    <td class="amount">৳{{ row.deposits|default:0|floatformat:2 }}</td>
+                    <td class="amount">৳{{ row.expenses|default:0|floatformat:2 }}</td>
+                    <td class="amount">৳{{ row.withdrawals|default:0|floatformat:2 }}</td>
+                    <td class="amount {% if row.net_cash_movement < 0 %}negative{% else %}positive{% endif %}">
+                        ৳{{ row.net_cash_movement|default:0|floatformat:2 }}
+                    </td>
+                    <td><span class="badge completed">Generated</span></td>
+                    <td>
+                        <div class="action-buttons">
+                            <a href="{% url 'accountant_report_download' row.year row.month %}"
+                               class="action-btn"
+                               title="Download {{ row.month_name }} {{ row.year }} report"
+                               aria-label="Download financial report">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                    <path d="m7 10 5 5 5-5M12 15V3"/>
+                                </svg>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8">
+                        <div class="empty-state">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <rect x="3" y="3" width="18" height="18" rx="2"/>
+                                <path d="M8 8h8M8 12h8M8 16h5"/>
+                            </svg>
+                            <div>No financial reports found.</div>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <div id="noFilteredResults" class="empty-state" style="display:none">
+            No reports match the selected year and month.
+        </div>
+    </div>
+</div>
+
+{{ monthly_labels|json_script:"monthly-labels-data" }}
+{{ monthly_deposits|json_script:"monthly-deposits-data" }}
+{{ monthly_expenses|json_script:"monthly-expenses-data" }}
+{{ category_data|json_script:"category-data" }}
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const yearFilter = document.getElementById("yearFilter");
+    const monthFilter = document.getElementById("monthFilter");
+    const reportRows = document.querySelectorAll("#reportsTable tbody tr[data-year]");
+    const noResults = document.getElementById("noFilteredResults");
+
+    function filterReports() {
+        const selectedYear = yearFilter.value;
+        const selectedMonth = monthFilter.value;
+        let visibleCount = 0;
+
+        reportRows.forEach(function (row) {
+            const yearMatches = !selectedYear || row.dataset.year === selectedYear;
+            const monthMatches = !selectedMonth || row.dataset.month === selectedMonth;
+            const visible = yearMatches && monthMatches;
+
+            row.style.display = visible ? "" : "none";
+
+            if (visible) {
+                visibleCount++;
+            }
+        });
+
+        noResults.style.display = visibleCount === 0 ? "block" : "none";
+    }
+
+    yearFilter.addEventListener("change", filterReports);
+    monthFilter.addEventListener("change", filterReports);
+
+    function readJson(elementId) {
+        const element = document.getElementById(elementId);
+        if (!element) return [];
+        try {
+            return JSON.parse(element.textContent);
+        } catch (error) {
+            return [];
+        }
+    }
+
+    const monthlyLabels = readJson("monthly-labels-data");
+    const monthlyDeposits = readJson("monthly-deposits-data");
+    const monthlyExpenses = readJson("monthly-expenses-data");
+    const categoryData = readJson("category-data");
+
+    const monthlyCanvas = document.getElementById("monthlyChart");
+
+    if (monthlyCanvas && typeof Chart !== "undefined") {
+        new Chart(monthlyCanvas, {
+            type: "bar",
+            data: {
+                labels: monthlyLabels,
+                datasets: [
+                    {
+                        label: "Deposits",
+                        data: monthlyDeposits,
+                        backgroundColor: "#2563eb",
+                        borderRadius: 5
+                    },
+                    {
+                        label: "Paid Expenses",
+                        data: monthlyExpenses,
+                        backgroundColor: "#16a34a",
+                        borderRadius: 5
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    intersect: false,
+                    mode: "index"
+                },
+                plugins: {
+                    legend: {
+                        position: "bottom"
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function (context) {
+                                return context.dataset.label + ": ৳" +
+                                    Number(context.parsed.y || 0).toLocaleString("en-BD", {
+                                        minimumFractionDigits: 2,
+                                        maximumFractionDigits: 2
+                                    });
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function (value) {
+                                return "৳" + Number(value).toLocaleString("en-BD");
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    const categoryCanvas = document.getElementById("categoryChart");
+    const categoryLabels = categoryData.map(function (item) {
+        return item.label;
+    });
+    const categoryAmounts = categoryData.map(function (item) {
+        return Number(item.amount || 0);
+    });
+
+    if (categoryCanvas && typeof Chart !== "undefined") {
+        if (categoryLabels.length > 0 && categoryAmounts.some(function (amount) {
+            return amount > 0;
+        })) {
+            new Chart(categoryCanvas, {
+                type: "doughnut",
+                data: {
+                    labels: categoryLabels,
+                    datasets: [{
+                        data: categoryAmounts,
+                        backgroundColor: [
+                            "#2563eb",
+                            "#16a34a",
+                            "#7c3aed",
+                            "#ea580c",
+                            "#0891b2",
+                            "#db2777",
+                            "#64748b",
+                            "#ca8a04"
+                        ],
+                        borderWidth: 2,
+                        borderColor: "#ffffff"
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: "bottom"
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function (context) {
+                                    return context.label + ": ৳" +
+                                        Number(context.parsed || 0).toLocaleString("en-BD", {
+                                            minimumFractionDigits: 2,
+                                            maximumFractionDigits: 2
+                                        });
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        } else {
+            categoryCanvas.style.display = "none";
+            const message = document.createElement("div");
+            message.className = "empty-state";
+            message.textContent = "No paid expense category data available.";
+            categoryCanvas.parentNode.appendChild(message);
+        }
+    }
+});
+</script>
+{% endblock %}

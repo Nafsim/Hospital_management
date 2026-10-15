@@ -1232,3 +1232,293 @@ class PharmacyProfile(models.Model):
 
     def __str__(self):
         return f"{self.user.get_full_name()} - Pharmacy"    
+class Billing(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('paid', 'Paid'),
+        ('partial', 'Partial'),
+        ('cancelled', 'Cancelled'),
+    ]
+
+    hospital = models.ForeignKey(
+        'hospitals.Hospital',
+        on_delete=models.CASCADE,
+        related_name='billings'
+    )
+    bill_no = models.CharField(max_length=50, blank=True)
+    patient = models.ForeignKey(
+        'patients.Patient',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='billings'
+    )
+    patient_name = models.CharField(max_length=150)
+    patient_phone = models.CharField(max_length=20, blank=True)
+    service = models.CharField(max_length=200, help_text="e.g. Consultation, Lab Test")
+    amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    discount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    total = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    notes = models.TextField(blank=True)
+    bill_date = models.DateField()
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='created_billings'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-bill_date', '-created_at']
+
+    def save(self, *args, **kwargs):
+        self.total = (self.amount or 0) - (self.discount or 0)
+        if self.total < 0:
+            self.total = 0
+        if not self.bill_no:
+            import random
+            self.bill_no = f"BILL-{timezone.now().strftime('%Y%m%d')}-{random.randint(1000,9999)}"
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.bill_no} - {self.patient_name}"    
+
+class PaymentRecord(models.Model):
+    METHOD_CHOICES = [
+        ('cash', 'Cash'),
+        ('card', 'Card'),
+        ('bkash', 'bKash'),
+        ('nagad', 'Nagad'),
+        ('bank', 'Bank Transfer'),
+        ('other', 'Other'),
+    ]
+    STATUS_CHOICES = [
+        ('completed', 'Completed'),
+        ('pending', 'Pending'),
+        ('failed', 'Failed'),
+        ('refunded', 'Refunded'),
+    ]
+
+    hospital = models.ForeignKey(
+        'hospitals.Hospital',
+        on_delete=models.CASCADE,
+        related_name='payment_records'
+    )
+    payment_no = models.CharField(max_length=50, blank=True)
+    billing = models.ForeignKey(
+        'Billing',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='payments'
+    )
+    patient_name = models.CharField(max_length=150)
+    patient_phone = models.CharField(max_length=20, blank=True)
+    amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    method = models.CharField(max_length=20, choices=METHOD_CHOICES, default='cash')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='completed')
+    reference = models.CharField(max_length=100, blank=True)
+    notes = models.TextField(blank=True)
+    payment_date = models.DateField()
+    received_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='received_payments'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-payment_date', '-created_at']
+
+    def save(self, *args, **kwargs):
+        if not self.payment_no:
+            import random
+            self.payment_no = f"PAY-{timezone.now().strftime('%Y%m%d')}-{random.randint(1000,9999)}"
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.payment_no} - {self.amount}"    
+
+class Invoice(models.Model):
+    STATUS_CHOICES = [
+        ('draft', 'Draft'),
+        ('sent', 'Sent'),
+        ('paid', 'Paid'),
+        ('overdue', 'Overdue'),
+        ('cancelled', 'Cancelled'),
+    ]
+
+    hospital = models.ForeignKey(
+        'hospitals.Hospital',
+        on_delete=models.CASCADE,
+        related_name='invoices'
+    )
+    invoice_no = models.CharField(max_length=50, blank=True)
+    patient_name = models.CharField(max_length=150)
+    patient_phone = models.CharField(max_length=20, blank=True)
+    patient_address = models.TextField(blank=True)
+    description = models.CharField(max_length=255)
+    amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    tax = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='draft')
+    due_date = models.DateField(null=True, blank=True)
+    invoice_date = models.DateField()
+    notes = models.TextField(blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='created_invoices'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-invoice_date', '-created_at']
+
+    def save(self, *args, **kwargs):
+        self.total_amount = (self.amount or 0) + (self.tax or 0)
+        if not self.invoice_no:
+            import random
+            self.invoice_no = f"INV-{timezone.now().strftime('%Y%m%d')}-{random.randint(1000,9999)}"
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.invoice_no} - {self.patient_name}"    
+
+
+class Expense(models.Model):
+    CATEGORY_CHOICES = [
+        ('salary', 'Salary'),
+        ('medical_supplies', 'Medical Supplies'),
+        ('equipment', 'Equipment'),
+        ('medicine', 'Medicine'),
+        ('utilities', 'Utilities'),
+        ('maintenance', 'Maintenance'),
+        ('rent', 'Rent'),
+        ('food', 'Food & Catering'),
+        ('transport', 'Transport'),
+        ('other', 'Other'),
+    ]
+    PAYMENT_CHOICES = [
+        ('cash', 'Cash'),
+        ('bank', 'Bank Transfer'),
+        ('card', 'Card'),
+        ('mobile_banking', 'Mobile Banking'),
+        ('other', 'Other'),
+    ]
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('paid', 'Paid'),
+        ('cancelled', 'Cancelled'),
+    ]
+    hospital = models.ForeignKey('hospitals.Hospital', on_delete=models.CASCADE, related_name='expenses')
+    expense_no = models.CharField(max_length=50, blank=True)
+    category = models.CharField(max_length=30, choices=CATEGORY_CHOICES, default='other')
+    title = models.CharField(max_length=200)
+    description = models.TextField(blank=True)
+    amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    payment_method = models.CharField(max_length=20, choices=PAYMENT_CHOICES, default='cash')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    expense_date = models.DateField()
+    paid_to = models.CharField(max_length=150, blank=True)
+    reference = models.CharField(max_length=100, blank=True)
+    notes = models.TextField(blank=True)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='created_expenses')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-expense_date', '-created_at']
+
+    def save(self, *args, **kwargs):
+        if not self.expense_no:
+            import uuid
+            self.expense_no = f"EXP-{timezone.now().strftime('%Y%m%d')}-{uuid.uuid4().hex[:6].upper()}"
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.expense_no} - {self.title}"
+
+class BankAccount(models.Model):
+    ACCOUNT_TYPES = [
+        ('current', 'Current Account'),
+        ('savings', 'Savings Account'),
+        ('business', 'Business Account'),
+        ('other', 'Other'),
+    ]
+
+    STATUS_CHOICES = [
+        ('active', 'Active'),
+        ('inactive', 'Inactive'),
+    ]
+
+    hospital = models.ForeignKey('hospitals.Hospital', on_delete=models.CASCADE, related_name='bank_accounts')
+    bank_name = models.CharField(max_length=150)
+    account_name = models.CharField(max_length=150)
+    account_number = models.CharField(max_length=100)
+    branch_name = models.CharField(max_length=150, blank=True)
+    account_type = models.CharField(max_length=20, choices=ACCOUNT_TYPES, default='current')
+    opening_balance = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='active')
+    notes = models.TextField(blank=True)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='created_bank_accounts')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['bank_name', 'account_name']
+        constraints = [
+            models.UniqueConstraint(fields=['hospital', 'account_number'], name='unique_hospital_bank_account')
+        ]
+
+    def __str__(self):
+        return f'{self.bank_name} - {self.account_name}'
+
+    @property
+    def current_balance(self):
+        totals = self.transactions.aggregate(
+            deposits=models.Sum(
+                models.Case(
+                    models.When(transaction_type='deposit', then=models.F('amount')),
+                    default=models.Value(0),
+                    output_field=models.DecimalField(max_digits=14, decimal_places=2),
+                )
+            ),
+            withdrawals=models.Sum(
+                models.Case(
+                    models.When(transaction_type='withdrawal', then=models.F('amount')),
+                    default=models.Value(0),
+                    output_field=models.DecimalField(max_digits=14, decimal_places=2),
+                )
+            ),
+        )
+        return self.opening_balance + (totals['deposits'] or 0) - (totals['withdrawals'] or 0)
+
+
+class BankTransaction(models.Model):
+    TRANSACTION_TYPES = [
+        ('deposit', 'Deposit'),
+        ('withdrawal', 'Withdrawal'),
+    ]
+
+    account = models.ForeignKey(BankAccount, on_delete=models.CASCADE, related_name='transactions')
+    transaction_type = models.CharField(max_length=15, choices=TRANSACTION_TYPES)
+    amount = models.DecimalField(max_digits=14, decimal_places=2)
+    transaction_date = models.DateField()
+    reference = models.CharField(max_length=100, blank=True)
+    description = models.CharField(max_length=255)
+    recorded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='recorded_bank_transactions')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-transaction_date', '-id']
+
+    def __str__(self):
+        return f'{self.account.account_name} - {self.get_transaction_type_display()} - {self.amount}'    
+    

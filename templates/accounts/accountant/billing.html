@@ -1,0 +1,286 @@
+{% extends "accounts/accountant/base.html" %}
+{% block title %}Billing - NHIMS{% endblock %}
+{% block extra_css %}
+<style>
+.page-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.4rem;gap:12px;flex-wrap:wrap}
+.page-title{font-size:1.65rem;font-weight:700;margin:0 0 .25rem}
+.page-subtitle{font-size:.9rem;color:#64748b;margin:0}
+.add-btn{display:flex;align-items:center;gap:7px;background:linear-gradient(135deg,#0ea5e9,#2563eb);color:#fff;border:0;padding:10px 16px;border-radius:9px;font-size:13.5px;font-weight:600;cursor:pointer}
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:1.4rem}
+.stat-card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:1.1rem 1.2rem;box-shadow:0 1px 3px rgba(0,0,0,.05);display:flex;align-items:center;justify-content:space-between;transition:transform .25s ease,box-shadow .25s ease}
+.stat-card:hover{transform:translateY(-4px);box-shadow:0 8px 20px rgba(0,0,0,.10)}
+.stat-label{font-size:.78rem;color:#64748b;margin-bottom:.3rem}
+.stat-value{font-size:1.4rem;font-weight:700;color:#1e293b}
+.stat-icon{width:42px;height:42px;border-radius:10px;display:flex;align-items:center;justify-content:center}
+.stat-icon.blue{background:#dbeafe;color:#2563eb}
+.stat-icon.green{background:#dcfce7;color:#16a34a}
+.stat-icon.orange{background:#ffedd5;color:#ea580c}
+.stat-icon.purple{background:#ede9fe;color:#7c3aed}
+.card{background:#fff;border:1px solid var(--border);border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,.05);overflow:hidden}
+.card-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.card-header h2{font-size:.98rem;font-weight:600;margin:0}
+.search-form{display:flex;gap:8px}
+.search-input{height:36px;border:1px solid #cbd5e1;border-radius:8px;padding:0 12px;font-size:13px;width:220px;outline:none}
+.search-btn{height:36px;border:0;border-radius:8px;padding:0 14px;background:linear-gradient(135deg,#0ea5e9,#2563eb);color:#fff;font-size:13px;font-weight:600;cursor:pointer}
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th{background:#f8fafc;color:#64748b;font-size:.74rem;font-weight:600;text-transform:uppercase;padding:.75rem 1rem;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:.85rem 1rem;font-size:.85rem;color:#334155;border-bottom:1px solid #f1f5f9;white-space:nowrap}
+.badge{display:inline-flex;padding:.2rem .55rem;border-radius:999px;font-size:.71rem;font-weight:600}
+.badge-pending{background:#fef3c7;color:#b45309}
+.badge-paid{background:#dcfce7;color:#15803d}
+.badge-partial{background:#dbeafe;color:#1d4ed8}
+.badge-cancelled{background:#f1f5f9;color:#64748b}
+.action-buttons{display:flex;gap:5px}
+.action-btn{width:32px;height:32px;border-radius:7px;border:1px solid #e2e8f0;background:#fff;display:inline-flex;align-items:center;justify-content:center;cursor:pointer}
+.action-btn.view{color:#2563eb}
+.action-btn.edit{color:#059669}
+.action-btn.pdf{color:#7c3aed}
+.action-btn.delete{color:#dc2626}
+.action-btn:hover{transform:translateY(-1px)}
+.empty-state{text-align:center;padding:40px 16px;color:#64748b}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:9999;align-items:center;justify-content:center;padding:16px}
+.modal-overlay.show{display:flex}
+.modal{background:#fff;width:100%;max-width:520px;border-radius:14px;box-shadow:0 20px 50px rgba(0,0,0,.2);max-height:90vh;overflow-y:auto}
+.modal-sm{max-width:380px}
+.modal-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.modal-header h3{margin:0;font-size:1rem;font-weight:600}
+.modal-close{width:30px;height:30px;border:0;background:#f1f5f9;border-radius:7px;color:#64748b;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.modal-close-blue{width:28px;height:28px;border:0;border-radius:7px;background:#2563eb;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.modal-body{padding:18px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-group{display:flex;flex-direction:column;gap:5px}
+.form-group.full{grid-column:1/-1}
+.form-group label{font-size:12.5px;font-weight:600;color:#475569}
+.form-group input,.form-group select,.form-group textarea{height:38px;border:1px solid #cbd5e1;border-radius:7px;padding:0 11px;font-size:13px;outline:none}
+.form-group textarea{height:70px;padding:9px 11px;resize:vertical}
+.view-item{display:flex;justify-content:space-between;padding:8px 10px;background:#f8fafc;border-radius:8px;margin-bottom:6px;border:1px solid #f1f5f9;gap:10px}
+.view-label{font-size:12px;color:#64748b}
+.view-value{font-size:13px;font-weight:600;color:#1e293b;text-align:right}
+.modal-footer{padding:12px 18px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px}
+.btn-cancel,.btn-save,.btn-delete{padding:8px 14px;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;border:1px solid}
+.btn-cancel{background:#fff;color:#475569;border-color:#cbd5e1}
+.btn-save{background:#2563eb;color:#fff;border-color:#2563eb}
+.btn-delete{background:#dc2626;color:#fff;border-color:#dc2626}
+@media(max-width:900px){.stats-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:600px){.form-grid{grid-template-columns:1fr}.stats-grid{grid-template-columns:1fr}}
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-top">
+    <div>
+        <h1 class="page-title">Billing</h1>
+        <p class="page-subtitle">Create and manage patient bills</p>
+    </div>
+    <button type="button" class="add-btn" onclick="openCreateModal()">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+        New Bill
+    </button>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card"><div><div class="stat-label">Total Bills</div><div class="stat-value">{{ total }}</div></div><div class="stat-icon blue"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 11h8"/></svg></div></div>
+    <div class="stat-card"><div><div class="stat-label">Total Amount</div><div class="stat-value">৳{{ total_amount }}</div></div><div class="stat-icon purple"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg></div></div>
+    <div class="stat-card"><div><div class="stat-label">Pending</div><div class="stat-value">{{ pending_count }}</div></div><div class="stat-icon orange"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div></div>
+    <div class="stat-card"><div><div class="stat-label">Paid</div><div class="stat-value">{{ paid_count }}</div></div><div class="stat-icon green"><svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></div></div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h2>All Bills</h2>
+        <form method="get" class="search-form">
+            <input type="text" name="q" value="{{ search }}" class="search-input" placeholder="Search bill, patient, service...">
+            <button type="submit" class="search-btn">Search</button>
+        </form>
+    </div>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Bill No</th>
+                    <th>Patient</th>
+                    <th>Service</th>
+                    <th>Total</th>
+                    <th>Status</th>
+                    <th>Date</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for b in bills %}
+                <tr>
+                    <td style="font-weight:600">{{ b.bill_no }}</td>
+                    <td>{{ b.patient_name }}</td>
+                    <td>{{ b.service }}</td>
+                    <td style="font-weight:600">৳{{ b.total }}</td>
+                    <td><span class="badge badge-{{ b.status }}">{{ b.get_status_display }}</span></td>
+                    <td>{{ b.bill_date|date:"d M Y" }}</td>
+                    <td>
+                        <div class="action-buttons">
+                            <button type="button" class="action-btn view" title="View" onclick="openViewModal('{{ b.bill_no|escapejs }}','{{ b.patient_name|escapejs }}','{{ b.patient_phone|default:''|escapejs }}','{{ b.service|escapejs }}','{{ b.amount }}','{{ b.discount }}','{{ b.total }}','{{ b.get_status_display }}','{{ b.bill_date|date:'d M Y' }}','{{ b.notes|default:''|escapejs }}')">
+                                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
+                            </button>
+                            <button type="button" class="action-btn edit" title="Edit" onclick="openEditModal('{{ b.id }}','{{ b.patient_name|escapejs }}','{{ b.patient_phone|default:''|escapejs }}','{{ b.service|escapejs }}','{{ b.amount }}','{{ b.discount }}','{{ b.status }}','{{ b.bill_date|date:'Y-m-d' }}','{{ b.notes|default:''|escapejs }}')">
+                                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L8 18l-4 1 1-4z"/></svg>
+                            </button>
+                            <a href="{% url 'accountant_billing_pdf' b.id %}" class="action-btn pdf" title="Download PDF">
+                                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M12 18v-6"/><path d="M9 15l3 3 3-3"/></svg>
+                            </a>
+                            <button type="button" class="action-btn delete" title="Delete" onclick="openDeleteModal('{{ b.id }}','{{ b.bill_no|escapejs }}')">
+                                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 15H6L5 6"/></svg>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="7"><div class="empty-state"><h3>No Bills</h3><p>Click “New Bill” to create one.</p></div></td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="modal-overlay" id="createModal">
+    <div class="modal">
+        <form method="post">
+            {% csrf_token %}<input type="hidden" name="action" value="create">
+            <div class="modal-header"><h3>New Bill</h3>
+                <button type="button" class="modal-close" onclick="closeModal('createModal')"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-grid">
+                    <div class="form-group full">
+                        <label>Select Patient (optional)</label>
+                        <select name="patient" id="patientSelect" onchange="fillPatient()">
+                            <option value="">Manual entry</option>
+                            {% for p in patients %}
+                            <option value="{{ p.id }}" data-name="{% if p.patient_name %}{{ p.patient_name }}{% elif p.name %}{{ p.name }}{% else %}{{ p }}{% endif %}" data-phone="{{ p.phone|default:'' }}">{% if p.patient_name %}{{ p.patient_name }}{% elif p.name %}{{ p.name }}{% else %}{{ p }}{% endif %}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group"><label>Patient Name</label><input type="text" name="patient_name" id="cPatientName" required></div>
+                    <div class="form-group"><label>Phone</label><input type="text" name="patient_phone" id="cPatientPhone"></div>
+                    <div class="form-group full"><label>Service</label><input type="text" name="service" required placeholder="e.g. Consultation, CBC Test"></div>
+                    <div class="form-group"><label>Amount (৳)</label><input type="number" name="amount" value="0" min="0" step="0.01" required></div>
+                    <div class="form-group"><label>Discount (৳)</label><input type="number" name="discount" value="0" min="0" step="0.01"></div>
+                    <div class="form-group"><label>Status</label><select name="status">{% for v,l in status_choices %}<option value="{{ v }}">{{ l }}</option>{% endfor %}</select></div>
+                    <div class="form-group"><label>Bill Date</label><input type="date" name="bill_date" value="{{ today|date:'Y-m-d' }}" required></div>
+                    <div class="form-group full"><label>Notes</label><textarea name="notes"></textarea></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" onclick="closeModal('createModal')">Cancel</button>
+                <button type="submit" class="btn-save">Save Bill</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal-overlay" id="editModal">
+    <div class="modal">
+        <form method="post">
+            {% csrf_token %}<input type="hidden" name="action" value="edit"><input type="hidden" name="bill_id" id="editBillId">
+            <div class="modal-header"><h3>Edit Bill</h3>
+                <button type="button" class="modal-close" onclick="closeModal('editModal')"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-grid">
+                    <div class="form-group"><label>Patient Name</label><input type="text" name="patient_name" id="editPatientName" required></div>
+                    <div class="form-group"><label>Phone</label><input type="text" name="patient_phone" id="editPatientPhone"></div>
+                    <div class="form-group full"><label>Service</label><input type="text" name="service" id="editService" required></div>
+                    <div class="form-group"><label>Amount (৳)</label><input type="number" name="amount" id="editAmount" min="0" step="0.01" required></div>
+                    <div class="form-group"><label>Discount (৳)</label><input type="number" name="discount" id="editDiscount" min="0" step="0.01"></div>
+                    <div class="form-group"><label>Status</label><select name="status" id="editStatus">{% for v,l in status_choices %}<option value="{{ v }}">{{ l }}</option>{% endfor %}</select></div>
+                    <div class="form-group"><label>Bill Date</label><input type="date" name="bill_date" id="editDate" required></div>
+                    <div class="form-group full"><label>Notes</label><textarea name="notes" id="editNotes"></textarea></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" onclick="closeModal('editModal')">Cancel</button>
+                <button type="submit" class="btn-save">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal-overlay" id="viewModal">
+    <div class="modal modal-sm">
+        <div class="modal-header">
+            <h3>Bill Details</h3>
+            <button type="button" class="modal-close-blue" onclick="closeModal('viewModal')"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg></button>
+        </div>
+        <div class="modal-body">
+            <div class="view-item"><span class="view-label">Bill No</span><span class="view-value" id="vBillNo"></span></div>
+            <div class="view-item"><span class="view-label">Patient</span><span class="view-value" id="vPatient"></span></div>
+            <div class="view-item"><span class="view-label">Phone</span><span class="view-value" id="vPhone"></span></div>
+            <div class="view-item"><span class="view-label">Service</span><span class="view-value" id="vService"></span></div>
+            <div class="view-item"><span class="view-label">Amount</span><span class="view-value" id="vAmount"></span></div>
+            <div class="view-item"><span class="view-label">Discount</span><span class="view-value" id="vDiscount"></span></div>
+            <div class="view-item"><span class="view-label">Total</span><span class="view-value" id="vTotal"></span></div>
+            <div class="view-item"><span class="view-label">Status</span><span class="view-value" id="vStatus"></span></div>
+            <div class="view-item"><span class="view-label">Date</span><span class="view-value" id="vDate"></span></div>
+            <div class="view-item"><span class="view-label">Notes</span><span class="view-value" id="vNotes"></span></div>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="deleteModal">
+    <div class="modal modal-sm">
+        <form method="post">
+            {% csrf_token %}<input type="hidden" name="action" value="delete"><input type="hidden" name="bill_id" id="deleteBillId">
+            <div class="modal-header"><h3>Delete Bill</h3>
+                <button type="button" class="modal-close" onclick="closeModal('deleteModal')"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg></button>
+            </div>
+            <div class="modal-body"><p style="margin:0;color:#475569;font-size:.88rem">Delete bill <strong id="deleteBillNo"></strong>?</p></div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" onclick="closeModal('deleteModal')">Cancel</button>
+                <button type="submit" class="btn-delete">Delete</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function fillPatient(){
+    const s=document.getElementById('patientSelect');
+    const o=s.options[s.selectedIndex];
+    if(o.value){
+        document.getElementById('cPatientName').value=o.dataset.name||'';
+        document.getElementById('cPatientPhone').value=o.dataset.phone||'';
+    }
+}
+function openCreateModal(){document.getElementById('createModal').classList.add('show')}
+function openEditModal(id,name,phone,service,amount,discount,status,date,notes){
+    document.getElementById('editBillId').value=id;
+    document.getElementById('editPatientName').value=name||'';
+    document.getElementById('editPatientPhone').value=phone||'';
+    document.getElementById('editService').value=service||'';
+    document.getElementById('editAmount').value=amount||0;
+    document.getElementById('editDiscount').value=discount||0;
+    document.getElementById('editStatus').value=status||'pending';
+    document.getElementById('editDate').value=date||'';
+    document.getElementById('editNotes').value=notes||'';
+    document.getElementById('editModal').classList.add('show');
+}
+function openViewModal(billNo,patient,phone,service,amount,discount,total,status,date,notes){
+    document.getElementById('vBillNo').textContent=billNo||'—';
+    document.getElementById('vPatient').textContent=patient||'—';
+    document.getElementById('vPhone').textContent=phone||'—';
+    document.getElementById('vService').textContent=service||'—';
+    document.getElementById('vAmount').textContent='৳'+(amount||'0');
+    document.getElementById('vDiscount').textContent='৳'+(discount||'0');
+    document.getElementById('vTotal').textContent='৳'+(total||'0');
+    document.getElementById('vStatus').textContent=status||'—';
+    document.getElementById('vDate').textContent=date||'—';
+    document.getElementById('vNotes').textContent=notes||'—';
+    document.getElementById('viewModal').classList.add('show');
+}
+function openDeleteModal(id,billNo){
+    document.getElementById('deleteBillId').value=id;
+    document.getElementById('deleteBillNo').textContent=billNo;
+    document.getElementById('deleteModal').classList.add('show');
+}
+function closeModal(id){document.getElementById(id).classList.remove('show')}
+window.addEventListener('click',function(e){if(e.target.classList.contains('modal-overlay'))e.target.classList.remove('show')});
+</script>
+{% endblock %}
