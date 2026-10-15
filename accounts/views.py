@@ -4560,6 +4560,13 @@ def accountant_profile(request):
 
 
 # Pharmacy
+from .models import Medicine, PharmacyProfile
+from django.db.models import Sum, Q, F
+from django.shortcuts import get_object_or_404
+from django.contrib import messages
+from django.utils import timezone
+from datetime import timedelta
+
 def pharmacy_dashboard(request):
     if not request.user.is_authenticated:
         return redirect('login')
@@ -4567,9 +4574,159 @@ def pharmacy_dashboard(request):
         return redirect('dashboard')
 
     hospital = request.user.hospital
+    today = timezone.now().date()
+    total_medicines = 0
+    total_stock = 0
+    low_stock = 0
+    out_of_stock = 0
+    expiring_soon = 0
+    recent = []
+
+    if hospital:
+        meds = Medicine.objects.filter(hospital=hospital)
+        total_medicines = meds.count()
+        total_stock = meds.aggregate(t=Sum('stock'))['t'] or 0
+        low_stock = meds.filter(stock__gt=0, stock__lte=F('reorder_level')).count()
+        out_of_stock = meds.filter(stock=0).count()
+        expiring_soon = meds.filter(
+            expiry_date__isnull=False,
+            expiry_date__gte=today,
+            expiry_date__lte=today + timedelta(days=30)
+        ).count()
+        recent = meds.order_by('-updated_at')[:6]
+
     context = {
         'hospital': hospital,
-        'patients_count': Patient.objects.filter(hospital=hospital).count() if hospital else 0,
-        'staff_count': Staff.objects.filter(hospital=hospital).count() if hospital else 0,
+        'user': request.user,
+        'total_medicines': total_medicines,
+        'total_stock': total_stock,
+        'low_stock': low_stock,
+        'out_of_stock': out_of_stock,
+        'expiring_soon': expiring_soon,
+        'recent': recent,
     }
     return render(request, 'accounts/pharmacy/dashboard.html', context)
+
+
+def pharmacy_stock(request):
+    if not request.user.is_authenticated:
+        return redirect('login')
+    if request.user.role != 'pharmacy':
+        return redirect('dashboard')
+
+    hospital = request.user.hospital
+    search = request.GET.get('q', '').strip()
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action == 'create':
+            Medicine.objects.create(
+                hospital=hospital,
+                name=request.POST.get('name', '').strip(),
+                category=request.POST.get('category', 'tablet'),
+                strength=request.POST.get('strength', '').strip(),
+                stock=int(request.POST.get('stock') or 0),
+                unit=request.POST.get('unit', 'tablet'),
+                reorder_level=int(request.POST.get('reorder_level') or 20),
+                expiry_date=request.POST.get('expiry_date') or None,
+                batch_number=request.POST.get('batch_number', '').strip(),
+                supplier=request.POST.get('supplier', '').strip(),
+                price=request.POST.get('price') or 0,
+            )
+            messages.success(request, 'Medicine added.')
+            return redirect('pharmacy_stock')
+
+        if action == 'edit':
+            m = get_object_or_404(Medicine, id=request.POST.get('medicine_id'), hospital=hospital)
+            m.name = request.POST.get('name', '').strip()
+            m.category = request.POST.get('category', 'tablet')
+            m.strength = request.POST.get('strength', '').strip()
+            m.stock = int(request.POST.get('stock') or 0)
+            m.unit = request.POST.get('unit', 'tablet')
+            m.reorder_level = int(request.POST.get('reorder_level') or 20)
+            m.expiry_date = request.POST.get('expiry_date') or None
+            m.batch_number = request.POST.get('batch_number', '').strip()
+            m.supplier = request.POST.get('supplier', '').strip()
+            m.price = request.POST.get('price') or 0
+            m.save()
+            messages.success(request, 'Medicine updated.')
+            return redirect('pharmacy_stock')
+
+        if action == 'delete':
+            Medicine.objects.filter(id=request.POST.get('medicine_id'), hospital=hospital).delete()
+            messages.success(request, 'Medicine deleted.')
+            return redirect('pharmacy_stock')
+
+    medicines = Medicine.objects.none()
+    if hospital:
+        medicines = Medicine.objects.filter(hospital=hospital)
+        if search:
+            medicines = medicines.filter(
+                Q(name__icontains=search) |
+                Q(category__icontains=search) |
+                Q(batch_number__icontains=search) |
+                Q(supplier__icontains=search)
+            )
+
+    context = {
+        'hospital': hospital,
+        'medicines': medicines,
+        'total': medicines.count(),
+        'low_stock': medicines.filter(stock__gt=0, stock__lte=F('reorder_level')).count() if hospital else 0,
+        'out_of_stock': medicines.filter(stock=0).count() if hospital else 0,
+        'search': search,
+        'category_choices': Medicine.CATEGORY_CHOICES,
+        'unit_choices': Medicine.UNIT_CHOICES,
+    }
+    return render(request, 'accounts/pharmacy/stock.html', context)
+
+
+def pharmacy_profile(request):
+    if not request.user.is_authenticated:
+        return redirect('login')
+    if request.user.role != 'pharmacy':
+        return redirect('dashboard')
+
+    profile, _ = PharmacyProfile.objects.get_or_create(user=request.user)
+    hospital = request.user.hospital
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action == 'update':
+            user = request.user
+            user.first_name = request.POST.get('first_name', '').strip()
+            user.last_name = request.POST.get('last_name', '').strip()
+            user.phone = request.POST.get('phone', '').strip()
+            if request.POST.get('email'):
+                user.email = request.POST.get('email').strip()
+            user.save()
+
+            profile.employee_id = request.POST.get('employee_id', '').strip()
+            profile.designation = request.POST.get('designation', '').strip()
+            profile.qualification = request.POST.get('qualification', '').strip()
+            profile.experience_years = int(request.POST.get('experience_years') or 0)
+            profile.license_number = request.POST.get('license_number', '').strip()
+            profile.shift = request.POST.get('shift', '').strip()
+            profile.bio = request.POST.get('bio', '').strip()
+            profile.address = request.POST.get('address', '').strip()
+            profile.date_of_birth = request.POST.get('date_of_birth') or None
+            profile.gender = request.POST.get('gender', '').strip()
+            profile.blood_group = request.POST.get('blood_group', '').strip()
+            if request.FILES.get('profile_image'):
+                profile.profile_image = request.FILES['profile_image']
+            profile.save()
+            messages.success(request, 'Profile updated.')
+            return redirect('pharmacy_profile')
+
+        if action == 'remove_photo':
+            if profile.profile_image:
+                profile.profile_image.delete(save=False)
+                profile.profile_image = None
+                profile.save()
+            messages.success(request, 'Photo removed.')
+            return redirect('pharmacy_profile')
+
+    context = {'hospital': hospital, 'profile': profile, 'user': request.user}
+    return render(request, 'accounts/pharmacy/profile.html', context)

@@ -1209,3 +1209,26 @@ class BloodBankProfile(models.Model):
 
     def __str__(self):
         return f"{self.user.get_full_name()} - Blood Bank"    
+class PharmacyProfile(models.Model):
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='pharmacy_profile'
+    )
+    employee_id = models.CharField(max_length=50, blank=True)
+    designation = models.CharField(max_length=100, blank=True, default='Pharmacist')
+    qualification = models.CharField(max_length=255, blank=True)
+    experience_years = models.PositiveIntegerField(default=0)
+    license_number = models.CharField(max_length=50, blank=True)
+    shift = models.CharField(max_length=50, blank=True)
+    bio = models.TextField(blank=True)
+    address = models.TextField(blank=True)
+    date_of_birth = models.DateField(null=True, blank=True)
+    gender = models.CharField(max_length=20, blank=True)
+    blood_group = models.CharField(max_length=5, blank=True)
+    profile_image = models.ImageField(upload_to='pharmacy_profiles/', blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.user.get_full_name()} - Pharmacy"    
