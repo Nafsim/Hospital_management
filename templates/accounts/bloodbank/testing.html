@@ -1,0 +1,665 @@
+{% extends "accounts/bloodbank/base.html" %}
+{% load static %}
+
+{% block title %}Blood Tests - NHIMS{% endblock %}
+
+{% block extra_css %}
+<style>
+.page-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.4rem;gap:12px;flex-wrap:wrap}
+.page-title{font-size:1.65rem;font-weight:700;color:var(--text);margin:0 0 .25rem}
+.page-subtitle{font-size:.9rem;color:#64748b;margin:0}
+.add-btn{display:flex;align-items:center;gap:7px;background:linear-gradient(135deg,#0ea5e9,#2563eb);color:#fff;border:0;padding:10px 18px;border-radius:9px;font-size:13.5px;font-weight:600;cursor:pointer;transition:all .2s;text-decoration:none}
+.add-btn:hover{transform:translateY(-1px);box-shadow:0 6px 16px rgba(37,99,235,.25)}
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:1.4rem}
+.stat-card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:1.1rem 1.2rem;box-shadow:0 1px 3px rgba(0,0,0,.05);display:flex;align-items:center;justify-content:space-between;transition:transform .25s ease,box-shadow .25s ease}
+.stat-card:hover{transform:translateY(-3px);box-shadow:0 8px 20px rgba(0,0,0,.08)}
+.stat-label{font-size:.78rem;color:#64748b;margin-bottom:.3rem;font-weight:500}
+.stat-value{font-size:1.5rem;font-weight:700;color:#1e293b}
+.stat-icon{width:44px;height:44px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.stat-icon.blue{background:#dbeafe;color:#2563eb}
+.stat-icon.orange{background:#ffedd5;color:#ea580c}
+.stat-icon.purple{background:#ede9fe;color:#7c3aed}
+.stat-icon.green{background:#dcfce7;color:#16a34a}
+.card{background:#fff;border:1px solid var(--border);border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,.05);overflow:hidden}
+.card-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.filter-tabs{display:flex;gap:6px;flex-wrap:wrap}
+.filter-tab{padding:6px 14px;border-radius:8px;font-size:12.5px;font-weight:600;text-decoration:none;border:1px solid #e2e8f0;background:#fff;color:#64748b;transition:all .2s;display:inline-flex;align-items:center;gap:6px}
+.filter-tab.active,.filter-tab:hover{background:#eff6ff;color:#2563eb;border-color:#bfdbfe}
+.tab-count{padding:1px 6px;border-radius:999px;font-size:11px;background:#f1f5f9;color:#475569}
+.filter-tab.active .tab-count{background:#dbeafe;color:#1d4ed8}
+.search-form{display:flex;gap:8px}
+.search-input{height:36px;border:1px solid #cbd5e1;border-radius:8px;padding:0 12px;font-size:13px;outline:none;width:240px}
+.search-input:focus{border-color:#60a5fa}
+.search-btn{height:36px;border:0;border-radius:8px;padding:0 14px;background:linear-gradient(135deg,#0ea5e9,#2563eb);color:#fff;font-size:13px;font-weight:600;cursor:pointer}
+.table-wrap{overflow-x:auto}
+.test-table{width:100%;border-collapse:collapse}
+.test-table th{background:#f8fafc;color:#64748b;font-size:.74rem;font-weight:600;text-transform:uppercase;padding:.75rem 1rem;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
+.test-table td{padding:.85rem 1rem;font-size:.85rem;color:#334155;border-bottom:1px solid #f1f5f9;vertical-align:middle;white-space:nowrap}
+.test-table tbody tr:hover{background:#f8fafc}
+.blood-badge{display:inline-flex;min-width:34px;padding:3px 7px;border-radius:6px;background:#fee2e2;color:#dc2626;font-size:.75rem;font-weight:700;justify-content:center}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:.22rem .55rem;border-radius:999px;font-size:.71rem;font-weight:600}
+.badge-pending{background:#fef3c7;color:#b45309}
+.badge-approved{background:#dbeafe;color:#1d4ed8}
+.badge-completed{background:#dcfce7;color:#15803d}
+.badge-rejected{background:#fee2e2;color:#b91c1c}
+.badge-paid{background:#dcfce7;color:#15803d}
+.badge-urgent{background:#fee2e2;color:#dc2626}
+.badge-emergency{background:#7f1d1d;color:#fff}
+.action-buttons{display:flex;gap:5px;align-items:center}
+.action-btn{width:32px;height:32px;border-radius:7px;border:1px solid #e2e8f0;background:#fff;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s;text-decoration:none}
+.action-btn.view{color:#2563eb}
+.action-btn.report{color:#16a34a;background:#f0fdf4;border-color:#bbf7d0}
+.action-btn.download{color:#0d9488}
+.action-btn.print{color:#475569}
+.action-btn:hover{transform:translateY(-1px);box-shadow:0 3px 8px rgba(0,0,0,.08)}
+.report-ready-tag{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:6px;background:#dcfce7;color:#15803d;font-size:12px;font-weight:600;text-decoration:none;cursor:pointer;border:1px solid #bbf7d0}
+.report-ready-tag:hover{background:#bbf7d0}
+.empty-state{text-align:center;padding:48px 16px;color:#64748b}
+.empty-state svg{width:48px;height:48px;color:#cbd5e1;margin-bottom:12px}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(15,23,42,.65);z-index:9999;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(3px);overflow-y:auto;-webkit-overflow-scrolling:touch}
+.modal-overlay.show{display:flex}
+.modal{background:#fff;width:100%;max-width:580px;border-radius:14px;box-shadow:0 25px 60px rgba(0,0,0,.3);overflow:hidden;height:min(90vh,760px);max-height:calc(100vh - 32px);display:flex;flex-direction:column;position:relative;margin:auto}
+.modal-lg{max-width:720px}
+.modal-form{display:flex;flex:1 1 auto;flex-direction:column;height:100%;max-height:100%;min-height:0;overflow:hidden;width:100%}
+.modal-header{padding:14px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;background:#f8fafc;flex-shrink:0}
+.modal-header h3{margin:0;font-size:1.05rem;font-weight:700;color:#1e293b;display:flex;align-items:center;gap:8px}
+.modal-close{width:30px;height:30px;border:0;background:#f1f5f9;border-radius:7px;color:#64748b;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .2s}
+.modal-close:hover{background:#e2e8f0;color:#1e293b}
+.modal-body{padding:20px;overflow-y:auto;flex:1 1 0;min-height:0;max-height:none;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+.modal-body::-webkit-scrollbar{width:7px}
+.modal-body::-webkit-scrollbar-track{background:#f1f5f9;border-radius:4px}
+.modal-body::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:4px}
+.modal-body::-webkit-scrollbar-thumb:hover{background:#94a3b8}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-group{display:flex;flex-direction:column;gap:5px}
+.form-group.full{grid-column:1/-1}
+.form-group label{font-size:12.5px;font-weight:600;color:#475569}
+.form-group input,.form-group select,.form-group textarea{height:38px;border:1px solid #cbd5e1;border-radius:7px;padding:0 11px;font-size:13px;outline:none;background:#fff;transition:border-color .2s}
+.form-group textarea{height:70px;padding:9px 11px;resize:vertical}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+.form-hint{font-size:11.5px;color:#64748b;margin-top:2px}
+.info-banner{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:9px;padding:12px 14px;display:flex;gap:10px;align-items:flex-start;margin-top:10px}
+.info-banner svg{width:18px;height:18px;color:#16a34a;flex-shrink:0;margin-top:2px}
+.info-banner-text strong{display:block;font-size:12.5px;color:#15803d}
+.info-banner-text span{font-size:11.5px;color:#166534}
+.modal-footer{padding:14px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px;background:#f8fafc;flex-shrink:0;position:sticky;bottom:0;z-index:10}
+.btn-cancel,.btn-submit,.btn-download{padding:9px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:1px solid;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+.btn-cancel{background:#fff;color:#475569;border-color:#cbd5e1}
+.btn-submit{background:linear-gradient(135deg,#0ea5e9,#2563eb);color:#fff;border-color:#2563eb}
+.btn-submit:hover{box-shadow:0 4px 12px rgba(37,99,235,.25)}
+.btn-download{background:#16a34a;color:#fff;border-color:#16a34a}
+.view-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.view-item{padding:9px 12px;background:#f8fafc;border-radius:8px;border:1px solid #f1f5f9}
+.view-label{font-size:11.5px;color:#64748b;font-weight:500;margin-bottom:2px}
+.view-value{font-size:13px;font-weight:600;color:#1e293b}
+.report-preview-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px;margin-top:12px}
+.report-preview-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.report-preview-head h4{margin:0;font-size:13px;font-weight:700;color:#1e293b}
+.report-findings-text{background:#fff;border:1px solid #e2e8f0;border-radius:7px;padding:10px;font-size:12.5px;color:#334155;white-space:pre-wrap;line-height:1.5}
+.patient-type-tabs{display:flex;gap:8px;margin-bottom:12px}
+.p-type-btn{flex:1;padding:7px;border-radius:7px;font-size:12.5px;font-weight:600;border:1px solid #cbd5e1;background:#fff;cursor:pointer;text-align:center;color:#475569}
+.p-type-btn.active{background:#dbeafe;border-color:#93c5fd;color:#1d4ed8}
+@media(max-width:900px){.stats-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:600px){.form-grid,.view-grid{grid-template-columns:1fr}.stats-grid{grid-template-columns:1fr}.search-input{width:100%}}
+@media(max-width:600px){.modal-overlay{align-items:flex-start;padding:8px}.modal{height:calc(100vh - 16px);max-height:calc(100vh - 16px);border-radius:10px}.modal-header,.modal-footer{padding-left:14px;padding-right:14px}.modal-body{padding:14px}.modal-footer{position:sticky}}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-top">
+    <div>
+        <h1 class="page-title">Blood Tests & Diagnostics</h1>
+        <p class="page-subtitle">Apply for blood tests with accountant billing, monitor diagnostic center processing, and retrieve verified reports</p>
+    </div>
+    <button type="button" class="add-btn" onclick="openApplyModal()">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+        Apply for Blood Test
+    </button>
+</div>
+
+<!-- Statistics Cards -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div>
+            <div class="stat-label">Total Test Requests</div>
+            <div class="stat-value">{{ total_tests }}</div>
+        </div>
+        <div class="stat-icon blue">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div>
+            <div class="stat-label">Pending Lab Approval</div>
+            <div class="stat-value">{{ pending_tests }}</div>
+        </div>
+        <div class="stat-icon orange">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div>
+            <div class="stat-label">In Progress at Lab</div>
+            <div class="stat-value">{{ approved_tests }}</div>
+        </div>
+        <div class="stat-icon purple">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M10 2v7.31"/><path d="M14 9.3V2"/><path d="M8.5 2h7"/><path d="M14 9.3a6.5 6.5 0 1 1-4 0"/></svg>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div>
+            <div class="stat-label">Reports Ready</div>
+            <div class="stat-value">{{ completed_tests }}</div>
+        </div>
+        <div class="stat-icon green">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        </div>
+    </div>
+</div>
+
+<!-- Main Table Card -->
+<div class="card">
+    <div class="card-header">
+        <div class="filter-tabs">
+            <a href="?status=all{% if search_query %}&q={{ search_query }}{% endif %}" class="filter-tab {% if current_status == 'all' or not current_status %}active{% endif %}">
+                All Tests <span class="tab-count">{{ total_tests }}</span>
+            </a>
+            <a href="?status=pending{% if search_query %}&q={{ search_query }}{% endif %}" class="filter-tab {% if current_status == 'pending' %}active{% endif %}">
+                Pending Lab <span class="tab-count">{{ pending_tests }}</span>
+            </a>
+            <a href="?status=approved{% if search_query %}&q={{ search_query }}{% endif %}" class="filter-tab {% if current_status == 'approved' %}active{% endif %}">
+                In Progress <span class="tab-count">{{ approved_tests }}</span>
+            </a>
+            <a href="?status=completed{% if search_query %}&q={{ search_query }}{% endif %}" class="filter-tab {% if current_status == 'completed' %}active{% endif %}">
+                Reports Ready <span class="tab-count">{{ completed_tests }}</span>
+            </a>
+        </div>
+        <form class="search-form" method="get">
+            {% if current_status %}<input type="hidden" name="status" value="{{ current_status }}">{% endif %}
+            <input type="text" name="q" value="{{ search_query }}" class="search-input" placeholder="Search by patient, test or ID...">
+            <button type="submit" class="search-btn">Search</button>
+        </form>
+    </div>
+
+    <div class="table-wrap">
+        <table class="test-table">
+            <thead>
+                <tr>
+                    <th>Request ID / Date</th>
+                    <th>Patient</th>
+                    <th>Blood Test</th>
+                    <th>Billing / Payment</th>
+                    <th>Lab Status</th>
+                    <th>Report & Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in test_requests %}
+                <tr>
+                    <td>
+                        <strong style="color:#1e293b;display:block;">{{ item.request_id }}</strong>
+                        <span style="font-size:12px;color:#64748b;">{{ item.created_at|date:"d M Y, h:i A" }}</span>
+                    </td>
+                    <td>
+                        <strong style="color:#1e293b;display:block;">{{ item.patient_name }}</strong>
+                        <div style="font-size:12px;color:#64748b;display:flex;gap:6px;align-items:center;margin-top:2px;">
+                            <span>{{ item.patient_phone }}</span>
+                            {% if item.blood_group %}
+                                <span class="blood-badge">{{ item.blood_group }}</span>
+                            {% endif %}
+                            {% if item.patient_age %}<span>{{ item.patient_age }}y</span>{% endif %}
+                        </div>
+                    </td>
+                    <td>
+                        <strong style="color:#1e293b;display:block;">{{ item.test_name }}</strong>
+                        <div style="display:flex;gap:6px;align-items:center;margin-top:3px;">
+                            {% if item.priority == 'urgent' %}
+                                <span class="badge badge-urgent">Urgent</span>
+                            {% elif item.priority == 'emergency' %}
+                                <span class="badge badge-emergency">Emergency</span>
+                            {% else %}
+                                <span class="badge" style="background:#f1f5f9;color:#64748b;">Normal</span>
+                            {% endif %}
+                            {% if item.doctor_name %}<span style="font-size:11.5px;color:#64748b;">Ref: {{ item.doctor_name }}</span>{% endif %}
+                        </div>
+                    </td>
+                    <td>
+                        <strong style="color:#1e293b;display:block;">BDT {{ item.amount }}</strong>
+                        <div style="display:flex;gap:5px;align-items:center;margin-top:3px;">
+                            <span class="badge badge-paid">{{ item.get_payment_method_display }} - Paid</span>
+                            {% if item.billing %}
+                                <span style="font-size:11px;color:#64748b;" title="Bill: {{ item.billing.bill_no }}">#{{ item.billing.bill_no|truncatechars:12 }}</span>
+                            {% endif %}
+                        </div>
+                    </td>
+                    <td>
+                        {% if item.lab_status == 'pending' %}
+                            <span class="badge badge-pending">
+                                <svg width="10" height="10" fill="currentColor" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3"/></svg>
+                                Pending Lab Approval
+                            </span>
+                        {% elif item.lab_status == 'approved' %}
+                            <span class="badge badge-approved">
+                                <svg width="10" height="10" fill="currentColor" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3"/></svg>
+                                In Progress at Lab
+                            </span>
+                        {% elif item.lab_status == 'completed' %}
+                            <span class="badge badge-completed">
+                                <svg width="10" height="10" fill="currentColor" viewBox="0 0 8 8"><path d="m2 4 1.5 1.5 3-3"/></svg>
+                                Report Ready
+                            </span>
+                        {% elif item.lab_status == 'rejected' %}
+                            <span class="badge badge-rejected">Rejected</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="action-buttons">
+                            {% if item.lab_status == 'completed' %}
+                                <button type="button" class="report-ready-tag" onclick="openReportModal('{{ item.request_id }}', '{{ item.patient_name|escapejs }}', '{{ item.test_name|escapejs }}', '{{ item.findings|escapejs }}', '{% if item.report_file %}{{ item.report_file.url }}{% endif %}', '{{ item.completed_at|date:"d M Y, h:i A" }}', '{{ item.lab_technician.get_full_name|default:item.lab_technician.username|default:"Lab Technician"|escapejs }}')">
+                                    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                                    View Report
+                                </button>
+                                {% if item.report_file %}
+                                    <a href="{{ item.report_file.url }}" download class="action-btn download" title="Download Report File">
+                                        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                    </a>
+                                {% endif %}
+                            {% else %}
+                                <button type="button" class="action-btn view" title="View Details" onclick="openDetailsModal('{{ item.request_id }}', '{{ item.patient_name|escapejs }}', '{{ item.patient_phone|escapejs }}', '{{ item.blood_group }}', '{{ item.patient_age|default:"--" }}', '{{ item.get_patient_gender_display }}', '{{ item.test_name|escapejs }}', 'BDT {{ item.amount }}', '{{ item.get_payment_method_display }}', '{{ item.get_lab_status_display }}', '{{ item.doctor_name|escapejs }}', '{{ item.notes|escapejs }}', '{{ item.created_at|date:"d M Y, h:i A" }}', '{{ item.billing.bill_no|default:"--" }}')">
+                                    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+                                </button>
+                            {% endif %}
+                            <a href="{% url 'bloodbank_blood_test_slip' item.id %}" target="_blank" class="action-btn print" title="Print Requisition / Payment Slip">
+                                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6">
+                        <div class="empty-state">
+                            <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M19.5 14.5c1-1 1.5-2.2 1.5-3.5 0-3-2.5-5-5-5-1.5 0-2.8.7-3.7 1.8-.9-1.1-2.2-1.8-3.8-1.8-2.5 0-4.5 2-4.5 4.5 0 1.5.7 3 2 4.2l7 6.8z"/></svg>
+                            <h3 style="font-size:1rem;color:#1e293b;margin:0 0 4px;">No blood test requests found</h3>
+                            <p style="font-size:13px;color:#64748b;margin:0;">Apply for a new blood test to initiate diagnostic testing and hospital accountant billing.</p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Apply for Blood Test Modal -->
+<div class="modal-overlay" id="applyModal">
+    <div class="modal modal-lg">
+        <form method="post" action="{% url 'bloodbank_testing' %}" class="modal-form">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="apply_test">
+            <div class="modal-header">
+                <h3>
+                    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19.5 14.5c1-1 1.5-2.2 1.5-3.5 0-3-2.5-5-5-5-1.5 0-2.8.7-3.7 1.8-.9-1.1-2.2-1.8-3.8-1.8-2.5 0-4.5 2-4.5 4.5 0 1.5.7 3 2 4.2l7 6.8z"/></svg>
+                    Apply for Blood Test
+                </h3>
+                <button type="button" class="modal-close" onclick="closeApplyModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <!-- Patient Selection Header -->
+                <div class="patient-type-tabs">
+                    <button type="button" class="p-type-btn active" id="btnTypeExisting" onclick="setPatientType('existing')">Registered Patient</button>
+                    <button type="button" class="p-type-btn" id="btnTypeNew" onclick="setPatientType('new')">Walk-in / New Patient</button>
+                </div>
+
+                <div class="form-grid">
+                    <!-- Existing Patient Dropdown -->
+                    <div class="form-group full" id="existingPatientBox">
+                        <label>Select Registered Patient *</label>
+                        <select name="patient" id="patientSelect" onchange="onPatientSelectChange()">
+                            <option value="">-- Choose Patient --</option>
+                            {% for p in patients %}
+                            <option value="{{ p.id }}" 
+                                    data-name="{{ p.patient_name }}" 
+                                    data-phone="{{ p.phone }}" 
+                                    data-blood="{{ p.blood_group|default:'' }}" 
+                                    data-gender="{{ p.gender|default:'M' }}" 
+                                    data-age="{{ p.age|default:'' }}">
+                                {{ p.patient_id }} - {{ p.patient_name }} ({{ p.phone|default:"No phone" }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <span class="form-hint">Selecting a registered patient automatically fills their profile information.</span>
+                    </div>
+
+                    <!-- Patient Details (editable for both) -->
+                    <div class="form-group">
+                        <label>Patient Full Name *</label>
+                        <input type="text" name="patient_name" id="patientNameInput" required placeholder="Full name">
+                    </div>
+                    <div class="form-group">
+                        <label>Phone Number *</label>
+                        <input type="text" name="patient_phone" id="patientPhoneInput" required placeholder="Mobile number">
+                    </div>
+                    <div class="form-group">
+                        <label>Blood Group</label>
+                        <select name="blood_group" id="patientBloodInput">
+                            <option value="">-- Select --</option>
+                            <option value="A+">A+</option>
+                            <option value="A-">A-</option>
+                            <option value="B+">B+</option>
+                            <option value="B-">B-</option>
+                            <option value="AB+">AB+</option>
+                            <option value="AB-">AB-</option>
+                            <option value="O+">O+</option>
+                            <option value="O-">O-</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Gender & Age</label>
+                        <div style="display:flex;gap:8px;">
+                            <select name="gender" id="patientGenderInput" style="flex:1;">
+                                <option value="M">Male</option>
+                                <option value="F">Female</option>
+                                <option value="O">Other</option>
+                            </select>
+                            <input type="number" name="age" id="patientAgeInput" placeholder="Age" min="0" max="130" style="width:80px;">
+                        </div>
+                    </div>
+
+                    <!-- Test Selection -->
+                    <div class="form-group full">
+                        <label>Select Blood Diagnostic Test *</label>
+                        <select name="test_id" id="testSelect" required onchange="onTestSelectChange()">
+                            <option value="" data-price="0">-- Select Blood Test --</option>
+                            {% for t in diagnostic_tests %}
+                            <option value="{{ t.id }}" data-price="{{ t.price }}" data-name="{{ t.name }}" data-time="{{ t.report_time|default:'Same day' }}">
+                                {{ t.name }} &bull; BDT {{ t.price }} (Turnaround: {{ t.report_time|default:'Same day' }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Urgency / Priority</label>
+                        <select name="priority">
+                            <option value="normal">Normal</option>
+                            <option value="urgent">Urgent</option>
+                            <option value="emergency">Emergency (Immediate)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Referring Doctor / Staff</label>
+                        <input type="text" name="doctor_name" placeholder="Dr. Name or Self / Blood Bank">
+                    </div>
+
+                    <div class="form-group full">
+                        <label>Clinical Notes / Indications</label>
+                        <textarea name="notes" placeholder="Reason for test, clinical history or special instructions for laboratory..."></textarea>
+                    </div>
+
+                    <!-- Payment Section -->
+                    <div class="form-group full" style="border-top:1px dashed #cbd5e1;padding-top:14px;margin-top:6px;">
+                        <h4 style="margin:0 0 10px;font-size:13.5px;color:#1e293b;display:flex;align-items:center;gap:6px;">
+                            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+                            Payment & Hospital Accounts Billing
+                        </h4>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Test Fee (BDT) *</label>
+                        <input type="number" step="0.01" name="amount" id="amountInput" required placeholder="0.00">
+                    </div>
+                    <div class="form-group">
+                        <label>Payment Method *</label>
+                        <select name="payment_method" id="paymentMethodSelect">
+                            <option value="cash">Cash</option>
+                            <option value="bkash">bKash</option>
+                            <option value="nagad">Nagad</option>
+                            <option value="card">Credit / Debit Card</option>
+                            <option value="bank">Bank Transfer</option>
+                        </select>
+                    </div>
+                    <div class="form-group full">
+                        <label>Transaction ID / Reference (Optional)</label>
+                        <input type="text" name="payment_reference" placeholder="e.g. bKash TrxID, Card Auth code or Voucher #">
+                    </div>
+
+                    <div class="form-group full">
+                        <div class="info-banner">
+                            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                            <div class="info-banner-text">
+                                <strong>Automatic Hospital Accounting Integration</strong>
+                                <span>Submitting this form automatically records a paid billing and payment transaction into the Hospital Accountant module, crediting hospital revenue, and routes the sample request to the Diagnostic Lab role for approval.</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" onclick="closeApplyModal()">Cancel</button>
+                <button type="submit" class="btn-submit">
+                    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                    Apply & Process Payment
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- View Report Modal -->
+<div class="modal-overlay" id="reportModal">
+    <div class="modal modal-lg">
+        <div class="modal-header">
+            <h3>
+                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
+                Laboratory Test Report
+            </h3>
+            <button type="button" class="modal-close" onclick="closeReportModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="view-grid">
+                <div class="view-item">
+                    <div class="view-label">Request ID</div>
+                    <div class="view-value" id="repRequestId"></div>
+                </div>
+                <div class="view-item">
+                    <div class="view-label">Patient Name</div>
+                    <div class="view-value" id="repPatientName"></div>
+                </div>
+                <div class="view-item">
+                    <div class="view-label">Diagnostic Test</div>
+                    <div class="view-value" id="repTestName"></div>
+                </div>
+                <div class="view-item">
+                    <div class="view-label">Verified By</div>
+                    <div class="view-value" id="repTechName"></div>
+                </div>
+                <div class="view-item full" style="grid-column:1/-1;">
+                    <div class="view-label">Report Completed At</div>
+                    <div class="view-value" id="repCompletedAt"></div>
+                </div>
+            </div>
+
+            <div class="report-preview-box">
+                <div class="report-preview-head">
+                    <h4>Clinical Findings & Lab Results</h4>
+                </div>
+                <div class="report-findings-text" id="repFindings">No specific text findings provided.</div>
+            </div>
+
+            <div id="repFileDownloadBox" style="margin-top:14px;text-align:center;display:none;">
+                <a id="repFileLink" href="" target="_blank" download class="btn-download" style="padding:10px 20px;font-size:14px;">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    Download Official Report Document
+                </a>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-cancel" onclick="closeReportModal()">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- Details Modal -->
+<div class="modal-overlay" id="detailsModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>Request Details</h3>
+            <button type="button" class="modal-close" onclick="closeDetailsModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="view-grid">
+                <div class="view-item">
+                    <div class="view-label">Request ID</div>
+                    <div class="view-value" id="detReqId"></div>
+                </div>
+                <div class="view-item">
+                    <div class="view-label">Date Created</div>
+                    <div class="view-value" id="detDate"></div>
+                </div>
+                <div class="view-item">
+                    <div class="view-label">Patient</div>
+                    <div class="view-value" id="detPatient"></div>
+                </div>
+                <div class="view-item">
+                    <div class="view-label">Contact / Blood</div>
+                    <div class="view-value" id="detContact"></div>
+                </div>
+                <div class="view-item">
+                    <div class="view-label">Test Name</div>
+                    <div class="view-value" id="detTest"></div>
+                </div>
+                <div class="view-item">
+                    <div class="view-label">Lab Status</div>
+                    <div class="view-value" id="detStatus"></div>
+                </div>
+                <div class="view-item">
+                    <div class="view-label">Payment / Method</div>
+                    <div class="view-value" id="detPayment"></div>
+                </div>
+                <div class="view-item">
+                    <div class="view-label">Hospital Bill No</div>
+                    <div class="view-value" id="detBill"></div>
+                </div>
+                <div class="view-item full" style="grid-column:1/-1;">
+                    <div class="view-label">Referring Doctor</div>
+                    <div class="view-value" id="detDoctor">--</div>
+                </div>
+                <div class="view-item full" style="grid-column:1/-1;">
+                    <div class="view-label">Clinical Notes</div>
+                    <div class="view-value" id="detNotes">--</div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-cancel" onclick="closeDetailsModal()">Close</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function openApplyModal() {
+    document.getElementById('applyModal').classList.add('show');
+}
+function closeApplyModal() {
+    document.getElementById('applyModal').classList.remove('show');
+}
+
+function setPatientType(type) {
+    const existingBox = document.getElementById('existingPatientBox');
+    const btnExisting = document.getElementById('btnTypeExisting');
+    const btnNew = document.getElementById('btnTypeNew');
+    const patientSelect = document.getElementById('patientSelect');
+
+    if (type === 'existing') {
+        existingBox.style.display = 'block';
+        btnExisting.classList.add('active');
+        btnNew.classList.remove('active');
+        onPatientSelectChange();
+    } else {
+        existingBox.style.display = 'none';
+        btnNew.classList.add('active');
+        btnExisting.classList.remove('active');
+        patientSelect.value = '';
+        document.getElementById('patientNameInput').value = '';
+        document.getElementById('patientPhoneInput').value = '';
+        document.getElementById('patientBloodInput').value = '';
+        document.getElementById('patientAgeInput').value = '';
+        document.getElementById('patientNameInput').readOnly = false;
+        document.getElementById('patientPhoneInput').readOnly = false;
+    }
+}
+
+function onPatientSelectChange() {
+    const select = document.getElementById('patientSelect');
+    const opt = select.options[select.selectedIndex];
+    if (opt && opt.value) {
+        document.getElementById('patientNameInput').value = opt.getAttribute('data-name') || '';
+        document.getElementById('patientPhoneInput').value = opt.getAttribute('data-phone') || '';
+        document.getElementById('patientBloodInput').value = opt.getAttribute('data-blood') || '';
+        document.getElementById('patientGenderInput').value = opt.getAttribute('data-gender') || 'M';
+        document.getElementById('patientAgeInput').value = opt.getAttribute('data-age') || '';
+    }
+}
+
+function onTestSelectChange() {
+    const testSelect = document.getElementById('testSelect');
+    const opt = testSelect.options[testSelect.selectedIndex];
+    if (opt) {
+        const price = opt.getAttribute('data-price') || '0';
+        document.getElementById('amountInput').value = parseFloat(price).toFixed(2);
+    }
+}
+
+function openReportModal(reqId, patientName, testName, findings, fileUrl, completedAt, techName) {
+    document.getElementById('repRequestId').innerText = reqId;
+    document.getElementById('repPatientName').innerText = patientName;
+    document.getElementById('repTestName').innerText = testName;
+    document.getElementById('repFindings').innerText = findings || 'Standard testing parameters verified. Normal ranges recorded.';
+    document.getElementById('repCompletedAt').innerText = completedAt || 'Completed';
+    document.getElementById('repTechName').innerText = techName || 'Diagnostic Center Staff';
+
+    const fileBox = document.getElementById('repFileDownloadBox');
+    const fileLink = document.getElementById('repFileLink');
+    if (fileUrl && fileUrl.trim() !== '') {
+        fileBox.style.display = 'block';
+        fileLink.href = fileUrl;
+    } else {
+        fileBox.style.display = 'none';
+    }
+
+    document.getElementById('reportModal').classList.add('show');
+}
+function closeReportModal() {
+    document.getElementById('reportModal').classList.remove('show');
+}
+
+function openDetailsModal(reqId, patient, phone, blood, age, gender, test, payment, method, status, doctor, notes, date, bill) {
+    document.getElementById('detReqId').innerText = reqId;
+    document.getElementById('detDate').innerText = date;
+    document.getElementById('detPatient').innerText = patient;
+    document.getElementById('detContact').innerText = (phone || '') + ' | ' + (blood || '') + ' | ' + (gender || '') + ' ' + (age ? '(' + age + 'y)' : '');
+    document.getElementById('detTest').innerText = test;
+    document.getElementById('detStatus').innerText = status;
+    document.getElementById('detPayment').innerText = payment + ' (' + method + ')';
+    document.getElementById('detBill').innerText = bill || '--';
+    document.getElementById('detDoctor').innerText = doctor || '--';
+    document.getElementById('detNotes').innerText = notes || '--';
+    document.getElementById('detailsModal').classList.add('show');
+}
+function closeDetailsModal() {
+    document.getElementById('detailsModal').classList.remove('show');
+}
+
+// Close modals on escape or backdrop click
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+    overlay.addEventListener('click', function(e) {
+        if (e.target === this) {
+            this.classList.remove('show');
+        }
+    });
+});
+</script>
+{% endblock %}

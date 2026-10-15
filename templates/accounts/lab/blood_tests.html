@@ -1,0 +1,449 @@
+{% extends "accounts/lab/base.html" %}
+{% load static %}
+
+{% block title %}Blood Test Requests - Diagnostic Center - NHIMS{% endblock %}
+
+{% block extra_css %}
+<style>
+.page-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.4rem;gap:12px;flex-wrap:wrap}
+.page-title{font-size:1.65rem;font-weight:700;color:var(--text);margin:0 0 .25rem}
+.page-subtitle{font-size:.9rem;color:#64748b;margin:0}
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:1.4rem}
+.stat-card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:1.1rem 1.2rem;box-shadow:0 1px 3px rgba(0,0,0,.05);display:flex;align-items:center;justify-content:space-between;transition:transform .25s ease,box-shadow .25s ease}
+.stat-card:hover{transform:translateY(-3px);box-shadow:0 8px 20px rgba(0,0,0,.08)}
+.stat-label{font-size:.78rem;color:#64748b;margin-bottom:.3rem;font-weight:500}
+.stat-value{font-size:1.5rem;font-weight:700;color:#1e293b}
+.stat-icon{width:44px;height:44px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.stat-icon.blue{background:#dbeafe;color:#2563eb}
+.stat-icon.orange{background:#ffedd5;color:#ea580c}
+.stat-icon.purple{background:#ede9fe;color:#7c3aed}
+.stat-icon.green{background:#dcfce7;color:#16a34a}
+.card{background:#fff;border:1px solid var(--border);border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,.05);overflow:hidden}
+.card-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.filter-tabs{display:flex;gap:6px;flex-wrap:wrap}
+.filter-tab{padding:6px 14px;border-radius:8px;font-size:12.5px;font-weight:600;text-decoration:none;border:1px solid #e2e8f0;background:#fff;color:#64748b;transition:all .2s;display:inline-flex;align-items:center;gap:6px}
+.filter-tab.active,.filter-tab:hover{background:#eff6ff;color:#2563eb;border-color:#bfdbfe}
+.tab-count{padding:1px 6px;border-radius:999px;font-size:11px;background:#f1f5f9;color:#475569}
+.filter-tab.active .tab-count{background:#dbeafe;color:#1d4ed8}
+.search-form{display:flex;gap:8px}
+.search-input{height:36px;border:1px solid #cbd5e1;border-radius:8px;padding:0 12px;font-size:13px;outline:none;width:240px}
+.search-input:focus{border-color:#60a5fa}
+.search-btn{height:36px;border:0;border-radius:8px;padding:0 14px;background:linear-gradient(135deg,#0ea5e9,#2563eb);color:#fff;font-size:13px;font-weight:600;cursor:pointer}
+.table-wrap{overflow-x:auto}
+.test-table{width:100%;border-collapse:collapse}
+.test-table th{background:#f8fafc;color:#64748b;font-size:.74rem;font-weight:600;text-transform:uppercase;padding:.75rem 1rem;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
+.test-table td{padding:.85rem 1rem;font-size:.85rem;color:#334155;border-bottom:1px solid #f1f5f9;vertical-align:middle;white-space:nowrap}
+.test-table tbody tr:hover{background:#f8fafc}
+.blood-badge{display:inline-flex;min-width:34px;padding:3px 7px;border-radius:6px;background:#fee2e2;color:#dc2626;font-size:.75rem;font-weight:700;justify-content:center}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:.22rem .55rem;border-radius:999px;font-size:.71rem;font-weight:600}
+.badge-pending{background:#fef3c7;color:#b45309}
+.badge-approved{background:#dbeafe;color:#1d4ed8}
+.badge-completed{background:#dcfce7;color:#15803d}
+.badge-rejected{background:#fee2e2;color:#b91c1c}
+.badge-paid{background:#dcfce7;color:#15803d}
+.badge-urgent{background:#fee2e2;color:#dc2626}
+.badge-emergency{background:#7f1d1d;color:#fff}
+.action-buttons{display:flex;gap:6px;align-items:center}
+.btn-action{padding:6px 11px;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;border:0;display:inline-flex;align-items:center;gap:5px;transition:all .2s;text-decoration:none}
+.btn-approve{background:#2563eb;color:#fff}
+.btn-approve:hover{background:#1d4ed8;box-shadow:0 3px 8px rgba(37,99,235,.2)}
+.btn-upload{background:#16a34a;color:#fff}
+.btn-upload:hover{background:#15803d;box-shadow:0 3px 8px rgba(22,163,74,.2)}
+.btn-view{background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe}
+.btn-view:hover{background:#dbeafe}
+.btn-reject{background:#fee2e2;color:#dc2626}
+.btn-reject:hover{background:#fecaca}
+.empty-state{text-align:center;padding:48px 16px;color:#64748b}
+.empty-state svg{width:48px;height:48px;color:#cbd5e1;margin-bottom:12px}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(15,23,42,.65);z-index:9999;align-items:center;justify-content:center;padding:20px 16px;backdrop-filter:blur(3px);overflow-y:auto}
+.modal-overlay.show{display:flex}
+.modal{background:#fff;width:100%;max-width:580px;border-radius:14px;box-shadow:0 25px 60px rgba(0,0,0,.3);overflow:hidden;max-height:90vh;display:flex;flex-direction:column;position:relative;margin:auto}
+.modal-form{display:flex;flex-direction:column;height:100%;max-height:90vh;min-height:0;overflow:hidden;width:100%}
+.modal-header{padding:14px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;background:#f8fafc;flex-shrink:0}
+.modal-header h3{margin:0;font-size:1.05rem;font-weight:700;color:#1e293b;display:flex;align-items:center;gap:8px}
+.modal-close{width:30px;height:30px;border:0;background:#f1f5f9;border-radius:7px;color:#64748b;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .2s}
+.modal-close:hover{background:#e2e8f0;color:#1e293b}
+.modal-body{padding:20px;overflow-y:auto;flex:1 1 auto;min-height:0;max-height:calc(90vh - 130px);-webkit-overflow-scrolling:touch}
+.modal-body::-webkit-scrollbar{width:7px}
+.modal-body::-webkit-scrollbar-track{background:#f1f5f9;border-radius:4px}
+.modal-body::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:4px}
+.modal-body::-webkit-scrollbar-thumb:hover{background:#94a3b8}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-group{display:flex;flex-direction:column;gap:5px}
+.form-group.full{grid-column:1/-1}
+.form-group label{font-size:12.5px;font-weight:600;color:#475569}
+.form-group input,.form-group select,.form-group textarea{height:38px;border:1px solid #cbd5e1;border-radius:7px;padding:0 11px;font-size:13px;outline:none;background:#fff;transition:border-color .2s}
+.form-group textarea{height:80px;padding:9px 11px;resize:vertical}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+.modal-footer{padding:14px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px;background:#f8fafc;flex-shrink:0;position:sticky;bottom:0;z-index:10}
+.btn-cancel,.btn-submit-upload{padding:9px 16px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:1px solid;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+.btn-cancel{background:#fff;color:#475569;border-color:#cbd5e1}
+.btn-submit-upload{background:#16a34a;color:#fff;border-color:#16a34a}
+.btn-submit-upload:hover{background:#15803d;box-shadow:0 4px 12px rgba(22,163,74,.25)}
+.view-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.view-item{padding:9px 12px;background:#f8fafc;border-radius:8px;border:1px solid #f1f5f9}
+.view-label{font-size:11.5px;color:#64748b;font-weight:500;margin-bottom:2px}
+.view-value{font-size:13px;font-weight:600;color:#1e293b}
+.file-upload-box{border:2px dashed #cbd5e1;border-radius:10px;padding:20px;text-align:center;background:#f8fafc;cursor:pointer;transition:all .2s}
+.file-upload-box:hover{border-color:#2563eb;background:#eff6ff}
+@media(max-width:900px){.stats-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:600px){.form-grid,.view-grid{grid-template-columns:1fr}.stats-grid{grid-template-columns:1fr}.search-input{width:100%}}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-top">
+    <div>
+        <h1 class="page-title">Blood Test Orders</h1>
+        <p class="page-subtitle">Diagnostic Center & Laboratory portal for processing blood bank requisitions and uploading reports</p>
+    </div>
+</div>
+
+<!-- Stats -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div>
+            <div class="stat-label">Total Blood Orders</div>
+            <div class="stat-value">{{ total_tests }}</div>
+        </div>
+        <div class="stat-icon blue">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div>
+            <div class="stat-label">Pending Approval</div>
+            <div class="stat-value">{{ pending_tests }}</div>
+        </div>
+        <div class="stat-icon orange">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div>
+            <div class="stat-label">In Processing</div>
+            <div class="stat-value">{{ approved_tests }}</div>
+        </div>
+        <div class="stat-icon purple">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M10 2v7.31"/><path d="M14 9.3V2"/><path d="M8.5 2h7"/><path d="M14 9.3a6.5 6.5 0 1 1-4 0"/></svg>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div>
+            <div class="stat-label">Completed Reports</div>
+            <div class="stat-value">{{ completed_tests }}</div>
+        </div>
+        <div class="stat-icon green">
+            <svg width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <div class="filter-tabs">
+            <a href="?status=all{% if search_query %}&q={{ search_query }}{% endif %}" class="filter-tab {% if current_status == 'all' or not current_status %}active{% endif %}">
+                All Orders <span class="tab-count">{{ total_tests }}</span>
+            </a>
+            <a href="?status=pending{% if search_query %}&q={{ search_query }}{% endif %}" class="filter-tab {% if current_status == 'pending' %}active{% endif %}">
+                Pending Approval <span class="tab-count">{{ pending_tests }}</span>
+            </a>
+            <a href="?status=approved{% if search_query %}&q={{ search_query }}{% endif %}" class="filter-tab {% if current_status == 'approved' %}active{% endif %}">
+                In Processing <span class="tab-count">{{ approved_tests }}</span>
+            </a>
+            <a href="?status=completed{% if search_query %}&q={{ search_query }}{% endif %}" class="filter-tab {% if current_status == 'completed' %}active{% endif %}">
+                Completed <span class="tab-count">{{ completed_tests }}</span>
+            </a>
+        </div>
+        <form class="search-form" method="get">
+            {% if current_status %}<input type="hidden" name="status" value="{{ current_status }}">{% endif %}
+            <input type="text" name="q" value="{{ search_query }}" class="search-input" placeholder="Search orders...">
+            <button type="submit" class="search-btn">Search</button>
+        </form>
+    </div>
+
+    <div class="table-wrap">
+        <table class="test-table">
+            <thead>
+                <tr>
+                    <th>Order / Date</th>
+                    <th>Patient</th>
+                    <th>Test Requested</th>
+                    <th>Accounting / Payment</th>
+                    <th>Lab Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in test_requests %}
+                <tr>
+                    <td>
+                        <strong style="color:#1e293b;display:block;">{{ item.request_id }}</strong>
+                        <span style="font-size:12px;color:#64748b;">{{ item.created_at|date:"d M Y, h:i A" }}</span>
+                    </td>
+                    <td>
+                        <strong style="color:#1e293b;display:block;">{{ item.patient_name }}</strong>
+                        <div style="font-size:12px;color:#64748b;display:flex;gap:6px;align-items:center;margin-top:2px;">
+                            <span>{{ item.patient_phone }}</span>
+                            {% if item.blood_group %}
+                                <span class="blood-badge">{{ item.blood_group }}</span>
+                            {% endif %}
+                            {% if item.patient_age %}<span>{{ item.patient_age }}y</span>{% endif %}
+                        </div>
+                    </td>
+                    <td>
+                        <strong style="color:#1e293b;display:block;">{{ item.test_name }}</strong>
+                        <div style="display:flex;gap:6px;align-items:center;margin-top:3px;">
+                            {% if item.priority == 'urgent' %}
+                                <span class="badge badge-urgent">Urgent</span>
+                            {% elif item.priority == 'emergency' %}
+                                <span class="badge badge-emergency">Emergency</span>
+                            {% else %}
+                                <span class="badge" style="background:#f1f5f9;color:#64748b;">Normal</span>
+                            {% endif %}
+                            {% if item.doctor_name %}<span style="font-size:11.5px;color:#64748b;">By: {{ item.doctor_name }}</span>{% endif %}
+                        </div>
+                    </td>
+                    <td>
+                        <strong style="color:#1e293b;display:block;">BDT {{ item.amount }}</strong>
+                        <div style="display:flex;gap:5px;align-items:center;margin-top:3px;">
+                            <span class="badge badge-paid">Paid &bull; {{ item.get_payment_method_display }}</span>
+                        </div>
+                    </td>
+                    <td>
+                        {% if item.lab_status == 'pending' %}
+                            <span class="badge badge-pending">
+                                <svg width="10" height="10" fill="currentColor" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3"/></svg>
+                                Pending Approval
+                            </span>
+                        {% elif item.lab_status == 'approved' %}
+                            <span class="badge badge-approved">
+                                <svg width="10" height="10" fill="currentColor" viewBox="0 0 8 8"><circle cx="4" cy="4" r="3"/></svg>
+                                In Processing
+                            </span>
+                        {% elif item.lab_status == 'completed' %}
+                            <span class="badge badge-completed">
+                                <svg width="10" height="10" fill="currentColor" viewBox="0 0 8 8"><path d="m2 4 1.5 1.5 3-3"/></svg>
+                                Report Ready
+                            </span>
+                        {% elif item.lab_status == 'rejected' %}
+                            <span class="badge badge-rejected">Rejected</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="action-buttons">
+                            {% if item.lab_status == 'pending' %}
+                                <form method="post" action="{% url 'lab_blood_test_approve' item.id %}" style="margin:0;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn-action btn-approve" title="Approve sample and start testing">
+                                        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                                        Approve
+                                    </button>
+                                </form>
+                                <button type="button" class="btn-action btn-reject" onclick="openRejectModal('{{ item.id }}', '{{ item.request_id }}')">
+                                    Reject
+                                </button>
+                            {% elif item.lab_status == 'approved' %}
+                                <button type="button" class="btn-action btn-upload" onclick="openUploadModal('{{ item.id }}', '{{ item.request_id }}', '{{ item.patient_name|escapejs }}', '{{ item.test_name|escapejs }}')">
+                                    <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M12 16V4"/><path d="m7 9 5-5 5 5"/><path d="M4 14v5a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5"/></svg>
+                                    Upload Report
+                                </button>
+                            {% elif item.lab_status == 'completed' %}
+                                <button type="button" class="btn-action btn-view" onclick="openViewModal('{{ item.request_id }}', '{{ item.patient_name|escapejs }}', '{{ item.test_name|escapejs }}', '{{ item.findings|escapejs }}', '{% if item.report_file %}{{ item.report_file.url }}{% endif %}', '{{ item.completed_at|date:"d M Y, h:i A" }}')">
+                                    View Report
+                                </button>
+                                <button type="button" class="btn-action btn-upload" style="background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;" onclick="openUploadModal('{{ item.id }}', '{{ item.request_id }}', '{{ item.patient_name|escapejs }}', '{{ item.test_name|escapejs }}')">
+                                    Update
+                                </button>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6">
+                        <div class="empty-state">
+                            <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M19.5 14.5c1-1 1.5-2.2 1.5-3.5 0-3-2.5-5-5-5-1.5 0-2.8.7-3.7 1.8-.9-1.1-2.2-1.8-3.8-1.8-2.5 0-4.5 2-4.5 4.5 0 1.5.7 3 2 4.2l7 6.8z"/></svg>
+                            <h3 style="font-size:1rem;color:#1e293b;margin:0 0 4px;">No blood test orders</h3>
+                            <p style="font-size:13px;color:#64748b;margin:0;">No orders found matching the filter.</p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Upload Report Modal -->
+<div class="modal-overlay" id="uploadModal">
+    <div class="modal">
+        <form method="post" id="uploadForm" enctype="multipart/form-data" class="modal-form">
+            {% csrf_token %}
+            <div class="modal-header">
+                <h3>
+                    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 16V4"/><path d="m7 9 5-5 5 5"/><path d="M4 14v5a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5"/></svg>
+                    Upload Test Report & Findings
+                </h3>
+                <button type="button" class="modal-close" onclick="closeUploadModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="view-grid">
+                    <div class="view-item">
+                        <div class="view-label">Order ID</div>
+                        <div class="view-value" id="upReqId"></div>
+                    </div>
+                    <div class="view-item">
+                        <div class="view-label">Patient</div>
+                        <div class="view-value" id="upPatient"></div>
+                    </div>
+                    <div class="view-item full" style="grid-column:1/-1;">
+                        <div class="view-label">Diagnostic Test</div>
+                        <div class="view-value" id="upTest"></div>
+                    </div>
+                </div>
+
+                <div class="form-grid">
+                    <div class="form-group full">
+                        <label>Report Title</label>
+                        <input type="text" name="report_title" id="upTitle" placeholder="e.g. Complete Blood Count (CBC) Report">
+                    </div>
+
+                    <div class="form-group full">
+                        <label>Report Document (PDF, Image, DOCX) *</label>
+                        <input type="file" name="report_file" required style="height:auto;padding:8px;">
+                    </div>
+
+                    <div class="form-group full">
+                        <label>Test Findings & Numerical Results *</label>
+                        <textarea name="findings" required placeholder="Enter clinical laboratory results, normal ranges, observed values and diagnostic impression..."></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" onclick="closeUploadModal()">Cancel</button>
+                <button type="submit" class="btn-submit-upload">
+                    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+                    Save & Complete Test
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- View Report Modal -->
+<div class="modal-overlay" id="viewModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>Report Overview</h3>
+            <button type="button" class="modal-close" onclick="closeViewModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="view-grid">
+                <div class="view-item">
+                    <div class="view-label">Order ID</div>
+                    <div class="view-value" id="vwReqId"></div>
+                </div>
+                <div class="view-item">
+                    <div class="view-label">Completed Date</div>
+                    <div class="view-value" id="vwDate"></div>
+                </div>
+                <div class="view-item">
+                    <div class="view-label">Patient</div>
+                    <div class="view-value" id="vwPatient"></div>
+                </div>
+                <div class="view-item">
+                    <div class="view-label">Test</div>
+                    <div class="view-value" id="vwTest"></div>
+                </div>
+            </div>
+            <div style="margin-top:10px;">
+                <label style="font-size:12px;font-weight:700;color:#475569;">Findings:</label>
+                <div id="vwFindings" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px;margin-top:4px;font-size:13px;white-space:pre-wrap;"></div>
+            </div>
+            <div id="vwFileBox" style="margin-top:14px;text-align:center;display:none;">
+                <a id="vwFileLink" href="" target="_blank" download class="btn-action btn-upload" style="padding:10px 18px;font-size:13.5px;">
+                    Download Attached Report File
+                </a>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-cancel" onclick="closeViewModal()">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- Reject Modal -->
+<div class="modal-overlay" id="rejectModal">
+    <div class="modal" style="max-width:440px;">
+        <div class="modal-header">
+            <h3>Reject Sample / Order</h3>
+            <button type="button" class="modal-close" onclick="closeRejectModal()">&times;</button>
+        </div>
+        <form method="post" id="rejectForm">
+            {% csrf_token %}
+            <div class="modal-body">
+                <p style="font-size:13px;color:#64748b;margin:0 0 12px;">Please specify reason for rejecting sample <strong id="rejReqId"></strong> (e.g. Hemolyzed, clotted sample, insufficient volume):</p>
+                <div class="form-group full">
+                    <textarea name="rejection_reason" required placeholder="Reason for rejection..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" onclick="closeRejectModal()">Cancel</button>
+                <button type="submit" class="btn-action btn-reject" style="padding:8px 16px;">Confirm Reject</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function openUploadModal(id, reqId, patient, test) {
+    document.getElementById('uploadForm').action = "/accounts/lab/blood-tests/" + id + "/upload/";
+    document.getElementById('upReqId').innerText = reqId;
+    document.getElementById('upPatient').innerText = patient;
+    document.getElementById('upTest').innerText = test;
+    document.getElementById('upTitle').value = test + " Report";
+    document.getElementById('uploadModal').classList.add('show');
+}
+function closeUploadModal() {
+    document.getElementById('uploadModal').classList.remove('show');
+}
+
+function openViewModal(reqId, patient, test, findings, fileUrl, date) {
+    document.getElementById('vwReqId').innerText = reqId;
+    document.getElementById('vwPatient').innerText = patient;
+    document.getElementById('vwTest').innerText = test;
+    document.getElementById('vwDate').innerText = date || 'Completed';
+    document.getElementById('vwFindings').innerText = findings || 'No remarks provided.';
+    const fileBox = document.getElementById('vwFileBox');
+    const fileLink = document.getElementById('vwFileLink');
+    if (fileUrl && fileUrl.trim() !== '') {
+        fileBox.style.display = 'block';
+        fileLink.href = fileUrl;
+    } else {
+        fileBox.style.display = 'none';
+    }
+    document.getElementById('viewModal').classList.add('show');
+}
+function closeViewModal() {
+    document.getElementById('viewModal').classList.remove('show');
+}
+
+function openRejectModal(id, reqId) {
+    document.getElementById('rejectForm').action = "/accounts/lab/blood-tests/" + id + "/reject/";
+    document.getElementById('rejReqId').innerText = reqId;
+    document.getElementById('rejectModal').classList.add('show');
+}
+function closeRejectModal() {
+    document.getElementById('rejectModal').classList.remove('show');
+}
+
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+    overlay.addEventListener('click', function(e) {
+        if (e.target === this) this.classList.remove('show');
+    });
+});
+</script>
+{% endblock %}

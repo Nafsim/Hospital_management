@@ -162,6 +162,15 @@ tr:last-child td{border-bottom:0}
                     <span>Record new blood collection</span>
                 </div>
             </a>
+            <a href="{% url 'bloodbank_testing' %}" class="quick-action" style="border-left:3px solid #2563eb;">
+                <div class="quick-icon" style="background:#eff6ff;color:#2563eb;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2v17.5c0 1.4-1.1 2.5-2.5 2.5s-2.5-1.1-2.5-2.5V2"/><path d="M8.5 2h7"/><path d="M9.5 12h5"/><path d="M9.5 16h3"/></svg>
+                </div>
+                <div class="quick-text">
+                    <strong>Blood Tests & Lab</strong>
+                    <span>Apply test & view reports {% if pending_blood_tests %}({{ pending_blood_tests }} pending){% endif %}</span>
+                </div>
+            </a>
             <a href="{% url 'bloodbank_requests' %}" class="quick-action">
                 <div class="quick-icon">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8"/><path d="M8 11h8"/><path d="M8 15h5"/></svg>

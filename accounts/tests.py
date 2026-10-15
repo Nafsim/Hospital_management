@@ -1,13 +1,65 @@
 from django.test import TestCase
 
 from .forms import LoginForm
-from .models import User
+from .models import User, Expense, Medicine
 from hospitals.models import Hospital
 from patients.models import Patient
 from .models import PatientAppointment
 
 
 class LoginFormTests(TestCase):
+    def test_pharmacy_stock_company_filter_and_payment_creates_accounting_expense(self):
+        hospital = Hospital.objects.create(
+            name='Pharmacy Test Hospital',
+            code='TEST-PHARMACY',
+            address='Test address',
+        )
+        pharmacist = User.objects.create_user(
+            username='pharmacist@example.com',
+            email='pharmacist@example.com',
+            password='ValidPass123!',
+            role='pharmacy',
+            hospital=hospital,
+        )
+
+        self.client.force_login(pharmacist)
+        response = self.client.post(
+            '/accounts/pharmacy/stock/',
+            {
+                'action': 'create',
+                'name': 'Paracetamol',
+                'category': 'tablet',
+                'strength': '500mg',
+                'stock': '100',
+                'unit': 'tablet',
+                'reorder_level': '20',
+                'company': 'Square',
+                'payment_amount': '1250.00',
+                'payment_method': 'bank',
+            },
+        )
+
+        self.assertRedirects(response, '/accounts/pharmacy/stock/')
+        medicine = Medicine.objects.get(hospital=hospital)
+        self.assertEqual(medicine.company, 'Square')
+        self.assertEqual(medicine.payment_amount, 1250)
+        expense = Expense.objects.get(hospital=hospital)
+        self.assertEqual(expense.category, 'medicine')
+        self.assertEqual(expense.amount, 1250)
+        self.assertEqual(expense.paid_to, 'Square')
+
+        response = self.client.get(
+            '/accounts/pharmacy/stock/',
+            {'q': 'square'},
+        )
+        self.assertContains(response, 'Paracetamol')
+
+        response = self.client.get(
+            '/accounts/pharmacy/stock/',
+            {'company': 'Square'},
+        )
+        self.assertContains(response, 'Paracetamol')
+
     def test_lab_login_normalizes_email_before_authentication(self):
         user = User.objects.create_user(
             username='Lab.User@Example.com',

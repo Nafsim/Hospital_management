@@ -341,8 +341,10 @@ class Medicine(models.Model):
     reorder_level = models.PositiveIntegerField(default=20)
     expiry_date = models.DateField(null=True, blank=True)
     batch_number = models.CharField(max_length=50, blank=True)
+    company = models.CharField(max_length=150, blank=True)
     supplier = models.CharField(max_length=150, blank=True)
     price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    payment_amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -1520,5 +1522,133 @@ class BankTransaction(models.Model):
         ordering = ['-transaction_date', '-id']
 
     def __str__(self):
-        return f'{self.account.account_name} - {self.get_transaction_type_display()} - {self.amount}'    
-    
+        return f'{self.account.account_name} - {self.get_transaction_type_display()} - {self.amount}'
+
+
+class BloodTestRequest(models.Model):
+    PRIORITY_CHOICES = [
+        ('normal', 'Normal'),
+        ('urgent', 'Urgent'),
+        ('emergency', 'Emergency'),
+    ]
+    PAYMENT_STATUS_CHOICES = [
+        ('paid', 'Paid'),
+        ('pending', 'Pending Payment'),
+        ('refunded', 'Refunded'),
+    ]
+    PAYMENT_METHOD_CHOICES = [
+        ('cash', 'Cash'),
+        ('card', 'Card'),
+        ('bkash', 'bKash'),
+        ('nagad', 'Nagad'),
+        ('bank', 'Bank Transfer'),
+        ('other', 'Other'),
+    ]
+    LAB_STATUS_CHOICES = [
+        ('pending', 'Pending Lab Approval'),
+        ('approved', 'In Progress'),
+        ('completed', 'Report Ready'),
+        ('rejected', 'Rejected'),
+    ]
+    GENDER_CHOICES = [
+        ('M', 'Male'),
+        ('F', 'Female'),
+        ('O', 'Other'),
+    ]
+
+    hospital = models.ForeignKey(
+        'hospitals.Hospital',
+        on_delete=models.CASCADE,
+        related_name='blood_test_requests'
+    )
+    request_id = models.CharField(max_length=50, blank=True, unique=True)
+    patient = models.ForeignKey(
+        'patients.Patient',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='blood_test_requests'
+    )
+    patient_name = models.CharField(max_length=150)
+    patient_phone = models.CharField(max_length=20, blank=True)
+    patient_gender = models.CharField(max_length=10, choices=GENDER_CHOICES, blank=True, default='M')
+    patient_age = models.PositiveIntegerField(null=True, blank=True)
+    blood_group = models.CharField(max_length=10, blank=True)
+
+    test = models.ForeignKey(
+        'DiagnosticTest',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='blood_test_requests'
+    )
+    test_name = models.CharField(max_length=150)
+    priority = models.CharField(max_length=20, choices=PRIORITY_CHOICES, default='normal')
+    doctor_name = models.CharField(max_length=150, blank=True)
+    notes = models.TextField(blank=True)
+
+    # Payment integration with Hospital Accountant
+    amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES, default='cash')
+    payment_status = models.CharField(max_length=20, choices=PAYMENT_STATUS_CHOICES, default='paid')
+    payment_reference = models.CharField(max_length=100, blank=True)
+    billing = models.ForeignKey(
+        'Billing',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='blood_test_requests'
+    )
+    payment_record = models.ForeignKey(
+        'PaymentRecord',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='blood_test_requests'
+    )
+
+    # Diagnostic Center / Lab workflow
+    lab_status = models.CharField(max_length=20, choices=LAB_STATUS_CHOICES, default='pending')
+    lab_technician = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='tested_blood_requests'
+    )
+    approved_at = models.DateTimeField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    report_file = models.FileField(upload_to='blood_test_reports/', null=True, blank=True)
+    report_title = models.CharField(max_length=200, blank=True)
+    findings = models.TextField(blank=True)
+    rejection_reason = models.TextField(blank=True)
+    medical_record = models.ForeignKey(
+        'MedicalRecord',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='blood_test_requests'
+    )
+
+    requested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='requested_blood_tests'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def save(self, *args, **kwargs):
+        if not self.request_id:
+            import random
+            today_str = timezone.now().strftime('%Y%m%d')
+            self.request_id = f"BTR-{today_str}-{random.randint(1000, 9999)}"
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.request_id} - {self.patient_name} ({self.test_name})"

@@ -43,6 +43,7 @@ import csv
 from .models import PatientAppointment
 from django.db import IntegrityError
 from django.shortcuts import render, redirect, get_object_or_404
+from django.db import transaction
 from .models import (
     User, Notice, Department, DoctorPatient, DoctorSchedule,
     DoctorPrescription, DoctorReferral, ChatMessage,
@@ -3508,6 +3509,9 @@ def lab_dashboard(request):
             daily_labels.append(day.strftime('%a'))
             daily_data.append(reports.filter(created_at__date=day).count())
 
+    pending_blood_tests = BloodTestRequest.objects.filter(hospital=hospital, lab_status='pending').count() if hospital else 0
+    recent_blood_tests = BloodTestRequest.objects.filter(hospital=hospital).order_by('-created_at')[:5] if hospital else []
+
     context = {
         'hospital': hospital,
         'user': request.user,
@@ -3520,6 +3524,8 @@ def lab_dashboard(request):
         'daily_labels': json.dumps(daily_labels),
         'daily_data': json.dumps(daily_data),
         'today': today,
+        'pending_blood_tests': pending_blood_tests,
+        'recent_blood_tests': recent_blood_tests,
     }
     return render(request, 'accounts/lab/dashboard.html', context)
 
@@ -4040,6 +4046,11 @@ def bloodbank_dashboard(request):
                 'status_label': status_label,
             })
 
+    total_blood_tests = BloodTestRequest.objects.filter(hospital=hospital).count() if hospital else 0
+    pending_blood_tests = BloodTestRequest.objects.filter(hospital=hospital, lab_status='pending').count() if hospital else 0
+    completed_blood_tests = BloodTestRequest.objects.filter(hospital=hospital, lab_status='completed').count() if hospital else 0
+    recent_blood_tests = BloodTestRequest.objects.filter(hospital=hospital).order_by('-created_at')[:5] if hospital else []
+
     context = {
         'hospital': hospital,
         'user': request.user,
@@ -4049,6 +4060,10 @@ def bloodbank_dashboard(request):
         'today_collection': today_collection,
         'inventory': inventory,
         'recent_requests': recent_requests,
+        'total_blood_tests': total_blood_tests,
+        'pending_blood_tests': pending_blood_tests,
+        'completed_blood_tests': completed_blood_tests,
+        'recent_blood_tests': recent_blood_tests,
     }
     return render(request, 'accounts/bloodbank/dashboard.html', context)
 
@@ -4388,15 +4403,320 @@ def bloodbank_collection(request):
 
 
 
+from .models import BloodTestRequest
+
 def bloodbank_testing(request):
     if not request.user.is_authenticated:
         return redirect('login')
-    if request.user.role != 'bloodbank':
+    if request.user.role != 'bloodbank' and request.user.role != 'hospital_admin':
         return redirect('dashboard')
+
     hospital = request.user.hospital
-    patients = Patient.objects.filter(hospital=hospital) if hospital else []
-    context = {'patients': patients}
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action == 'apply_test':
+            patient_id = request.POST.get('patient')
+            patient = None
+            if patient_id:
+                patient = Patient.objects.filter(id=patient_id, hospital=hospital).first()
+
+            patient_name = request.POST.get('patient_name', '').strip()
+            if not patient_name and patient:
+                patient_name = patient.patient_name
+
+            patient_phone = request.POST.get('patient_phone', '').strip()
+            if not patient_phone and patient:
+                patient_phone = patient.phone
+
+            patient_gender = request.POST.get('gender', 'M')
+            if patient and patient.gender:
+                patient_gender = patient.gender
+
+            age_val = request.POST.get('age')
+            patient_age = int(age_val) if age_val and age_val.isdigit() else (patient.age if patient else None)
+
+            blood_group = request.POST.get('blood_group', '').strip()
+            if not blood_group and patient and patient.blood_group:
+                blood_group = patient.blood_group
+
+            test_id = request.POST.get('test_id')
+            test = None
+            test_name = ''
+            if test_id:
+                test = DiagnosticTest.objects.filter(id=test_id, hospital=hospital).first()
+                if test:
+                    test_name = test.name
+            if not test_name:
+                test_name = request.POST.get('test_name', 'Blood Test').strip()
+
+            amount_str = request.POST.get('amount') or '0'
+            try:
+                from decimal import Decimal
+                amount = Decimal(amount_str)
+            except Exception:
+                amount = Decimal(test.price if test else 0)
+
+            payment_method = request.POST.get('payment_method', 'cash')
+            payment_reference = request.POST.get('payment_reference', '').strip()
+            priority = request.POST.get('priority', 'normal')
+            doctor_name = request.POST.get('doctor_name', '').strip()
+            notes = request.POST.get('notes', '').strip()
+
+            # 1. Create BloodTestRequest
+            blood_test = BloodTestRequest.objects.create(
+                hospital=hospital,
+                patient=patient,
+                patient_name=patient_name,
+                patient_phone=patient_phone,
+                patient_gender=patient_gender,
+                patient_age=patient_age,
+                blood_group=blood_group,
+                test=test,
+                test_name=test_name,
+                priority=priority,
+                doctor_name=doctor_name,
+                notes=notes,
+                amount=amount,
+                payment_method=payment_method,
+                payment_status='paid',
+                payment_reference=payment_reference,
+                lab_status='pending',
+                requested_by=request.user,
+            )
+
+            # 2. Integrate with Hospital Accountant: Create Billing entry
+            billing = Billing.objects.create(
+                hospital=hospital,
+                patient=patient,
+                patient_name=patient_name,
+                patient_phone=patient_phone,
+                service=f"Blood Test: {test_name}",
+                amount=amount,
+                discount=Decimal(0),
+                total=amount,
+                status='paid',
+                notes=f"Auto-generated for Blood Test #{blood_test.request_id}",
+                bill_date=timezone.now().date(),
+                created_by=request.user,
+            )
+
+            # 3. Integrate with Hospital Accountant: Create PaymentRecord entry
+            payment_record = PaymentRecord.objects.create(
+                hospital=hospital,
+                billing=billing,
+                patient_name=patient_name,
+                patient_phone=patient_phone,
+                amount=amount,
+                method=payment_method,
+                status='completed',
+                reference=payment_reference,
+                notes=f"Payment for Blood Test #{blood_test.request_id} ({test_name})",
+                payment_date=timezone.now().date(),
+                received_by=request.user,
+            )
+
+            # Link billing & payment to blood_test
+            blood_test.billing = billing
+            blood_test.payment_record = payment_record
+            blood_test.save()
+
+            messages.success(
+                request,
+                f"Blood test request #{blood_test.request_id} submitted! "
+                f"Payment of BDT {amount} recorded to Hospital Accounts (Bill #{billing.bill_no}). "
+                f"Order sent to Diagnostic Center / Lab."
+            )
+            return redirect('bloodbank_testing')
+
+        if action == 'delete':
+            test_id = request.POST.get('test_id')
+            BloodTestRequest.objects.filter(id=test_id, hospital=hospital).delete()
+            messages.success(request, 'Blood test request deleted.')
+            return redirect('bloodbank_testing')
+
+    # GET
+    test_requests = BloodTestRequest.objects.filter(hospital=hospital) if hospital else BloodTestRequest.objects.none()
+    current_status = request.GET.get('status', 'all').lower()
+    search_query = request.GET.get('q', '').strip()
+
+    if current_status == 'pending':
+        test_requests = test_requests.filter(lab_status='pending')
+    elif current_status == 'approved':
+        test_requests = test_requests.filter(lab_status='approved')
+    elif current_status == 'completed':
+        test_requests = test_requests.filter(lab_status='completed')
+
+    if search_query:
+        test_requests = test_requests.filter(
+            Q(request_id__icontains=search_query) |
+            Q(patient_name__icontains=search_query) |
+            Q(patient_phone__icontains=search_query) |
+            Q(test_name__icontains=search_query) |
+            Q(doctor_name__icontains=search_query)
+        )
+
+    total_tests = BloodTestRequest.objects.filter(hospital=hospital).count() if hospital else 0
+    pending_tests = BloodTestRequest.objects.filter(hospital=hospital, lab_status='pending').count() if hospital else 0
+    approved_tests = BloodTestRequest.objects.filter(hospital=hospital, lab_status='approved').count() if hospital else 0
+    completed_tests = BloodTestRequest.objects.filter(hospital=hospital, lab_status='completed').count() if hospital else 0
+
+    patients = Patient.objects.filter(hospital=hospital).select_related('user') if hospital else Patient.objects.none()
+    diagnostic_tests = DiagnosticTest.objects.filter(hospital=hospital, is_active=True).order_by('name') if hospital else DiagnosticTest.objects.none()
+
+    context = {
+        'hospital': hospital,
+        'test_requests': test_requests,
+        'current_status': current_status,
+        'search_query': search_query,
+        'total_tests': total_tests,
+        'pending_tests': pending_tests,
+        'approved_tests': approved_tests,
+        'completed_tests': completed_tests,
+        'patients': patients,
+        'diagnostic_tests': diagnostic_tests,
+    }
     return render(request, 'accounts/bloodbank/testing.html', context)
+
+
+def bloodbank_blood_test_slip(request, test_id):
+    if not request.user.is_authenticated:
+        return redirect('login')
+    hospital = request.user.hospital
+    test_req = get_object_or_404(BloodTestRequest, id=test_id, hospital=hospital)
+    return render(request, 'accounts/bloodbank/test_slip.html', {'test_req': test_req})
+
+
+def lab_blood_tests(request):
+    if not request.user.is_authenticated:
+        return redirect('login')
+    if request.user.role != 'lab' and request.user.role != 'hospital_admin':
+        return redirect('dashboard')
+
+    hospital = request.user.hospital
+    test_requests = BloodTestRequest.objects.filter(hospital=hospital) if hospital else BloodTestRequest.objects.none()
+
+    current_status = request.GET.get('status', 'all').lower()
+    search_query = request.GET.get('q', '').strip()
+
+    if current_status == 'pending':
+        test_requests = test_requests.filter(lab_status='pending')
+    elif current_status == 'approved':
+        test_requests = test_requests.filter(lab_status='approved')
+    elif current_status == 'completed':
+        test_requests = test_requests.filter(lab_status='completed')
+
+    if search_query:
+        test_requests = test_requests.filter(
+            Q(request_id__icontains=search_query) |
+            Q(patient_name__icontains=search_query) |
+            Q(patient_phone__icontains=search_query) |
+            Q(test_name__icontains=search_query)
+        )
+
+    total_tests = BloodTestRequest.objects.filter(hospital=hospital).count() if hospital else 0
+    pending_tests = BloodTestRequest.objects.filter(hospital=hospital, lab_status='pending').count() if hospital else 0
+    approved_tests = BloodTestRequest.objects.filter(hospital=hospital, lab_status='approved').count() if hospital else 0
+    completed_tests = BloodTestRequest.objects.filter(hospital=hospital, lab_status='completed').count() if hospital else 0
+
+    context = {
+        'hospital': hospital,
+        'test_requests': test_requests,
+        'current_status': current_status,
+        'search_query': search_query,
+        'total_tests': total_tests,
+        'pending_tests': pending_tests,
+        'approved_tests': approved_tests,
+        'completed_tests': completed_tests,
+    }
+    return render(request, 'accounts/lab/blood_tests.html', context)
+
+
+def lab_blood_test_approve(request, test_id):
+    if not request.user.is_authenticated:
+        return redirect('login')
+    if request.user.role != 'lab' and request.user.role != 'hospital_admin':
+        return redirect('dashboard')
+
+    hospital = request.user.hospital
+    test_req = get_object_or_404(BloodTestRequest, id=test_id, hospital=hospital)
+    test_req.lab_status = 'approved'
+    test_req.lab_technician = request.user
+    test_req.approved_at = timezone.now()
+    test_req.save()
+
+    messages.success(request, f"Order #{test_req.request_id} ({test_req.test_name}) approved. Sample received and testing started.")
+    return redirect('lab_blood_tests')
+
+
+def lab_blood_test_upload(request, test_id):
+    if not request.user.is_authenticated:
+        return redirect('login')
+    if request.user.role != 'lab' and request.user.role != 'hospital_admin':
+        return redirect('dashboard')
+
+    hospital = request.user.hospital
+    test_req = get_object_or_404(BloodTestRequest, id=test_id, hospital=hospital)
+
+    if request.method == 'POST':
+        report_file = request.FILES.get('report_file')
+        findings = request.POST.get('findings', '').strip()
+        report_title = request.POST.get('report_title', '').strip() or f"{test_req.test_name} Report"
+
+        if report_file:
+            test_req.report_file = report_file
+        test_req.findings = findings
+        test_req.report_title = report_title
+        test_req.lab_status = 'completed'
+        test_req.completed_at = timezone.now()
+        test_req.lab_technician = request.user
+
+        # Create or link MedicalRecord
+        medical_record = MedicalRecord.objects.create(
+            hospital=hospital,
+            patient_user=test_req.patient.user if test_req.patient and hasattr(test_req.patient, 'user') else None,
+            patient_name=test_req.patient_name,
+            patient_id=test_req.patient.patient_id if test_req.patient else '',
+            patient_phone=test_req.patient_phone,
+            title=report_title,
+            record_type='lab',
+            test_name=test_req.test_name,
+            file=test_req.report_file,
+            notes=findings,
+            status='verified',
+            uploaded_by=request.user,
+            report_date=timezone.now().date(),
+        )
+        test_req.medical_record = medical_record
+        test_req.save()
+
+        messages.success(
+            request,
+            f"Test report for #{test_req.request_id} ({test_req.patient_name}) uploaded successfully! "
+            f"Test completed and now visible in Blood Bank."
+        )
+
+    return redirect('lab_blood_tests')
+
+
+def lab_blood_test_reject(request, test_id):
+    if not request.user.is_authenticated:
+        return redirect('login')
+    if request.user.role != 'lab' and request.user.role != 'hospital_admin':
+        return redirect('dashboard')
+
+    hospital = request.user.hospital
+    test_req = get_object_or_404(BloodTestRequest, id=test_id, hospital=hospital)
+
+    if request.method == 'POST':
+        reason = request.POST.get('rejection_reason', '').strip()
+        test_req.lab_status = 'rejected'
+        test_req.rejection_reason = reason
+        test_req.save()
+        messages.warning(request, f"Order #{test_req.request_id} rejected: {reason}")
+
+    return redirect('lab_blood_tests')
 
 
 def bloodbank_issue(request):
@@ -5561,19 +5881,41 @@ def pharmacy_stock(request):
         action = request.POST.get('action')
 
         if action == 'create':
-            Medicine.objects.create(
-                hospital=hospital,
-                name=request.POST.get('name', '').strip(),
-                category=request.POST.get('category', 'tablet'),
-                strength=request.POST.get('strength', '').strip(),
-                stock=int(request.POST.get('stock') or 0),
-                unit=request.POST.get('unit', 'tablet'),
-                reorder_level=int(request.POST.get('reorder_level') or 20),
-                expiry_date=request.POST.get('expiry_date') or None,
-                batch_number=request.POST.get('batch_number', '').strip(),
-                supplier=request.POST.get('supplier', '').strip(),
-                price=request.POST.get('price') or 0,
-            )
+            payment_amount = Decimal(request.POST.get('payment_amount') or '0')
+            if payment_amount < 0:
+                messages.error(request, 'Payment amount cannot be negative.')
+                return redirect('pharmacy_stock')
+
+            with transaction.atomic():
+                medicine = Medicine.objects.create(
+                    hospital=hospital,
+                    name=request.POST.get('name', '').strip(),
+                    category=request.POST.get('category', 'tablet'),
+                    strength=request.POST.get('strength', '').strip(),
+                    stock=int(request.POST.get('stock') or 0),
+                    unit=request.POST.get('unit', 'tablet'),
+                    reorder_level=int(request.POST.get('reorder_level') or 20),
+                    expiry_date=request.POST.get('expiry_date') or None,
+                    batch_number=request.POST.get('batch_number', '').strip(),
+                    company=request.POST.get('company', '').strip(),
+                    supplier=request.POST.get('supplier', '').strip(),
+                    price=request.POST.get('price') or 0,
+                    payment_amount=payment_amount,
+                )
+                if payment_amount:
+                    Expense.objects.create(
+                        hospital=hospital,
+                        category='medicine',
+                        title=f'Medicine stock: {medicine.name}',
+                        description=f'{medicine.stock} {medicine.get_unit_display()} of {medicine.name}'
+                        f' from {medicine.company or medicine.supplier or "unspecified company"}',
+                        amount=payment_amount,
+                        payment_method=request.POST.get('payment_method', 'cash'),
+                        status='paid',
+                        expense_date=timezone.localdate(),
+                        paid_to=medicine.company or medicine.supplier,
+                        created_by=request.user,
+                    )
             messages.success(request, 'Medicine added.')
             return redirect('pharmacy_stock')
 
@@ -5587,8 +5929,10 @@ def pharmacy_stock(request):
             m.reorder_level = int(request.POST.get('reorder_level') or 20)
             m.expiry_date = request.POST.get('expiry_date') or None
             m.batch_number = request.POST.get('batch_number', '').strip()
+            m.company = request.POST.get('company', '').strip()
             m.supplier = request.POST.get('supplier', '').strip()
             m.price = request.POST.get('price') or 0
+            m.payment_amount = Decimal(request.POST.get('payment_amount') or '0')
             m.save()
             messages.success(request, 'Medicine updated.')
             return redirect('pharmacy_stock')
@@ -5599,15 +5943,23 @@ def pharmacy_stock(request):
             return redirect('pharmacy_stock')
 
     medicines = Medicine.objects.none()
+    company_filter = request.GET.get('company', '').strip()
+    companies = []
     if hospital:
         medicines = Medicine.objects.filter(hospital=hospital)
+        companies = medicines.exclude(company='').values_list(
+            'company', flat=True
+        ).distinct().order_by('company')
         if search:
             medicines = medicines.filter(
                 Q(name__icontains=search) |
                 Q(category__icontains=search) |
                 Q(batch_number__icontains=search) |
+                Q(company__icontains=search) |
                 Q(supplier__icontains=search)
             )
+        if company_filter:
+            medicines = medicines.filter(company__iexact=company_filter)
 
     context = {
         'hospital': hospital,
@@ -5616,8 +5968,11 @@ def pharmacy_stock(request):
         'low_stock': medicines.filter(stock__gt=0, stock__lte=F('reorder_level')).count() if hospital else 0,
         'out_of_stock': medicines.filter(stock=0).count() if hospital else 0,
         'search': search,
+        'company_filter': company_filter,
+        'companies': companies,
         'category_choices': Medicine.CATEGORY_CHOICES,
         'unit_choices': Medicine.UNIT_CHOICES,
+        'payment_choices': Expense.PAYMENT_CHOICES,
     }
     return render(request, 'accounts/pharmacy/stock.html', context)
 

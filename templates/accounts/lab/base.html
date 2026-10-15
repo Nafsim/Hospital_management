@@ -80,6 +80,10 @@ body{font-family:"Segoe UI",Arial,sans-serif;background:var(--page);color:var(--
 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 16V4"/><path d="m7 9 5-5 5 5"/><path d="M4 14v5a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-5"/></svg>
 <span>Upload Report</span>
 </a>
+<a href="{% url 'lab_blood_tests' %}" class="menu-item {% if request.resolver_match.url_name == 'lab_blood_tests' %}active{% endif %}">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14.5 2v17.5c0 1.4-1.1 2.5-2.5 2.5s-2.5-1.1-2.5-2.5V2"/><path d="M8.5 2h7"/><path d="M9.5 12h5"/><path d="M9.5 16h3"/></svg>
+<span>Blood Test Requests</span>
+</a>
 <a href="{% url 'lab_history' %}" class="menu-item {% if request.resolver_match.url_name == 'lab_history' %}active{% endif %}">
 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 7v5l3 2"/></svg>
 <span>Lab History</span>

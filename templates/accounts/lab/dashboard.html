@@ -102,6 +102,10 @@
         </div>
         <div class="card-body">
             <div class="quick-actions">
+                <a href="{% url 'lab_blood_tests' %}" class="action-btn" style="border-left:3px solid #2563eb;">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14.5 2v17.5c0 1.4-1.1 2.5-2.5 2.5s-2.5-1.1-2.5-2.5V2"/><path d="M8.5 2h7"/><path d="M9.5 12h5"/><path d="M9.5 16h3"/></svg>
+                    Blood Test Requests {% if pending_blood_tests %}<span style="background:#fee2e2;color:#dc2626;padding:2px 7px;border-radius:999px;font-size:11px;margin-left:auto;">{{ pending_blood_tests }} new</span>{% endif %}
+                </a>
                 <a href="{% url 'lab_upload_report' %}" class="action-btn">
                     <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 16V4"/><path d="m7 9 5-5 5 5"/><path d="M4 14v5a2 2 0 002 2h12a2 2 0 002-2v-5"/></svg>
                     Upload Report

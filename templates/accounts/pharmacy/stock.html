@@ -20,7 +20,14 @@
 .card{background:#fff;border:1px solid var(--border);border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,.05);overflow:hidden}
 .card-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
 .card-header h2{font-size:.98rem;font-weight:600;margin:0;color:var(--text)}
-.search-form{display:flex;gap:8px}
+.search-form{display:flex;gap:8px;align-items:center}
+.filter-wrap{position:relative}
+.filter-label{width:36px;height:36px;display:inline-flex;align-items:center;justify-content:center;border:1px solid #cbd5e1;border-radius:8px;background:#f8fafc;color:#2563eb;cursor:pointer}
+.filter-label:hover,.filter-label.active{background:#eff6ff;border-color:#93c5fd}
+.company-filter-menu{display:none;position:absolute;right:0;top:44px;z-index:20;width:210px;padding:10px;background:#fff;border:1px solid #dbe3ee;border-radius:9px;box-shadow:0 10px 25px rgba(15,23,42,.14)}
+.company-filter-menu.show{display:block}
+.company-filter-menu label{display:block;margin-bottom:5px;color:#64748b;font-size:11.5px;font-weight:600}
+.company-filter-menu select{width:100%;height:34px;border:1px solid #cbd5e1;border-radius:7px;padding:0 8px;background:#fff;color:#334155;font-size:12.5px}
 .search-input{height:36px;border:1px solid #cbd5e1;border-radius:8px;padding:0 12px;font-size:13px;outline:none;width:220px}
 .search-input:focus{border-color:#60a5fa}
 .search-btn{height:36px;border:0;border-radius:8px;padding:0 14px;background:linear-gradient(135deg,#0ea5e9,#2563eb);color:#fff;font-size:13px;font-weight:600;cursor:pointer}
@@ -118,7 +125,23 @@
     <div class="card-header">
         <h2>All Medicines</h2>
         <form method="get" class="search-form">
-            <input type="text" name="q" value="{{ search }}" class="search-input" placeholder="Search name, batch, supplier...">
+            <div class="filter-wrap">
+                <button type="button" class="filter-label{% if company_filter %} active{% endif %}" id="companyFilterButton" data-selected="{% if company_filter %}true{% else %}false{% endif %}" title="Filter by company" aria-label="Filter by company" aria-expanded="false">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M4 5h16l-6.5 7.2v5.3l-3 1.5v-6.8L4 5z"/>
+                    </svg>
+                </button>
+                <div class="company-filter-menu" id="companyFilterMenu">
+                    <label for="companyFilter">Filter by company</label>
+                    <select name="company" id="companyFilter" onchange="this.form.submit()">
+                        <option value="">All companies</option>
+                        {% for company in companies %}
+                        <option value="{{ company }}" {% if company_filter|lower == company|lower %}selected{% endif %}>{{ company }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <input type="text" name="q" value="{{ search }}" class="search-input" placeholder="Search medicine or company...">
             <button type="submit" class="search-btn">Search</button>
         </form>
     </div>
@@ -127,6 +150,7 @@
             <thead>
                 <tr>
                     <th>Name</th>
+                    <th>Company</th>
                     <th>Category</th>
                     <th>Stock</th>
                     <th>Unit</th>
@@ -140,6 +164,7 @@
                 {% for m in medicines %}
                 <tr>
                     <td style="font-weight:600;color:#1e293b">{{ m.name }}{% if m.strength %} <span style="color:#64748b;font-weight:400">· {{ m.strength }}</span>{% endif %}</td>
+                    <td>{{ m.company|default:"—" }}</td>
                     <td>{{ m.get_category_display }}</td>
                     <td class="{% if m.stock == 0 %}stock-out{% elif m.stock <= m.reorder_level %}stock-low{% else %}stock-ok{% endif %}">{{ m.stock }}</td>
                     <td>{{ m.get_unit_display }}</td>
@@ -148,10 +173,10 @@
                     <td>৳{{ m.price }}</td>
                     <td>
                         <div class="action-buttons">
-                            <button type="button" class="action-btn view" title="View" onclick="openViewModal('{{ m.name|escapejs }}','{{ m.get_category_display }}','{{ m.strength|default:''|escapejs }}','{{ m.stock }}','{{ m.get_unit_display }}','{{ m.reorder_level }}','{{ m.batch_number|default:''|escapejs }}','{% if m.expiry_date %}{{ m.expiry_date|date:'d M Y' }}{% endif %}','{{ m.supplier|default:''|escapejs }}','{{ m.price }}')">
+                            <button type="button" class="action-btn view" title="View" onclick="openViewModal('{{ m.name|escapejs }}','{{ m.company|default:''|escapejs }}','{{ m.get_category_display }}','{{ m.strength|default:''|escapejs }}','{{ m.stock }}','{{ m.get_unit_display }}','{{ m.reorder_level }}','{{ m.batch_number|default:''|escapejs }}','{% if m.expiry_date %}{{ m.expiry_date|date:'d M Y' }}{% endif %}','{{ m.supplier|default:''|escapejs }}','{{ m.price }}','{{ m.payment_amount }}')">
                                 <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
                             </button>
-                            <button type="button" class="action-btn edit" title="Edit" onclick="openEditModal('{{ m.id }}','{{ m.name|escapejs }}','{{ m.category }}','{{ m.strength|default:''|escapejs }}','{{ m.stock }}','{{ m.unit }}','{{ m.reorder_level }}','{% if m.expiry_date %}{{ m.expiry_date|date:'Y-m-d' }}{% endif %}','{{ m.batch_number|default:''|escapejs }}','{{ m.supplier|default:''|escapejs }}','{{ m.price }}')">
+                            <button type="button" class="action-btn edit" title="Edit" onclick="openEditModal('{{ m.id }}','{{ m.name|escapejs }}','{{ m.category }}','{{ m.strength|default:''|escapejs }}','{{ m.stock }}','{{ m.unit }}','{{ m.reorder_level }}','{% if m.expiry_date %}{{ m.expiry_date|date:'Y-m-d' }}{% endif %}','{{ m.batch_number|default:''|escapejs }}','{{ m.company|default:''|escapejs }}','{{ m.supplier|default:''|escapejs }}','{{ m.price }}','{{ m.payment_amount }}')">
                                 <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L8 18l-4 1 1-4z"/></svg>
                             </button>
                             <button type="button" class="action-btn delete" title="Delete" onclick="openDeleteModal('{{ m.id }}','{{ m.name|escapejs }}')">
@@ -161,7 +186,7 @@
                     </td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="8"><div class="empty-state"><h3>No Medicines</h3><p>Click “Add Medicine” to start stock.</p></div></td></tr>
+                <tr><td colspan="9"><div class="empty-state"><h3>No Medicines</h3><p>Click “Add Medicine” to start stock.</p></div></td></tr>
                 {% endfor %}
             </tbody>
         </table>
@@ -185,8 +210,11 @@
                     <div class="form-group"><label>Reorder Level</label><input type="number" name="reorder_level" value="20" min="0"></div>
                     <div class="form-group"><label>Batch Number</label><input type="text" name="batch_number"></div>
                     <div class="form-group"><label>Expiry Date</label><input type="date" name="expiry_date"></div>
+                    <div class="form-group"><label>Company</label><input type="text" name="company" placeholder="e.g. Square"></div>
                     <div class="form-group"><label>Supplier</label><input type="text" name="supplier"></div>
                     <div class="form-group"><label>Price (৳)</label><input type="number" name="price" value="0" min="0" step="0.01"></div>
+                    <div class="form-group"><label>Payment Amount (৳)</label><input type="number" name="payment_amount" value="0" min="0" step="0.01" required></div>
+                    <div class="form-group"><label>Payment Method</label><select name="payment_method">{% for v,l in payment_choices %}<option value="{{ v }}">{{ l }}</option>{% endfor %}</select></div>
                 </div>
             </div>
             <div class="modal-footer">
@@ -214,8 +242,10 @@
                     <div class="form-group"><label>Reorder Level</label><input type="number" name="reorder_level" id="editReorder" min="0"></div>
                     <div class="form-group"><label>Batch Number</label><input type="text" name="batch_number" id="editBatch"></div>
                     <div class="form-group"><label>Expiry Date</label><input type="date" name="expiry_date" id="editExpiry"></div>
+                    <div class="form-group"><label>Company</label><input type="text" name="company" id="editCompany"></div>
                     <div class="form-group"><label>Supplier</label><input type="text" name="supplier" id="editSupplier"></div>
                     <div class="form-group"><label>Price (৳)</label><input type="number" name="price" id="editPrice" min="0" step="0.01"></div>
+                    <div class="form-group"><label>Payment Amount (৳)</label><input type="number" name="payment_amount" id="editPaymentAmount" min="0" step="0.01" required></div>
                 </div>
             </div>
             <div class="modal-footer">
@@ -238,6 +268,7 @@
             <div class="view-info">
                 <div class="view-item"><span class="view-label">Name</span><span class="view-value" id="viewName"></span></div>
                 <div class="view-item"><span class="view-label">Category</span><span class="view-value" id="viewCategory"></span></div>
+                <div class="view-item"><span class="view-label">Company</span><span class="view-value" id="viewCompany"></span></div>
                 <div class="view-item"><span class="view-label">Strength</span><span class="view-value" id="viewStrength"></span></div>
                 <div class="view-item"><span class="view-label">Stock</span><span class="view-value" id="viewStock"></span></div>
                 <div class="view-item"><span class="view-label">Unit</span><span class="view-value" id="viewUnit"></span></div>
@@ -246,6 +277,7 @@
                 <div class="view-item"><span class="view-label">Expiry</span><span class="view-value" id="viewExpiry"></span></div>
                 <div class="view-item"><span class="view-label">Supplier</span><span class="view-value" id="viewSupplier"></span></div>
                 <div class="view-item"><span class="view-label">Price</span><span class="view-value" id="viewPrice"></span></div>
+                <div class="view-item"><span class="view-label">Payment Amount</span><span class="view-value" id="viewPaymentAmount"></span></div>
             </div>
         </div>
     </div>
@@ -269,7 +301,7 @@
 
 <script>
 function openCreateModal(){document.getElementById('createModal').classList.add('show')}
-function openEditModal(id,name,cat,strength,stock,unit,reorder,expiry,batch,supplier,price){
+function openEditModal(id,name,cat,strength,stock,unit,reorder,expiry,batch,company,supplier,price,paymentAmount){
     document.getElementById('editMedId').value=id;
     document.getElementById('editName').value=name||'';
     document.getElementById('editCategory').value=cat||'tablet';
@@ -279,13 +311,16 @@ function openEditModal(id,name,cat,strength,stock,unit,reorder,expiry,batch,supp
     document.getElementById('editReorder').value=reorder||20;
     document.getElementById('editExpiry').value=expiry||'';
     document.getElementById('editBatch').value=batch||'';
+    document.getElementById('editCompany').value=company||'';
     document.getElementById('editSupplier').value=supplier||'';
     document.getElementById('editPrice').value=price||0;
+    document.getElementById('editPaymentAmount').value=paymentAmount||0;
     document.getElementById('editModal').classList.add('show');
 }
-function openViewModal(name,cat,strength,stock,unit,reorder,batch,expiry,supplier,price){
+function openViewModal(name,company,cat,strength,stock,unit,reorder,batch,expiry,supplier,price,paymentAmount){
     document.getElementById('viewName').textContent=name||'—';
     document.getElementById('viewCategory').textContent=cat||'—';
+    document.getElementById('viewCompany').textContent=company||'—';
     document.getElementById('viewStrength').textContent=strength||'—';
     document.getElementById('viewStock').textContent=stock||'0';
     document.getElementById('viewUnit').textContent=unit||'—';
@@ -294,6 +329,7 @@ function openViewModal(name,cat,strength,stock,unit,reorder,batch,expiry,supplie
     document.getElementById('viewExpiry').textContent=expiry||'—';
     document.getElementById('viewSupplier').textContent=supplier||'—';
     document.getElementById('viewPrice').textContent='৳'+(price||'0');
+    document.getElementById('viewPaymentAmount').textContent='৳'+(paymentAmount||'0');
     document.getElementById('viewModal').classList.add('show');
 }
 function openDeleteModal(id,name){
@@ -303,5 +339,19 @@ function openDeleteModal(id,name){
 }
 function closeModal(id){document.getElementById(id).classList.remove('show')}
 window.addEventListener('click',function(e){if(e.target.classList.contains('modal-overlay'))e.target.classList.remove('show')});
+document.getElementById('companyFilterButton').addEventListener('click',function(e){
+    e.stopPropagation();
+    const menu=document.getElementById('companyFilterMenu');
+    const isOpen=menu.classList.toggle('show');
+    this.classList.toggle('active',isOpen || this.dataset.selected === 'true');
+    this.setAttribute('aria-expanded',isOpen ? 'true' : 'false');
+});
+document.addEventListener('click',function(e){
+    const wrap=document.querySelector('.filter-wrap');
+    if(wrap && !wrap.contains(e.target)){
+        document.getElementById('companyFilterMenu').classList.remove('show');
+        document.getElementById('companyFilterButton').setAttribute('aria-expanded','false');
+    }
+});
 </script>
 {% endblock %}
