@@ -9,7 +9,7 @@ from datetime import datetime, timedelta, date
 from django.apps import apps
 from patients.models import Patient, Visit
 from staff.models import Staff
-from .models import Medicine
+from .models import BloodCollection, Medicine
 from hospitals.models import Hospital
 from django.utils import timezone
 from datetime import timedelta
@@ -3966,28 +3966,157 @@ def counter_profile(request):
     return render(request, 'accounts/counter/profile.html', context)
 
 #blood bank
+from .models import Blood
 def bloodbank_dashboard(request):
     if not request.user.is_authenticated:
         return redirect('login')
     if request.user.role != 'bloodbank':
         return redirect('dashboard')
+
     hospital = request.user.hospital
+    today = timezone.now().date()
+
+    total_donors = 0
+    total_units = 0
+    pending_requests = 0
+    today_collection = 0
+    inventory = []
+    recent_requests = []
+
+    if hospital:
+        blood_qs = Blood.objects.filter(hospital=hospital)
+        total_units = blood_qs.aggregate(total=Sum('units'))['total'] or 0
+        total_donors = blood_qs.exclude(donor_name='').values('donor_name').distinct().count()
+        today_collection = blood_qs.filter(collection_date=today).count()
+
+        try:
+            from .models import BloodRequest
+            pending_requests = BloodRequest.objects.filter(
+                hospital=hospital,
+                status='pending'
+            ).count()
+            recent_requests = BloodRequest.objects.filter(
+                hospital=hospital
+            ).order_by('-created_at')[:5]
+        except Exception:
+            pending_requests = 0
+            recent_requests = []
+
+        groups = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-']
+        labels = {
+            'A+': 'A Positive', 'A-': 'A Negative',
+            'B+': 'B Positive', 'B-': 'B Negative',
+            'AB+': 'AB Positive', 'AB-': 'AB Negative',
+            'O+': 'O Positive', 'O-': 'O Negative',
+        }
+        for g in groups:
+            units = blood_qs.filter(blood_group=g).aggregate(t=Sum('units'))['t'] or 0
+            reorder = blood_qs.filter(blood_group=g).aggregate(r=Sum('reorder_level'))['r'] or 5
+            if units == 0:
+                status = 'critical'
+                status_label = 'Critical'
+            elif units <= reorder:
+                status = 'low'
+                status_label = 'Low'
+            else:
+                status = 'available'
+                status_label = 'Available'
+            inventory.append({
+                'group': g,
+                'label': labels[g],
+                'units': units,
+                'status': status,
+                'status_label': status_label,
+            })
+
     context = {
         'hospital': hospital,
-        'patients_count': Patient.objects.filter(hospital=hospital).count() if hospital else 0,
+        'user': request.user,
+        'total_donors': total_donors,
+        'total_units': total_units,
+        'pending_requests': pending_requests,
+        'today_collection': today_collection,
+        'inventory': inventory,
+        'recent_requests': recent_requests,
     }
     return render(request, 'accounts/bloodbank/dashboard.html', context)
 
-
+from .models import BloodDonor
 def bloodbank_donors(request):
     if not request.user.is_authenticated:
         return redirect('login')
     if request.user.role != 'bloodbank':
         return redirect('dashboard')
+
     hospital = request.user.hospital
-    patients = Patient.objects.filter(hospital=hospital) if hospital else []
-    context = {'patients': patients}
+    search = request.GET.get('q', '').strip()
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action == 'create':
+            BloodDonor.objects.create(
+                hospital=hospital,
+                name=request.POST.get('name', '').strip(),
+                phone=request.POST.get('phone', '').strip(),
+                email=request.POST.get('email', '').strip(),
+                gender=request.POST.get('gender', ''),
+                blood_group=request.POST.get('blood_group', 'O+'),
+                date_of_birth=request.POST.get('date_of_birth') or None,
+                address=request.POST.get('address', '').strip(),
+                last_donation=request.POST.get('last_donation') or None,
+                total_donations=int(request.POST.get('total_donations') or 0),
+                status=request.POST.get('status', 'active'),
+                notes=request.POST.get('notes', '').strip(),
+            )
+            messages.success(request, 'Donor added successfully.')
+            return redirect('bloodbank_donors')
+
+        if action == 'edit':
+            donor = get_object_or_404(BloodDonor, id=request.POST.get('donor_id'), hospital=hospital)
+            donor.name = request.POST.get('name', '').strip()
+            donor.phone = request.POST.get('phone', '').strip()
+            donor.email = request.POST.get('email', '').strip()
+            donor.gender = request.POST.get('gender', '')
+            donor.blood_group = request.POST.get('blood_group', 'O+')
+            donor.date_of_birth = request.POST.get('date_of_birth') or None
+            donor.address = request.POST.get('address', '').strip()
+            donor.last_donation = request.POST.get('last_donation') or None
+            donor.total_donations = int(request.POST.get('total_donations') or 0)
+            donor.status = request.POST.get('status', 'active')
+            donor.notes = request.POST.get('notes', '').strip()
+            donor.save()
+            messages.success(request, 'Donor updated successfully.')
+            return redirect('bloodbank_donors')
+
+        if action == 'delete':
+            BloodDonor.objects.filter(id=request.POST.get('donor_id'), hospital=hospital).delete()
+            messages.success(request, 'Donor deleted.')
+            return redirect('bloodbank_donors')
+
+    donors = BloodDonor.objects.none()
+    if hospital:
+        donors = BloodDonor.objects.filter(hospital=hospital)
+        if search:
+            donors = donors.filter(
+                Q(name__icontains=search) |
+                Q(phone__icontains=search) |
+                Q(blood_group__icontains=search) |
+                Q(email__icontains=search)
+            )
+
+    context = {
+        'hospital': hospital,
+        'donors': donors,
+        'total': donors.count(),
+        'active_count': donors.filter(status='active').count() if hospital else 0,
+        'search': search,
+        'blood_group_choices': BloodDonor.BLOOD_GROUP_CHOICES,
+        'gender_choices': BloodDonor.GENDER_CHOICES,
+        'status_choices': BloodDonor.STATUS_CHOICES,
+    }
     return render(request, 'accounts/bloodbank/donors.html', context)
+
 
 
 def bloodbank_inventory(request):
@@ -3995,10 +4124,99 @@ def bloodbank_inventory(request):
         return redirect('login')
     if request.user.role != 'bloodbank':
         return redirect('dashboard')
-    hospital = request.user.hospital
-    context = {'hospital': hospital}
-    return render(request, 'accounts/bloodbank/inventory.html', context)
 
+    hospital = request.user.hospital
+    search = request.GET.get('q', '').strip()
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action == 'create':
+            Blood.objects.create(
+                hospital=hospital,
+                blood_group=request.POST.get('blood_group', 'O+'),
+                component=request.POST.get('component', 'whole'),
+                units=int(request.POST.get('units') or 0),
+                reorder_level=int(request.POST.get('reorder_level') or 5),
+                expiry_date=request.POST.get('expiry_date') or None,
+                bag_number=request.POST.get('bag_number', '').strip(),
+                donor_name=request.POST.get('donor_name', '').strip(),
+                collection_date=request.POST.get('collection_date') or None,
+                notes=request.POST.get('notes', '').strip(),
+            )
+            messages.success(request, 'Blood unit added to inventory.')
+            return redirect('bloodbank_inventory')
+
+        if action == 'edit':
+            item = get_object_or_404(Blood, id=request.POST.get('blood_id'), hospital=hospital)
+            item.blood_group = request.POST.get('blood_group', 'O+')
+            item.component = request.POST.get('component', 'whole')
+            item.units = int(request.POST.get('units') or 0)
+            item.reorder_level = int(request.POST.get('reorder_level') or 5)
+            item.expiry_date = request.POST.get('expiry_date') or None
+            item.bag_number = request.POST.get('bag_number', '').strip()
+            item.donor_name = request.POST.get('donor_name', '').strip()
+            item.collection_date = request.POST.get('collection_date') or None
+            item.notes = request.POST.get('notes', '').strip()
+            item.save()
+            messages.success(request, 'Inventory updated.')
+            return redirect('bloodbank_inventory')
+
+        if action == 'delete':
+            Blood.objects.filter(id=request.POST.get('blood_id'), hospital=hospital).delete()
+            messages.success(request, 'Record deleted.')
+            return redirect('bloodbank_inventory')
+
+    items = Blood.objects.none()
+    total_units = 0
+    low_count = 0
+    group_summary = []
+
+    if hospital:
+        items = Blood.objects.filter(hospital=hospital).order_by('blood_group', '-created_at')
+        if search:
+            items = items.filter(
+                Q(blood_group__icontains=search) |
+                Q(bag_number__icontains=search) |
+                Q(donor_name__icontains=search) |
+                Q(component__icontains=search)
+            )
+        total_units = Blood.objects.filter(hospital=hospital).aggregate(t=Sum('units'))['t'] or 0
+
+        for g, label in Blood.BLOOD_GROUP_CHOICES:
+            units = Blood.objects.filter(hospital=hospital, blood_group=g).aggregate(t=Sum('units'))['t'] or 0
+            blood_records = Blood.objects.filter(hospital=hospital, blood_group=g)
+            if blood_records.exists():
+                avg_reorder = blood_records.aggregate(r=Sum('reorder_level'))['r'] / blood_records.count()
+            else:
+                avg_reorder = 5
+            if units == 0:
+                status, status_label = 'critical', 'Critical'
+            elif units <= max(avg_reorder, 5):
+                status, status_label = 'low', 'Low'
+                low_count += 1
+            else:
+                status, status_label = 'available', 'Available'
+            group_summary.append({
+                'group': g,
+                'label': label,
+                'units': units,
+                'status': status,
+                'status_label': status_label,
+            })
+
+    context = {
+        'hospital': hospital,
+        'items': items,
+        'total_units': total_units,
+        'total_records': items.count(),
+        'low_count': low_count,
+        'group_summary': group_summary,
+        'search': search,
+        'blood_group_choices': Blood.BLOOD_GROUP_CHOICES,
+        'component_choices': Blood.COMPONENT_CHOICES,
+    }
+    return render(request, 'accounts/bloodbank/inventory.html', context)
 
 def bloodbank_requests(request):
     if not request.user.is_authenticated:
@@ -4010,16 +4228,153 @@ def bloodbank_requests(request):
     context = {'patients': patients}
     return render(request, 'accounts/bloodbank/requests.html', context)
 
-
 def bloodbank_collection(request):
     if not request.user.is_authenticated:
         return redirect('login')
     if request.user.role != 'bloodbank':
         return redirect('dashboard')
+
     hospital = request.user.hospital
-    patients = Patient.objects.filter(hospital=hospital) if hospital else []
-    context = {'patients': patients}
+    search = request.GET.get('q', '').strip()
+    donors = BloodDonor.objects.filter(hospital=hospital, status='active') if hospital else BloodDonor.objects.none()
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action == 'create':
+            donor_id = request.POST.get('donor')
+            donor = None
+            donor_name = request.POST.get('donor_name', '').strip()
+            donor_phone = request.POST.get('donor_phone', '').strip()
+            blood_group = request.POST.get('blood_group', 'O+')
+
+            if donor_id:
+                donor = BloodDonor.objects.filter(id=donor_id, hospital=hospital).first()
+                if donor:
+                    donor_name = donor.name
+                    donor_phone = donor.phone
+                    blood_group = donor.blood_group
+
+            collection = BloodCollection.objects.create(
+                hospital=hospital,
+                donor=donor,
+                donor_name=donor_name,
+                donor_phone=donor_phone,
+                blood_group=blood_group,
+                component=request.POST.get('component', 'whole'),
+                units=int(request.POST.get('units') or 1),
+                bag_number=request.POST.get('bag_number', '').strip(),
+                collection_date=request.POST.get('collection_date') or timezone.now().date(),
+                expiry_date=request.POST.get('expiry_date') or None,
+                test_status=request.POST.get('test_status', 'pending'),
+                issue_status='in_stock',
+                notes=request.POST.get('notes', '').strip(),
+                collected_by=request.user,
+            )
+
+            if donor:
+                donor.total_donations = (donor.total_donations or 0) + 1
+                donor.last_donation = collection.collection_date
+                donor.save()
+
+            if collection.test_status == 'passed':
+                Blood.objects.create(
+                    hospital=hospital,
+                    blood_group=collection.blood_group,
+                    component=collection.component,
+                    units=collection.units,
+                    bag_number=collection.bag_number,
+                    donor_name=collection.donor_name,
+                    collection_date=collection.collection_date,
+                    expiry_date=collection.expiry_date,
+                    notes=f'From collection {collection.bag_number}',
+                )
+
+            messages.success(request, 'Collection recorded.')
+            return redirect('bloodbank_collection')
+
+        if action == 'edit':
+            c = get_object_or_404(BloodCollection, id=request.POST.get('collection_id'), hospital=hospital)
+            c.donor_name = request.POST.get('donor_name', '').strip()
+            c.donor_phone = request.POST.get('donor_phone', '').strip()
+            c.blood_group = request.POST.get('blood_group', 'O+')
+            c.component = request.POST.get('component', 'whole')
+            c.units = int(request.POST.get('units') or 1)
+            c.bag_number = request.POST.get('bag_number', '').strip()
+            c.collection_date = request.POST.get('collection_date') or c.collection_date
+            c.expiry_date = request.POST.get('expiry_date') or None
+            c.test_status = request.POST.get('test_status', c.test_status)
+            c.issue_status = request.POST.get('issue_status', c.issue_status)
+            c.issued_to = request.POST.get('issued_to', '').strip()
+            c.notes = request.POST.get('notes', '').strip()
+            c.save()
+            messages.success(request, 'Collection updated.')
+            return redirect('bloodbank_collection')
+
+        if action == 'pass_test':
+            c = get_object_or_404(BloodCollection, id=request.POST.get('collection_id'), hospital=hospital)
+            if c.test_status != 'passed':
+                c.test_status = 'passed'
+                c.save()
+                Blood.objects.create(
+                    hospital=hospital,
+                    blood_group=c.blood_group,
+                    component=c.component,
+                    units=c.units,
+                    bag_number=c.bag_number,
+                    donor_name=c.donor_name,
+                    collection_date=c.collection_date,
+                    expiry_date=c.expiry_date,
+                    notes=f'From collection {c.bag_number}',
+                )
+            messages.success(request, 'Test passed. Added to inventory.')
+            return redirect('bloodbank_collection')
+
+        if action == 'fail_test':
+            BloodCollection.objects.filter(id=request.POST.get('collection_id'), hospital=hospital).update(test_status='failed', issue_status='discarded')
+            messages.success(request, 'Test failed. Marked discarded.')
+            return redirect('bloodbank_collection')
+
+        if action == 'issue':
+            c = get_object_or_404(BloodCollection, id=request.POST.get('collection_id'), hospital=hospital)
+            c.issue_status = 'issued'
+            c.issued_to = request.POST.get('issued_to', '').strip()
+            c.save()
+            Blood.objects.filter(hospital=hospital, bag_number=c.bag_number).update(units=0)
+            messages.success(request, 'Blood issued.')
+            return redirect('bloodbank_collection')
+
+        if action == 'delete':
+            BloodCollection.objects.filter(id=request.POST.get('collection_id'), hospital=hospital).delete()
+            messages.success(request, 'Collection deleted.')
+            return redirect('bloodbank_collection')
+
+    collections = BloodCollection.objects.none()
+    if hospital:
+        collections = BloodCollection.objects.filter(hospital=hospital)
+        if search:
+            collections = collections.filter(
+                Q(donor_name__icontains=search) |
+                Q(bag_number__icontains=search) |
+                Q(blood_group__icontains=search)
+            )
+
+    context = {
+        'hospital': hospital,
+        'collections': collections,
+        'donors': donors,
+        'total': collections.count(),
+        'pending_test': collections.filter(test_status='pending').count() if hospital else 0,
+        'today_count': collections.filter(collection_date=timezone.now().date()).count() if hospital else 0,
+        'search': search,
+        'blood_group_choices': BloodCollection.BLOOD_GROUP_CHOICES,
+        'component_choices': BloodCollection.COMPONENT_CHOICES,
+        'test_status_choices': BloodCollection.TEST_STATUS_CHOICES,
+        'issue_status_choices': BloodCollection.ISSUE_STATUS_CHOICES,
+        'today': timezone.now().date(),
+    }
     return render(request, 'accounts/bloodbank/collection.html', context)
+
 
 
 def bloodbank_testing(request):
@@ -4052,12 +4407,63 @@ def bloodbank_notices(request):
     return render(request, 'accounts/bloodbank/notices.html')
 
 
+from .models import BloodBankProfile
+from django.contrib import messages
+
 def bloodbank_profile(request):
     if not request.user.is_authenticated:
         return redirect('login')
     if request.user.role != 'bloodbank':
         return redirect('dashboard')
-    return render(request, 'accounts/bloodbank/profile.html')
+
+    profile, _ = BloodBankProfile.objects.get_or_create(user=request.user)
+    hospital = request.user.hospital
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action == 'update':
+            user = request.user
+            user.first_name = request.POST.get('first_name', '').strip()
+            user.last_name = request.POST.get('last_name', '').strip()
+            user.phone = request.POST.get('phone', '').strip()
+            if request.POST.get('email'):
+                user.email = request.POST.get('email').strip()
+            user.save()
+
+            profile.employee_id = request.POST.get('employee_id', '').strip()
+            profile.designation = request.POST.get('designation', '').strip()
+            profile.department = request.POST.get('department', '').strip()
+            profile.qualification = request.POST.get('qualification', '').strip()
+            profile.experience_years = int(request.POST.get('experience_years') or 0)
+            profile.shift = request.POST.get('shift', '').strip()
+            profile.bio = request.POST.get('bio', '').strip()
+            profile.address = request.POST.get('address', '').strip()
+            profile.date_of_birth = request.POST.get('date_of_birth') or None
+            profile.gender = request.POST.get('gender', '').strip()
+            profile.blood_group = request.POST.get('blood_group', '').strip()
+
+            if request.FILES.get('profile_image'):
+                profile.profile_image = request.FILES['profile_image']
+
+            profile.save()
+            messages.success(request, 'Profile updated successfully.')
+            return redirect('bloodbank_profile')
+
+        if action == 'remove_photo':
+            if profile.profile_image:
+                profile.profile_image.delete(save=False)
+                profile.profile_image = None
+                profile.save()
+            messages.success(request, 'Profile photo removed.')
+            return redirect('bloodbank_profile')
+
+    context = {
+        'hospital': hospital,
+        'profile': profile,
+        'user': request.user,
+    }
+    return render(request, 'accounts/bloodbank/profile.html', context)
 
 
 # accountant

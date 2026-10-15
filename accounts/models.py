@@ -1041,5 +1041,171 @@ class MedicalRecord(models.Model):
 
     def __str__(self):
         return f"{self.patient_name} - {self.title}"
+class BloodRequest(models.Model):
+    PRIORITY_CHOICES = [
+        ('normal', 'Normal'),
+        ('urgent', 'Urgent'),
+        ('emergency', 'Emergency'),
+    ]
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('fulfilled', 'Fulfilled'),
+        ('rejected', 'Rejected'),
+    ]
 
-    
+    hospital = models.ForeignKey(
+        'hospitals.Hospital',
+        on_delete=models.CASCADE,
+        related_name='blood_requests'
+    )
+    request_id = models.CharField(max_length=30, blank=True)
+    patient_name = models.CharField(max_length=150)
+    blood_group = models.CharField(max_length=5)
+    units = models.PositiveIntegerField(default=1)
+    priority = models.CharField(max_length=20, choices=PRIORITY_CHOICES, default='normal')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    requested_by = models.CharField(max_length=150, blank=True)
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        if not self.request_id:
+            self.request_id = f'BR-{self.id:04d}'
+            super().save(update_fields=['request_id'])
+
+    def __str__(self):
+        return f"{self.request_id} - {self.blood_group}"    
+
+class BloodDonor(models.Model):
+    GENDER_CHOICES = [
+        ('male', 'Male'),
+        ('female', 'Female'),
+        ('other', 'Other'),
+    ]
+    BLOOD_GROUP_CHOICES = [
+        ('A+', 'A+'), ('A-', 'A-'),
+        ('B+', 'B+'), ('B-', 'B-'),
+        ('AB+', 'AB+'), ('AB-', 'AB-'),
+        ('O+', 'O+'), ('O-', 'O-'),
+    ]
+    STATUS_CHOICES = [
+        ('active', 'Active'),
+        ('inactive', 'Inactive'),
+        ('deferred', 'Deferred'),
+    ]
+
+    hospital = models.ForeignKey(
+        'hospitals.Hospital',
+        on_delete=models.CASCADE,
+        related_name='blood_donors'
+    )
+    name = models.CharField(max_length=150)
+    phone = models.CharField(max_length=20)
+    email = models.EmailField(blank=True)
+    gender = models.CharField(max_length=10, choices=GENDER_CHOICES, blank=True)
+    blood_group = models.CharField(max_length=5, choices=BLOOD_GROUP_CHOICES)
+    date_of_birth = models.DateField(null=True, blank=True)
+    address = models.TextField(blank=True)
+    last_donation = models.DateField(null=True, blank=True)
+    total_donations = models.PositiveIntegerField(default=0)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='active')
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['name']
+
+    def __str__(self):
+        return f"{self.name} ({self.blood_group})"    
+class BloodCollection(models.Model):
+    TEST_STATUS_CHOICES = [
+        ('pending', 'Pending Test'),
+        ('passed', 'Passed'),
+        ('failed', 'Failed'),
+    ]
+    ISSUE_STATUS_CHOICES = [
+        ('in_stock', 'In Stock'),
+        ('issued', 'Issued'),
+        ('discarded', 'Discarded'),
+    ]
+    BLOOD_GROUP_CHOICES = [
+        ('A+', 'A+'), ('A-', 'A-'),
+        ('B+', 'B+'), ('B-', 'B-'),
+        ('AB+', 'AB+'), ('AB-', 'AB-'),
+        ('O+', 'O+'), ('O-', 'O-'),
+    ]
+    COMPONENT_CHOICES = [
+        ('whole', 'Whole Blood'),
+        ('rbc', 'Red Blood Cells'),
+        ('plasma', 'Plasma'),
+        ('platelets', 'Platelets'),
+        ('cryo', 'Cryoprecipitate'),
+    ]
+
+    hospital = models.ForeignKey(
+        'hospitals.Hospital',
+        on_delete=models.CASCADE,
+        related_name='blood_collections'
+    )
+    donor = models.ForeignKey(
+        'BloodDonor',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='collections'
+    )
+    donor_name = models.CharField(max_length=150)
+    donor_phone = models.CharField(max_length=20, blank=True)
+    blood_group = models.CharField(max_length=5, choices=BLOOD_GROUP_CHOICES)
+    component = models.CharField(max_length=20, choices=COMPONENT_CHOICES, default='whole')
+    units = models.PositiveIntegerField(default=1)
+    bag_number = models.CharField(max_length=50)
+    collection_date = models.DateField()
+    expiry_date = models.DateField(null=True, blank=True)
+    test_status = models.CharField(max_length=20, choices=TEST_STATUS_CHOICES, default='pending')
+    issue_status = models.CharField(max_length=20, choices=ISSUE_STATUS_CHOICES, default='in_stock')
+    issued_to = models.CharField(max_length=150, blank=True)
+    notes = models.TextField(blank=True)
+    collected_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='blood_collections_done'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-collection_date', '-created_at']
+
+    def __str__(self):
+        return f"{self.bag_number} - {self.blood_group}"    
+class BloodBankProfile(models.Model):
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='bloodbank_profile'
+    )
+    employee_id = models.CharField(max_length=50, blank=True)
+    designation = models.CharField(max_length=100, blank=True, default='Blood Bank Officer')
+    department = models.CharField(max_length=100, blank=True, default='Blood Bank')
+    qualification = models.CharField(max_length=255, blank=True)
+    experience_years = models.PositiveIntegerField(default=0)
+    shift = models.CharField(max_length=50, blank=True)
+    bio = models.TextField(blank=True)
+    address = models.TextField(blank=True)
+    date_of_birth = models.DateField(null=True, blank=True)
+    gender = models.CharField(max_length=20, blank=True)
+    blood_group = models.CharField(max_length=5, blank=True)
+    profile_image = models.ImageField(upload_to='bloodbank_profiles/', blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.user.get_full_name()} - Blood Bank"    
