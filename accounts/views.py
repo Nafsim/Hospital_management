@@ -2641,6 +2641,15 @@ def doctor_profile(request):
     profile, created = DoctorProfile.objects.get_or_create(user=request.user)
 
     if request.method == 'POST':
+        action = request.POST.get('action')
+
+        if action == 'remove_photo':
+            profile.profile_image.delete(save=True)
+            profile.profile_image = None
+            profile.save()
+            messages.success(request, 'Profile photo removed successfully.')
+            return redirect('doctor_profile')
+
         user = request.user
         user.first_name = request.POST.get('first_name', '').strip()
         user.last_name = request.POST.get('last_name', '').strip()

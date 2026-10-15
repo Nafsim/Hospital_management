@@ -1,4 +1,3 @@
-
 {% extends "accounts/accountant/base.html" %}
 
 {% block title %}Accounts - NHIMS{% endblock %}
@@ -21,37 +20,29 @@
 .stat-icon.purple{background:#ede9fe;color:#7c3aed}
 .card{background:#fff;border:1px solid var(--border);border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,.05);overflow:hidden;margin-bottom:1.4rem}
 .card-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
-.card-header h2{font-size:.98rem;font-weight:600;margin:0;color:#1e293b}
+.card-header h2{font-size:1.2rem;font-weight:700;margin:0;color:#1e293b}
 .search-form{display:flex;gap:8px}
 .search-input{height:36px;border:1px solid #cbd5e1;border-radius:8px;padding:0 12px;font-size:13px;width:220px;outline:none}
-.search-btn{height:36px;border:0;border-radius:8px;padding:0 14px;background:linear-gradient(135deg,#0ea5e9,#2563eb);color:#fff;font-size:13px;font-weight:600;cursor:pointer}
+.search-btn{height:36px;border:0;border-radius:8px;padding:0 14px;background:linear-gradient(135deg,#0ea5e9,#2563eb);color:#fff;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
 .table-wrap{overflow-x:auto}
 table{width:100%;border-collapse:collapse}
 th{background:#f8fafc;color:#64748b;font-size:.74rem;font-weight:600;text-transform:uppercase;padding:.75rem 1rem;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
 td{padding:.85rem 1rem;font-size:.85rem;color:#334155;border-bottom:1px solid #f1f5f9;white-space:nowrap}
+tbody tr:hover{background:#f8fafc}
+tbody tr:last-child td{border-bottom:none}
 .badge{display:inline-flex;padding:.2rem .55rem;border-radius:999px;font-size:.71rem;font-weight:600}
 .badge-active,.badge-deposit{background:#dcfce7;color:#15803d}
 .badge-inactive{background:#f1f5f9;color:#64748b}
 .badge-withdrawal{background:#ffedd5;color:#c2410c}
-.action-buttons{display:flex;gap:5px}
-.action-btn{width:32px;height:32px;border-radius:7px;border:1px solid #e2e8f0;background:#fff;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;text-decoration:none}
+.action-buttons{display:flex;gap:5px;align-items:center}
+.action-btn{width:32px;height:32px;min-width:32px;border-radius:7px;border:1px solid #e2e8f0;background:#fff;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;text-decoration:none}
 .action-btn.view{color:#2563eb}
 .action-btn.edit{color:#059669}
 .action-btn.transaction{color:#7c3aed}
 .action-btn.toggle{color:#ea580c}
-.action-btn:hover{transform:translateY(-1px)}
+.action-btn:hover{transform:translateY(-1px);background:#f8fafc}
 .empty-state{text-align:center;padding:40px 16px;color:#64748b}
-.account-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;padding:16px}
-.account-card{border:1px solid var(--border);border-radius:12px;padding:16px;background:#fff;min-width:0}
-.account-card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px}
-.account-bank{font-size:1rem;font-weight:700;color:#1e293b;margin:0 0 4px;overflow-wrap:anywhere}
-.account-name{font-size:.82rem;color:#64748b;margin:0;overflow-wrap:anywhere}
-.account-balance-label{font-size:.75rem;color:#64748b;margin-bottom:4px}
-.account-balance{font-size:1.35rem;font-weight:700;color:#1e293b;overflow-wrap:anywhere}
-.account-details{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding-top:12px;border-top:1px solid #f1f5f9}
-.detail-label{font-size:.72rem;color:#64748b;margin-bottom:4px}
-.detail-value{font-size:.83rem;font-weight:600;color:#334155;overflow-wrap:anywhere}
-.account-card-footer{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:14px;padding-top:12px;border-top:1px solid #f1f5f9}
+.amount{font-weight:600;color:#1e293b}
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:9999;align-items:center;justify-content:center;padding:16px}
 .modal-overlay.show{display:flex}
 .modal{background:#fff;width:100%;max-width:520px;border-radius:14px;box-shadow:0 20px 50px rgba(0,0,0,.2);max-height:90vh;overflow-y:auto}
@@ -73,9 +64,8 @@ td{padding:.85rem 1rem;font-size:.85rem;color:#334155;border-bottom:1px solid #f
 .view-item{display:flex;justify-content:space-between;padding:8px 10px;background:#f8fafc;border-radius:8px;margin-bottom:6px;border:1px solid #f1f5f9;gap:10px}
 .view-label{font-size:12px;color:#64748b}
 .view-value{font-size:13px;font-weight:600;color:#1e293b;text-align:right;overflow-wrap:anywhere}
-@media(max-width:900px){.stats-grid{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:700px){.account-grid{grid-template-columns:1fr}}
-@media(max-width:600px){.form-grid{grid-template-columns:1fr}.stats-grid{grid-template-columns:1fr}.form-group.full{grid-column:auto}.search-input{width:160px}}
+@media(max-width:1100px){.stats-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:600px){.stats-grid{grid-template-columns:1fr}.form-grid{grid-template-columns:1fr}.form-group.full{grid-column:auto}.search-input{width:160px}}
 </style>
 {% endblock %}
 
@@ -101,7 +91,7 @@ td{padding:.85rem 1rem;font-size:.85rem;color:#334155;border-bottom:1px solid #f
     <div class="stat-card">
         <div>
             <div class="stat-label">Total Bank Accounts</div>
-            <div class="stat-value">{{ total_accounts }}</div>
+            <div class="stat-value">{{ total_accounts|default:0 }}</div>
         </div>
         <div class="stat-icon blue">
             <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="9" width="18" height="12" rx="2"/><path d="M3 9l9-6 9 6M7 13v4M12 13v4M17 13v4"/></svg>
@@ -110,7 +100,7 @@ td{padding:.85rem 1rem;font-size:.85rem;color:#334155;border-bottom:1px solid #f
     <div class="stat-card">
         <div>
             <div class="stat-label">Active Accounts</div>
-            <div class="stat-value">{{ active_accounts }}</div>
+            <div class="stat-value">{{ active_accounts|default:0 }}</div>
         </div>
         <div class="stat-icon green">
             <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>
@@ -119,7 +109,7 @@ td{padding:.85rem 1rem;font-size:.85rem;color:#334155;border-bottom:1px solid #f
     <div class="stat-card">
         <div>
             <div class="stat-label">Combined Balance</div>
-            <div class="stat-value">৳{{ total_balance|floatformat:2 }}</div>
+            <div class="stat-value">৳{{ total_balance|default:0|floatformat:2 }}</div>
         </div>
         <div class="stat-icon purple">
             <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
@@ -128,7 +118,7 @@ td{padding:.85rem 1rem;font-size:.85rem;color:#334155;border-bottom:1px solid #f
     <div class="stat-card">
         <div>
             <div class="stat-label">Total Transactions</div>
-            <div class="stat-value">{{ total_transactions }}</div>
+            <div class="stat-value">{{ total_transactions|default:0 }}</div>
         </div>
         <div class="stat-icon orange">
             <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M7 7h14M17 3l4 4-4 4M17 17H3m4-4-4 4 4 4"/></svg>
@@ -140,86 +130,102 @@ td{padding:.85rem 1rem;font-size:.85rem;color:#334155;border-bottom:1px solid #f
     <div class="card-header">
         <h2>Hospital Bank Accounts</h2>
         <form method="get" class="search-form">
-            <input type="text" name="q" value="{{ search }}" class="search-input" placeholder="Search accounts...">
-            <button type="submit" class="search-btn">Search</button>
+            <input type="text" name="q" value="{{ search|default:'' }}" class="search-input" placeholder="Search accounts...">
+            <button type="submit" class="search-btn">
+                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+                Search
+            </button>
         </form>
     </div>
-    <div class="account-grid">
-        {% for account in accounts %}
-            <div class="account-card">
-                <div class="account-card-top">
-                    <div>
-                        <h3 class="account-bank">{{ account.bank_name }}</h3>
-                        <p class="account-name">{{ account.account_name }}</p>
-                    </div>
-                    <span class="badge badge-{{ account.status }}">{{ account.get_status_display }}</span>
-                </div>
-                <div class="account-balance-label">Current Balance</div>
-                <div class="account-balance">৳{{ account.current_balance|floatformat:2 }}</div>
-                <div class="account-details">
-                    <div>
-                        <div class="detail-label">Account Number</div>
-                        <div class="detail-value">{{ account.account_number }}</div>
-                    </div>
-                    <div>
-                        <div class="detail-label">Account Type</div>
-                        <div class="detail-value">{{ account.get_account_type_display }}</div>
-                    </div>
-                    <div>
-                        <div class="detail-label">Branch</div>
-                        <div class="detail-value">{{ account.branch_name|default:"—" }}</div>
-                    </div>
-                    <div>
-                        <div class="detail-label">Opening Balance</div>
-                        <div class="detail-value">৳{{ account.opening_balance|floatformat:2 }}</div>
-                    </div>
-                </div>
-                <div class="account-card-footer">
-                    <span style="font-size:.75rem;color:#64748b">{{ account.transactions.count }} transaction(s)</span>
-                    <div class="action-buttons">
-                        <button type="button" class="action-btn view" title="View Account" onclick="openViewModal(this)"
-                            data-bank="{{ account.bank_name }}"
-                            data-name="{{ account.account_name }}"
-                            data-number="{{ account.account_number }}"
-                            data-branch="{{ account.branch_name }}"
-                            data-type="{{ account.get_account_type_display }}"
-                            data-opening="{{ account.opening_balance }}"
-                            data-balance="{{ account.current_balance }}"
-                            data-status="{{ account.get_status_display }}"
-                            data-notes="{{ account.notes }}">
-                            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
-                        </button>
-                        <button type="button" class="action-btn edit" title="Edit Account" onclick="openEditModal(this)"
-                            data-id="{{ account.id }}"
-                            data-bank="{{ account.bank_name }}"
-                            data-name="{{ account.account_name }}"
-                            data-number="{{ account.account_number }}"
-                            data-branch="{{ account.branch_name }}"
-                            data-type="{{ account.account_type }}"
-                            data-status="{{ account.status }}"
-                            data-notes="{{ account.notes }}">
-                            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 013 3L8 18l-4 1 1-4z"/></svg>
-                        </button>
-                        <button type="button" class="action-btn transaction" title="Add Transaction" onclick="openTransactionModal('{{ account.id }}','{{ account.account_name|escapejs }}')">
-                            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-                        </button>
-                        <form method="post" style="display:inline">
-                            {% csrf_token %}
-                            <input type="hidden" name="action" value="toggle_status">
-                            <input type="hidden" name="account_id" value="{{ account.id }}">
-                            <button type="submit" class="action-btn toggle" title="{% if account.status == 'active' %}Deactivate{% else %}Activate{% endif %} Account">
-                                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
-                            </button>
-                        </form>
-                    </div>
-                </div>
-            </div>
-        {% empty %}
-            <div class="empty-state" style="grid-column:1/-1">
-                <h3>No Bank Accounts Found</h3>
-                <p>Add a bank account to start managing hospital finances.</p>
-            </div>
-        {% endfor %}
+
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Bank</th>
+                    <th>Account Name</th>
+                    <th>Account Number</th>
+                    <th>Account Type</th>
+                    <th>Branch</th>
+                    <th>Opening Balance</th>
+                    <th>Current Balance</th>
+                    <th>Status</th>
+                    <th>Transactions</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for account in accounts %}
+                    <tr>
+                        <td><strong>{{ account.bank_name }}</strong></td>
+                        <td>{{ account.account_name|default:"—" }}</td>
+                        <td>{{ account.account_number }}</td>
+                        <td>{{ account.get_account_type_display }}</td>
+                        <td>{{ account.branch_name|default:"—" }}</td>
+                        <td class="amount">৳{{ account.opening_balance|default:0|floatformat:2 }}</td>
+                        <td class="amount">৳{{ account.current_balance|default:0|floatformat:2 }}</td>
+                        <td>
+                            {% if account.status == 'active' %}
+                                <span class="badge badge-active">{{ account.get_status_display }}</span>
+                            {% else %}
+                                <span class="badge badge-inactive">{{ account.get_status_display }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ account.transactions.count }}</td>
+                        <td>
+                            <div class="action-buttons">
+                                <button type="button" class="action-btn view" title="View Account" onclick="openViewModal(this)"
+                                    data-bank="{{ account.bank_name }}"
+                                    data-name="{{ account.account_name }}"
+                                    data-number="{{ account.account_number }}"
+                                    data-branch="{{ account.branch_name }}"
+                                    data-type="{{ account.get_account_type_display }}"
+                                    data-opening="{{ account.opening_balance }}"
+                                    data-balance="{{ account.current_balance }}"
+                                    data-status="{{ account.get_status_display }}"
+                                    data-notes="{{ account.notes }}">
+                                    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
+                                </button>
+
+                                <button type="button" class="action-btn edit" title="Edit Account" onclick="openEditModal(this)"
+                                    data-id="{{ account.id }}"
+                                    data-bank="{{ account.bank_name }}"
+                                    data-name="{{ account.account_name }}"
+                                    data-number="{{ account.account_number }}"
+                                    data-branch="{{ account.branch_name }}"
+                                    data-type="{{ account.account_type }}"
+                                    data-status="{{ account.status }}"
+                                    data-notes="{{ account.notes }}">
+                                    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 013 3L8 18l-4 1 1-4z"/></svg>
+                                </button>
+
+                                <button type="button" class="action-btn transaction" title="Add Transaction" onclick="openTransactionModal('{{ account.id }}','{{ account.account_name|escapejs }}')">
+                                    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+                                </button>
+
+                                <form method="post" style="display:inline">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="toggle_status">
+                                    <input type="hidden" name="account_id" value="{{ account.id }}">
+                                    <button type="submit" class="action-btn toggle" title="{% if account.status == 'active' %}Deactivate{% else %}Activate{% endif %} Account">
+                                        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="10">
+                            <div class="empty-state">
+                                <h3>No Bank Accounts Found</h3>
+                                <p>Add a bank account to start managing hospital finances.</p>
+                            </div>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
 </div>
 
@@ -247,8 +253,10 @@ td{padding:.85rem 1rem;font-size:.85rem;color:#334155;border-bottom:1px solid #f
                             <div style="font-weight:600">{{ transaction.account.bank_name }}</div>
                             <div style="font-size:.75rem;color:#64748b">{{ transaction.account.account_name }}</div>
                         </td>
-                        <td><span class="badge badge-{{ transaction.transaction_type }}">{{ transaction.get_transaction_type_display }}</span></td>
-                        <td style="font-weight:600">৳{{ transaction.amount|floatformat:2 }}</td>
+                        <td>
+                            <span class="badge badge-{{ transaction.transaction_type }}">{{ transaction.get_transaction_type_display }}</span>
+                        </td>
+                        <td class="amount">৳{{ transaction.amount|floatformat:2 }}</td>
                         <td>{{ transaction.reference|default:"—" }}</td>
                         <td>{{ transaction.description|default:"—" }}</td>
                     </tr>

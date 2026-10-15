@@ -49,6 +49,7 @@
 .view-section.hide{display:none}
 @media(max-width:900px){.profile-grid{grid-template-columns:1fr}.info-grid,.form-grid{grid-template-columns:1fr}}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 {% endblock %}
 
 {% block content %}
@@ -78,10 +79,10 @@
                 </div>
 
                 {% if profile.profile_image %}
-                <form method="post" style="margin-bottom:10px">
+                <form method="post" style="margin-bottom:10px" id="removePhotoForm">
                     {% csrf_token %}
                     <input type="hidden" name="action" value="remove_photo">
-                    <button type="submit" class="btn-remove-photo" onclick="return confirm('Remove profile photo?')">
+                    <button type="button" class="btn-remove-photo" onclick="confirmRemovePhoto()">
                         <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 15H6L5 6"/></svg>
                         Remove Photo
                     </button>
@@ -301,6 +302,28 @@ function toggleEdit(){
         view.classList.add('hide');
         btn.innerHTML='<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg> Cancel';
     }
+}
+
+function confirmRemovePhoto(){
+    Swal.fire({
+        title: 'Remove Photo?',
+        text: 'Are you sure you want to remove your profile photo?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc2626',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: 'Yes, remove it',
+        cancelButtonText: 'Cancel',
+        width: '350px',
+        padding: '1rem',
+        customClass: {
+            popup: 'small-swal'
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            document.getElementById('removePhotoForm').submit();
+        }
+    });
 }
 </script>
 {% endblock %}

@@ -20,6 +20,8 @@
 .doctor-name{font-size:1.25rem;font-weight:700;color:#1e293b;margin:0 0 4px}
 .doctor-role{font-size:.88rem;color:#64748b;margin:0 0 12px}
 .reg-badge{display:inline-flex;padding:.35rem .75rem;border-radius:999px;background:#dbeafe;color:#1d4ed8;font-size:.78rem;font-weight:600;margin-bottom:16px}
+.btn-remove-photo{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:8px;font-size:12.5px;font-weight:600;background:#fef2f2;color:#dc2626;border:1px solid #fecaca;cursor:pointer;margin-bottom:8px}
+.btn-remove-photo:hover{background:#fee2e2}
 .side-info{text-align:left;margin-top:18px}
 .side-item{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f1f5f9;font-size:.86rem;color:#334155}
 .side-item:last-child{border-bottom:0}
@@ -47,6 +49,7 @@
 .view-section.hide{display:none}
 @media(max-width:900px){.profile-grid{grid-template-columns:1fr}.info-grid,.form-grid{grid-template-columns:1fr}}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 {% endblock %}
 
 {% block content %}
@@ -75,6 +78,18 @@
                     <span class="avatar-initial">{{ user.first_name|slice:":1"|upper|default:user.username|slice:":1"|upper }}</span>
                     {% endif %}
                 </div>
+
+                {% if profile.profile_image %}
+                <form method="post" style="margin-bottom:10px" id="removePhotoForm">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="remove_photo">
+                    <button type="button" class="btn-remove-photo" onclick="confirmRemovePhoto()">
+                        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 15H6L5 6"/></svg>
+                        Remove Photo
+                    </button>
+                </form>
+                {% endif %}
+
                 <h2 class="doctor-name">{{ user.get_full_name|default:user.username }}</h2>
                 <p class="doctor-role">{{ profile.specialization|default:"Doctor" }}</p>
                 {% if profile.registration_number %}
@@ -278,6 +293,28 @@ function toggleEdit(){
         view.classList.add('hide');
         btn.innerHTML='<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg> Cancel';
     }
+}
+
+function confirmRemovePhoto(){
+    Swal.fire({
+        title: 'Remove Photo?',
+        text: 'Are you sure you want to remove your profile photo?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc2626',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: 'Yes, remove it',
+        cancelButtonText: 'Cancel',
+        width: '350px',
+        padding: '1rem',
+        customClass: {
+            popup: 'small-swal'
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            document.getElementById('removePhotoForm').submit();
+        }
+    });
 }
 </script>
 {% endblock %}
