@@ -186,7 +186,7 @@ tbody tr:last-child td{border-bottom:none}
                     <td>
                         <strong>Financial Report</strong>
                     </td>
-                    <td>{{ row.month_name }} {{ row.year }}</td>
+                    <td>{{ row.period }}</td>
                     <td class="amount">৳{{ row.deposits|default:0|floatformat:2 }}</td>
                     <td class="amount">৳{{ row.expenses|default:0|floatformat:2 }}</td>
                     <td class="amount">৳{{ row.withdrawals|default:0|floatformat:2 }}</td>

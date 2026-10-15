@@ -5607,14 +5607,45 @@ def accountant_reports(request):
     transactions = BankTransaction.objects.filter(
         account__hospital=hospital
     )
+    from .models import PatientPayment, PaymentRecord
+
+    patient_payments = PatientPayment.objects.filter(
+        hospital=hospital,
+        status__in=['paid', 'verified'],
+    )
+    payment_records = PaymentRecord.objects.filter(
+        hospital=hospital,
+        status='completed',
+    )
+
+    def deposit_total(start_date=None, end_date=None):
+        patient_filter = {}
+        payment_filter = {}
+        transaction_filter = {'transaction_type': 'deposit'}
+        if start_date and end_date:
+            patient_filter['created_at__date__gte'] = start_date
+            patient_filter['created_at__date__lte'] = end_date
+            payment_filter['payment_date__gte'] = start_date
+            payment_filter['payment_date__lte'] = end_date
+            transaction_filter['transaction_date__gte'] = start_date
+            transaction_filter['transaction_date__lte'] = end_date
+
+        patient_total = patient_payments.filter(**patient_filter).aggregate(
+            total=Sum('amount')
+        )['total'] or Decimal('0.00')
+        payment_total = payment_records.filter(**payment_filter).aggregate(
+            total=Sum('amount')
+        )['total'] or Decimal('0.00')
+        bank_total = transactions.filter(**transaction_filter).aggregate(
+            total=Sum('amount')
+        )['total'] or Decimal('0.00')
+        return patient_total + payment_total + bank_total
 
     total_expenses = expenses.filter(
         status='paid'
     ).aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
 
-    total_deposits = transactions.filter(
-        transaction_type='deposit'
-    ).aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+    total_deposits = deposit_total()
 
     total_withdrawals = transactions.filter(
         transaction_type='withdrawal'
@@ -5640,11 +5671,7 @@ def accountant_reports(request):
         last_day = calendar.monthrange(year_number, month_number)[1]
         month_end = date(year_number, month_number, last_day)
 
-        month_deposits = transactions.filter(
-            transaction_type='deposit',
-            transaction_date__gte=month_start,
-            transaction_date__lte=month_end
-        ).aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+        month_deposits = deposit_total(month_start, month_end)
 
         month_expenses = expenses.filter(
             status='paid',
@@ -5667,10 +5694,12 @@ def accountant_reports(request):
             'month': month_number,
             'report_name': 'Monthly Financial Summary',
             'period': month_start.strftime('%B %Y'),
+            'month_name': month_start.strftime('%B'),
             'deposits': month_deposits,
             'expenses': month_expenses,
             'withdrawals': month_withdrawals,
             'net': month_deposits - month_withdrawals,
+            'net_cash_movement': month_deposits - month_withdrawals,
         })
 
     category_data = []

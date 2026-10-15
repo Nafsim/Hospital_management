@@ -1,7 +1,7 @@
 from django.test import TestCase
 
 from .forms import LoginForm
-from .models import User, Expense, Medicine
+from .models import User, Expense, Medicine, PaymentRecord
 from hospitals.models import Hospital
 from patients.models import Patient
 from .models import PatientAppointment
@@ -53,12 +53,38 @@ class LoginFormTests(TestCase):
             {'q': 'square'},
         )
         self.assertContains(response, 'Paracetamol')
-
         response = self.client.get(
             '/accounts/pharmacy/stock/',
             {'company': 'Square'},
         )
         self.assertContains(response, 'Paracetamol')
+
+    def test_accountant_report_includes_completed_payment_records(self):
+        hospital = Hospital.objects.create(
+            name='Reports Test Hospital',
+            code='TEST-REPORTS',
+            address='Test address',
+        )
+        accountant = User.objects.create_user(
+            username='accountant@example.com',
+            email='accountant@example.com',
+            password='ValidPass123!',
+            role='accountant',
+            hospital=hospital,
+        )
+        PaymentRecord.objects.create(
+            hospital=hospital,
+            patient_name='Report Patient',
+            amount='850.00',
+            status='completed',
+            payment_date='2026-10-15',
+        )
+
+        self.client.force_login(accountant)
+        response = self.client.get('/accounts/accountant/reports/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '850.00')
 
     def test_lab_login_normalizes_email_before_authentication(self):
         user = User.objects.create_user(
