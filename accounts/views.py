@@ -826,6 +826,7 @@ def hospital_staff(request):
             is_active = request.POST.get('is_active', 'on') == 'on'
 
             role_map = {
+                'Doctor': 'doctor',
                 'Nurse': 'nurse',
                 'Accountant': 'accountant',
                 'Laboratory': 'lab',
