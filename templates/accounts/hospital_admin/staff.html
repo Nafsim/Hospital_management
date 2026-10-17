@@ -650,6 +650,16 @@ No staff members found.
 <label>Department</label>
 <select name="department" id="formDepartment" required>
 <option value="">Select Department</option>
+<option value="General Medicine">General Medicine</option>
+<option value="Cardiology">Cardiology</option>
+<option value="Neurology">Neurology</option>
+<option value="Orthopedics">Orthopedics</option>
+<option value="Pediatrics">Pediatrics</option>
+<option value="Surgery">Surgery</option>
+<option value="Radiology">Radiology</option>
+<option value="Pathology">Pathology</option>
+<option value="Emergency">Emergency</option>
+<option value="ICU">ICU</option>
 <option value="Doctor">Doctor</option>
 <option value="Nurse">Nurse</option>
 <option value="Accountant">Accountant</option>
@@ -829,6 +839,7 @@ wrapper.classList.remove('open');
 });
 
 function openCreateModal(){
+const passwordInput=document.getElementById('formPassword');
 document.getElementById('modalTitle').textContent='Add Staff';
 document.getElementById('formAction').value='create';
 document.getElementById('formStaffId').value='';
@@ -845,11 +856,36 @@ document.getElementById('formNationalId').value='';
 document.getElementById('formJoining').value='';
 document.getElementById('formQualification').value='';
 document.getElementById('formActive').checked=true;
+passwordInput.required=true;
 document.getElementById('passwordGroup').style.display='flex';
 document.getElementById('staffModal').style.display='flex';
 }
 
 function openEditModal(id,firstName,lastName,email,phone,employeeId,department,designation,city,nationalId,joining,qualification,active){
+const departmentLabels={
+'general':'General Medicine',
+'cardiology':'Cardiology',
+'neurology':'Neurology',
+'orthopedics':'Orthopedics',
+'pediatrics':'Pediatrics',
+'surgery':'Surgery',
+'radiology':'Radiology',
+'pathology':'Pathology',
+'emergency':'Emergency',
+'icu':'ICU',
+'administration':'HR / Administration',
+'pharmacy':'Pharmacy',
+'laboratory':'Laboratory',
+'blood_bank':'Blood Bank',
+'accounting':'Accountant',
+'reception':'Counter / Reception',
+'doctor':'Doctor',
+'nurse':'Nurse',
+'lab':'Laboratory',
+'counter':'Counter / Reception',
+'bloodbank':'Blood Bank',
+'medical_records':'Medical Records'
+};
 document.getElementById('modalTitle').textContent='Edit Staff';
 document.getElementById('formAction').value='edit';
 document.getElementById('formStaffId').value=id;
@@ -858,14 +894,16 @@ document.getElementById('formLastName').value=lastName;
 document.getElementById('formEmail').value=email;
 document.getElementById('formPhone').value=phone;
 document.getElementById('formEmployeeId').value=employeeId;
-document.getElementById('formDepartment').value=department;
+document.getElementById('formDepartment').value=departmentLabels[department]||department;
 document.getElementById('formDesignation').value=designation;
 document.getElementById('formCity').value=city;
 document.getElementById('formNationalId').value=nationalId;
 document.getElementById('formJoining').value=joining;
 document.getElementById('formQualification').value=qualification;
 document.getElementById('formActive').checked=active==='true';
-document.getElementById('formPassword').value='';
+const passwordInput=document.getElementById('formPassword');
+passwordInput.value='';
+passwordInput.required=false;
 document.getElementById('passwordGroup').style.display='none';
 document.getElementById('staffModal').style.display='flex';
 }

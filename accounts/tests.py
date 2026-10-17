@@ -4,10 +4,74 @@ from .forms import LoginForm
 from .models import User, Expense, Medicine, PaymentRecord
 from hospitals.models import Hospital
 from patients.models import Patient
+from staff.models import Staff
 from .models import PatientAppointment
 
 
 class LoginFormTests(TestCase):
+    def test_hospital_admin_can_edit_staff(self):
+        hospital = Hospital.objects.create(
+            name='Staff Edit Hospital',
+            code='TEST-STAFF-EDIT',
+            address='Test address',
+        )
+        admin = User.objects.create_user(
+            username='admin@example.com',
+            email='admin@example.com',
+            password='ValidPass123!',
+            role='hospital_admin',
+            hospital=hospital,
+        )
+        staff_user = User.objects.create_user(
+            username='staff@example.com',
+            email='staff@example.com',
+            password='ValidPass123!',
+            role='nurse',
+            hospital=hospital,
+        )
+        staff = Staff.objects.create(
+            user=staff_user,
+            hospital=hospital,
+            employee_id='EMP-001',
+            department='Nurse',
+            designation='Nurse',
+            date_of_joining='2026-01-01',
+        )
+
+        self.client.force_login(admin)
+        response = self.client.post(
+            '/accounts/hospital-admin/staff/',
+            {
+                'action': 'edit',
+                'staff_id': staff.id,
+                'first_name': 'Updated',
+                'last_name': 'Staff',
+                'email': 'updated-staff@example.com',
+                'phone': '01700000000',
+                'employee_id': 'EMP-002',
+                'department': 'Accountant',
+                'designation': 'Senior Accountant',
+                'city': 'Dhaka',
+                'national_id': 'NID-002',
+                'date_of_joining': '2026-02-01',
+                'qualification': 'BBA',
+                'is_active': 'on',
+            },
+        )
+
+        self.assertRedirects(response, '/accounts/hospital-admin/staff/')
+        staff_user.refresh_from_db()
+        staff.refresh_from_db()
+        self.assertEqual(staff_user.first_name, 'Updated')
+        self.assertEqual(staff_user.email, 'updated-staff@example.com')
+        self.assertEqual(staff_user.username, 'staff@example.com')
+        self.assertEqual(staff_user.role, 'accountant')
+        self.assertEqual(staff.employee_id, 'EMP-002')
+        self.assertEqual(staff.designation, 'Senior Accountant')
+        self.assertEqual(staff.city, 'Dhaka')
+        self.assertEqual(staff.national_id, 'NID-002')
+        self.assertEqual(staff.qualification, 'BBA')
+
     def test_pharmacy_stock_company_filter_and_payment_creates_accounting_expense(self):
         hospital = Hospital.objects.create(
             name='Pharmacy Test Hospital',

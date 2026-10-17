@@ -879,6 +879,75 @@ def hospital_staff(request):
             messages.success(request, 'Staff member created successfully.')
             return redirect('hospital_staff')
 
+        if action == 'edit' and staff_id:
+            staff_member = get_object_or_404(
+                Staff.objects.select_related('user'),
+                id=staff_id,
+                hospital=hospital,
+            )
+            user = staff_member.user
+
+            first_name = request.POST.get('first_name', '').strip()
+            last_name = request.POST.get('last_name', '').strip()
+            email = request.POST.get('email', '').strip()
+            phone = request.POST.get('phone', '').strip()
+            employee_id = request.POST.get('employee_id', '').strip()
+            department = request.POST.get('department', '').strip()
+            designation = request.POST.get('designation', '').strip()
+            city = request.POST.get('city', '').strip()
+            national_id = request.POST.get('national_id', '').strip()
+            date_of_joining = request.POST.get('date_of_joining')
+            qualification = request.POST.get('qualification', '').strip()
+            is_active = request.POST.get('is_active') == 'on'
+
+            role_map = {
+                'Doctor': 'doctor',
+                'Nurse': 'nurse',
+                'Accountant': 'accountant',
+                'Laboratory': 'lab',
+                'Counter / Reception': 'counter',
+                'Blood Bank': 'bloodbank',
+                'Pharmacy': 'pharmacy',
+            }
+            role = role_map.get(department, user.role)
+
+            if User.objects.filter(email=email).exclude(id=user.id).exists():
+                messages.error(request, 'A staff account with this email already exists.')
+                return redirect('hospital_staff')
+            if Staff.objects.filter(employee_id=employee_id).exclude(id=staff_member.id).exists():
+                messages.error(request, 'A staff member with this employee ID already exists.')
+                return redirect('hospital_staff')
+            if (
+                national_id
+                and Staff.objects.filter(national_id=national_id)
+                .exclude(id=staff_member.id)
+                .exists()
+            ):
+                messages.error(request, 'A staff member with this national ID already exists.')
+                return redirect('hospital_staff')
+
+            user.first_name = first_name
+            user.last_name = last_name
+            user.email = email
+            user.phone = phone
+            user.role = role
+            user.is_active = is_active
+            user.save()
+
+            staff_member.employee_id = employee_id
+            staff_member.department = department
+            staff_member.designation = designation
+            staff_member.city = city
+            staff_member.national_id = national_id or None
+            staff_member.qualification = qualification
+            staff_member.is_active = is_active
+            if date_of_joining:
+                staff_member.date_of_joining = date_of_joining
+            staff_member.save()
+
+            messages.success(request, 'Staff member updated successfully.')
+            return redirect('hospital_staff')
+
         if action == 'delete' and staff_id:
             staff_member = Staff.objects.get(id=staff_id, hospital=hospital)
             user = staff_member.user
