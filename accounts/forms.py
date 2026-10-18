@@ -42,7 +42,7 @@ class LoginForm(AuthenticationForm):
                 if user.role != role:
                     raise forms.ValidationError("Selected role does not match this account.")
             except User.DoesNotExist:
-                pass   # let AuthenticationForm handle invalid credentials
+                pass   
         return cleaned_data
 
 
@@ -55,7 +55,7 @@ class HospitalCreationForm(forms.ModelForm):
 
     class Meta:
         model = Hospital
-        fields = ['name', 'code', 'address', 'city', 'facility_type', 'phone', 'email']   # ← added city & facility_type
+        fields = ['name', 'code', 'address', 'city', 'facility_type', 'phone', 'email']   
         widgets = {
             'name': forms.TextInput(attrs={'class': 'form-control'}),
             'code': forms.TextInput(attrs={'class': 'form-control'}),

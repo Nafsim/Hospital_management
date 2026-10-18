@@ -3571,18 +3571,17 @@ def patient_buy_medicine(request):
     from .models import MedicineOrder, PatientPayment
     patient_profile = Patient.objects.filter(user=request.user).select_related('hospital').first()
     hospital = request.user.hospital or (patient_profile.hospital if patient_profile else None)
-    medicines = Medicine.objects.filter(hospital=hospital, stock__gt=0).order_by('name') if hospital else Medicine.objects.none()
+    medicines = Medicine.objects.filter(stock__gt=0).order_by('name')
     orders = MedicineOrder.objects.filter(
         patient_user=request.user,
-        hospital=hospital,
     ).select_related('medicine', 'payment')
 
     if request.method == 'POST':
         medicine = get_object_or_404(
             Medicine,
             id=request.POST.get('medicine_id'),
-            hospital=hospital,
         )
+        medicine_hospital = medicine.hospital
         try:
             quantity = int(request.POST.get('quantity') or 0)
         except (TypeError, ValueError):
@@ -3599,7 +3598,7 @@ def patient_buy_medicine(request):
             with transaction.atomic():
                 total = medicine.price * quantity
                 payment = PatientPayment.objects.create(
-                    hospital=hospital,
+                    hospital=medicine_hospital,
                     patient_user=request.user,
                     amount=total,
                     purpose='medicine',
@@ -3609,7 +3608,7 @@ def patient_buy_medicine(request):
                     status='paid',
                 )
                 MedicineOrder.objects.create(
-                    hospital=hospital,
+                    hospital=medicine_hospital,
                     patient_user=request.user,
                     medicine=medicine,
                     quantity=quantity,
