@@ -52,6 +52,7 @@ path('doctor/referrals/', views.doctor_referrals, name='doctor_referrals'),
 path('doctor/appointments/', views.doctor_appointments, name='doctor_appointments'),
 path('doctor/schedule/', views.doctor_appointments, name='doctor_schedule'),
 path('doctor/profile/', views.doctor_profile, name='doctor_profile'),
+path('blood-request/new/', views.blood_request_create, name='blood_request_create'),
 path('messages/', views.messages_view, name='messages'),
 path('messages/upload/', views.message_upload, name='message_upload'),
 path('messages/send/', views.message_send, name='message_send'),
@@ -68,7 +69,9 @@ path('patient/departments/', views.patient_departments, name='patient_department
 path('patient/doctors/', views.patient_doctors, name='patient_doctors'),
 path('patient/appointments/', views.patient_appointments, name='patient_appointments'),
 path('patient/medical-records/', views.patient_medical_records, name='patient_medical_records'),
+    path('patient/medical-records/<int:record_id>/download/', views.patient_medical_record_download, name='patient_medical_record_download'),
 path('patient/payments/', views.patient_payments, name='patient_payments'),
+path('patient/buy-medicine/', views.patient_buy_medicine, name='patient_buy_medicine'),
 path('patient/emergency-contact/', views.patient_emergency_contact, name='patient_emergency_contact'),
 path('patient/profile/', views.patient_profile, name='patient_profile'),
 #diagnostic lab
@@ -105,6 +108,7 @@ path('accountant/dashboard/', views.accountant_dashboard, name='accountant_dashb
 path('accountant/billing/', views.accountant_billing, name='accountant_billing'),
 path('accountant/billing/<int:bill_id>/pdf/', views.accountant_billing_pdf, name='accountant_billing_pdf'),
 path('accountant/payments/', views.accountant_payments, name='accountant_payments'),
+path('accountant/medicine-sales/', views.accountant_medicine_sales, name='accountant_medicine_sales'),
 path('accountant/payments/<int:payment_id>/pdf/', views.accountant_payment_pdf, name='accountant_payment_pdf'),
 path('accountant/invoices/', views.accountant_invoices, name='accountant_invoices'),
 path('accountant/invoices/<int:invoice_id>/pdf/', views.accountant_invoice_pdf, name='accountant_invoice_pdf'),
@@ -119,5 +123,6 @@ path('accountant/profile/', views.accountant_profile, name='accountant_profile')
 # pharmacy
 path('pharmacy/dashboard/', views.pharmacy_dashboard, name='pharmacy_dashboard'),
 path('pharmacy/stock/', views.pharmacy_stock, name='pharmacy_stock'),
+path('pharmacy/orders/', views.pharmacy_medicine_orders, name='pharmacy_medicine_orders'),
 path('pharmacy/profile/', views.pharmacy_profile, name='pharmacy_profile'),
 ]

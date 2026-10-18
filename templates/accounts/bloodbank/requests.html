@@ -1,0 +1,123 @@
+{% extends "accounts/bloodbank/base.html" %}
+
+{% block title %}Blood Requests - NHIMS{% endblock %}
+
+{% block extra_css %}
+<style>
+.requests-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1.4rem}
+.requests-title{font-size:1.65rem;font-weight:700;color:var(--text);margin:0 0 .25rem}
+.requests-subtitle{font-size:.9rem;color:#64748b;margin:0}
+.request-count{font-size:.8rem;color:#64748b}
+.requests-card{background:#fff;border:1px solid var(--border);border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,.05);overflow:hidden}
+.requests-card .card-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.requests-card .card-header h2{font-size:.98rem;font-weight:600;margin:0;color:var(--text)}
+.requests-table{width:100%;border-collapse:collapse}
+.requests-table th{text-align:left;padding:.75rem 1rem;font-size:.74rem;text-transform:uppercase;color:#64748b;background:#f8fafc;border-bottom:1px solid var(--border);font-weight:600;white-space:nowrap}
+.requests-table td{padding:.85rem 1rem;font-size:.85rem;color:#334155;border-bottom:1px solid #f1f5f9;vertical-align:middle}
+.requests-table tr:last-child td{border-bottom:0}
+.request-id{font-weight:700;color:#2563eb}
+.request-blood{display:inline-flex;min-width:36px;padding:4px 8px;border-radius:7px;background:#dbeafe;color:#2563eb;font-size:.75rem;font-weight:700;justify-content:center}
+.request-status{display:inline-flex;padding:.22rem .55rem;border-radius:999px;font-size:.71rem;font-weight:600}
+.request-status.pending{background:#fef3c7;color:#b45309}
+.request-status.approved,.request-status.fulfilled{background:#dcfce7;color:#15803d}
+.request-status.rejected{background:#fee2e2;color:#b91c1c}
+.request-actions{display:flex;align-items:center;gap:6px;white-space:nowrap}
+.request-action{display:inline-flex;align-items:center;gap:5px;border:0;border-radius:7px;padding:7px 9px;font-size:.74rem;font-weight:600;cursor:pointer}
+.request-action svg{width:14px;height:14px}
+.request-action.approve{background:#dcfce7;color:#15803d}
+.request-action.reject{background:#fee2e2;color:#b91c1c}
+.request-action.fulfill{background:#dbeafe;color:#2563eb}
+.request-action.delete{background:#fee2e2;color:#b91c1c}
+.empty-text{text-align:center;padding:1.5rem;color:#64748b;font-size:.88rem}
+@media(max-width:800px){.requests-header{align-items:flex-start;flex-direction:column;gap:4px}.table-wrap{overflow-x:auto}}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="requests-header">
+    <div>
+        <h1 class="requests-title">Blood Requests</h1>
+        <p class="requests-subtitle">Review, process and manage blood requests</p>
+    </div>
+    <span class="request-count">{{ requests|length }} request{{ requests|length|pluralize }}</span>
+</div>
+
+<div class="requests-card">
+    <div class="card-header">
+        <h2>Blood Requests</h2>
+    </div>
+    {% if messages %}
+        {% for message in messages %}
+            <div style="padding:12px 18px;background:{% if message.tags == 'error' %}#fee2e2;color:#991b1b{% else %}#dcfce7;color:#166534{% endif %}">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+    <div class="table-wrap">
+        <table class="requests-table">
+            <thead><tr><th>Request ID</th><th>Patient</th><th>Blood Group</th><th>Units</th><th>Priority</th><th>Requested By</th><th>Status</th><th>Action</th></tr></thead>
+            <tbody>
+            {% for item in requests %}
+                <tr>
+                    <td><span class="request-id">{{ item.request_id|default:item.id }}</span></td>
+                    <td>{{ item.patient_name }}</td>
+                    <td><span class="request-blood">{{ item.blood_group }}</span></td>
+                    <td>{{ item.units }}</td>
+                    <td>{{ item.get_priority_display }}</td>
+                    <td>{{ item.requested_by|default:"—" }}</td>
+                    <td><span class="request-status {{ item.status }}">{{ item.get_status_display }}</span></td>
+                    <td class="request-actions">
+                        {% if item.status == 'pending' %}
+                        <form method="post" class="request-actions">
+                            {% csrf_token %}<input type="hidden" name="request_id" value="{{ item.id }}">
+                            <button name="status" value="approved" class="request-action approve" type="submit">Approve</button>
+                            <button name="status" value="rejected" class="request-action reject" type="submit">Reject</button>
+                        </form>
+                        {% elif item.status == 'approved' %}
+                        <form method="post">
+                            {% csrf_token %}<input type="hidden" name="request_id" value="{{ item.id }}">
+                            <button name="status" value="fulfilled" class="request-action fulfill" type="submit">Fulfill</button>
+                        </form>
+                        {% endif %}
+                        <form method="post" class="delete-request-form">
+                            {% csrf_token %}
+                            <input type="hidden" name="request_id" value="{{ item.id }}">
+                            <input type="hidden" name="action" value="delete">
+                            <button type="submit" class="request-action delete" title="Delete request">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 7h16"/><path d="M10 11v6M14 11v6"/><path d="M6 7l1 13h10l1-13"/><path d="M9 7V4h6v3"/></svg>
+                                Delete
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="8"><div class="empty-text">No blood requests yet.</div></td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+document.querySelectorAll('.delete-request-form').forEach(function (form) {
+    form.addEventListener('submit', function (event) {
+        event.preventDefault();
+        Swal.fire({
+            title: 'Delete this request?',
+            text: 'This request will be permanently removed from the list.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#dc2626',
+            cancelButtonColor: '#64748b',
+            confirmButtonText: 'Yes, delete it',
+            cancelButtonText: 'Cancel'
+        }).then(function (result) {
+            if (result.isConfirmed) {
+                form.submit();
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

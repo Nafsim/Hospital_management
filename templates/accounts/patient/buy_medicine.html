@@ -1,0 +1,32 @@
+{% extends "accounts/patient/base.html" %}
+
+{% block title %}Buy Medicine - NHIMS{% endblock %}
+
+{% block content %}
+<style>
+.medicine-grid{display:grid;grid-template-columns:1.1fr 1fr;gap:18px}.medicine-card,.medicine-table{background:#fff;border:1px solid #e2e8f0;border-radius:14px;box-shadow:0 1px 3px rgba(0,0,0,.05);overflow:hidden}.medicine-card{padding:22px}.medicine-title{margin:0 0 5px;color:#1e293b;font-size:1.5rem}.medicine-subtitle{margin:0 0 20px;color:#64748b;font-size:.9rem}.field{margin-bottom:14px}.field label{display:block;margin-bottom:5px;color:#334155;font-size:.82rem;font-weight:600}.field select,.field input,.field textarea{width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;box-sizing:border-box}.price-preview{padding:12px;background:#eff6ff;border-radius:9px;color:#1d4ed8;font-weight:600;margin-bottom:16px}.submit-btn{border:0;border-radius:8px;padding:11px 16px;background:#2563eb;color:white;font-weight:600;cursor:pointer}.table-title{padding:16px 18px;border-bottom:1px solid #e2e8f0;color:#1e293b;font-weight:600}.table-wrap{overflow:auto}.medicine-table table{width:100%;border-collapse:collapse}.medicine-table th,.medicine-table td{padding:11px 14px;text-align:left;border-bottom:1px solid #f1f5f9;font-size:.8rem;white-space:nowrap}.medicine-table th{background:#f8fafc;color:#64748b;text-transform:uppercase;font-size:.7rem}.status{padding:4px 8px;border-radius:999px;font-size:.7rem;font-weight:600}.pending{background:#fef3c7;color:#a16207}.approved{background:#dbeafe;color:#1d4ed8}.sold{background:#dcfce7;color:#15803d}.rejected{background:#fee2e2;color:#b91c1c}@media(max-width:900px){.medicine-grid{grid-template-columns:1fr}}
+</style>
+<div class="medicine-grid">
+    <div class="medicine-card">
+        <h1 class="medicine-title">Buy Medicine</h1>
+        <p class="medicine-subtitle">Choose available medicine, pay securely, and send your request to the pharmacy.</p>
+        {% for message in messages %}<div style="padding:10px;margin-bottom:14px;border-radius:8px;background:#dcfce7;color:#166534">{{ message }}</div>{% endfor %}
+        <form method="post">
+            {% csrf_token %}
+            <div class="field"><label>Medicine</label><select name="medicine_id" id="medicine" required><option value="">Select medicine</option>{% for medicine in medicines %}<option value="{{ medicine.id }}" data-price="{{ medicine.price }}" data-stock="{{ medicine.stock }}">{{ medicine.name }}{% if medicine.strength %} - {{ medicine.strength }}{% endif %} ({{ medicine.get_unit_display }})</option>{% empty %}<option value="">No medicine currently in stock</option>{% endfor %}</select></div>
+            <div id="medicine-info" class="price-preview">Select a medicine to see its price and available stock.</div>
+            <div class="field"><label>Quantity</label><input type="number" name="quantity" id="quantity" min="1" value="1" required></div>
+            <div class="field"><label>Payment method</label><select name="method" required>{% for value,label in method_choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}</select></div>
+            <div class="field"><label>Transaction/reference ID</label><input type="text" name="transaction_id" placeholder="Optional payment reference"></div>
+            <div class="field"><label>Notes</label><textarea name="notes" rows="3" placeholder="Optional note"></textarea></div>
+            <button class="submit-btn" type="submit">Pay & Send Request</button>
+        </form>
+    </div>
+    <div class="medicine-table"><div class="table-title">My Medicine Requests</div><div class="table-wrap"><table><thead><tr><th>Medicine</th><th>Qty</th><th>Total</th><th>Payment</th><th>Status</th></tr></thead><tbody>{% for order in orders %}<tr><td>{{ order.medicine.name }}</td><td>{{ order.quantity }}</td><td>৳{{ order.total }}</td><td>{{ order.payment.get_status_display }}</td><td><span class="status {{ order.status }}">{{ order.get_status_display }}</span></td></tr>{% empty %}<tr><td colspan="5">No medicine requests yet.</td></tr>{% endfor %}</tbody></table></div></div>
+</div>
+{% endblock %}
+{% block extra_js %}<script>
+const medicineSelect=document.getElementById('medicine');const quantityInput=document.getElementById('quantity');const info=document.getElementById('medicine-info');
+function updateMedicine(){const option=medicineSelect.options[medicineSelect.selectedIndex];if(!option.value){info.textContent='Select a medicine to see its price and available stock.';return}const price=Number(option.dataset.price||0);const stock=Number(option.dataset.stock||0);quantityInput.max=stock;info.textContent='Price: ৳'+price.toFixed(2)+' per unit | Available stock: '+stock+' | Total: ৳'+(price*(Number(quantityInput.value)||0)).toFixed(2)}
+medicineSelect.addEventListener('change',updateMedicine);quantityInput.addEventListener('input',updateMedicine);
+</script>{% endblock %}

@@ -84,6 +84,12 @@ body{font-family:"Segoe UI",Arial,sans-serif;background:var(--page);color:var(--
 </svg>
 <span>Medicine Stock</span>
 </a>
+<a href="{% url 'pharmacy_medicine_orders' %}" class="menu-item {% if request.resolver_match.url_name == 'pharmacy_medicine_orders' %}active{% endif %}">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+<path d="M6 3h12v18H6z"/><path d="M9 7h6M9 11h6M9 15h3"/><path d="m16 16 2 2 3-3"/>
+</svg>
+<span>Medicine Requests</span>
+</a>
 <div class="menu-title" style="margin-top:25px;">ACCOUNT</div>
 <a href="{% url 'pharmacy_profile' %}" class="menu-item {% if request.resolver_match.url_name == 'pharmacy_profile' %}active{% endif %}">
 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="3"/><path d="M5 21c0-4 3-7 7-7s7 3 7 7"/></svg>

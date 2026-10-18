@@ -1,0 +1,47 @@
+{% extends base_template %}
+
+{% block title %}Request Blood - NHIMS{% endblock %}
+
+{% block content %}
+<div style="max-width:760px;background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:24px;box-shadow:0 1px 3px rgba(0,0,0,.05)">
+    <h1 style="margin:0 0 6px;color:#1e293b;font-size:1.5rem">Request Blood</h1>
+    <p style="margin:0 0 22px;color:#64748b">Send a blood request to your hospital's blood bank.</p>
+    {% if messages %}
+        {% for message in messages %}
+            <div style="padding:10px 12px;margin-bottom:16px;border-radius:8px;background:{% if message.tags == 'error' %}#fee2e2;color:#991b1b{% else %}#dcfce7;color:#166534{% endif %}">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+    <form method="post">
+        {% csrf_token %}
+        <label>Patient</label>
+        <select name="patient" required style="display:block;width:100%;padding:10px;margin:6px 0 16px;border:1px solid #cbd5e1;border-radius:8px">
+            <option value="">Select patient</option>
+            {% for patient in patients %}
+                <option value="{{ patient.id }}">{{ patient.patient_id }} - {{ patient.patient_name }}{% if patient.blood_group %} ({{ patient.blood_group }}){% endif %}</option>
+            {% empty %}
+                <option value="">No patients registered at this hospital</option>
+            {% endfor %}
+        </select>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+            <div>
+                <label>Blood group</label>
+                <select name="blood_group" required style="display:block;width:100%;padding:10px;margin:6px 0 16px;border:1px solid #cbd5e1;border-radius:8px">
+                    <option value="">Select group</option>
+                    {% for value, label in blood_group_choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+                </select>
+            </div>
+            <div>
+                <label>Units</label>
+                <input type="number" name="units" min="1" value="1" required style="display:block;width:100%;padding:10px;margin:6px 0 16px;border:1px solid #cbd5e1;border-radius:8px">
+            </div>
+        </div>
+        <label>Priority</label>
+        <select name="priority" style="display:block;width:100%;padding:10px;margin:6px 0 16px;border:1px solid #cbd5e1;border-radius:8px">
+            {% for value, label in priority_choices %}<option value="{{ value }}">{{ label }}</option>{% endfor %}
+        </select>
+        <label>Clinical notes</label>
+        <textarea name="notes" rows="4" placeholder="Reason or transfusion notes" style="display:block;width:100%;padding:10px;margin:6px 0 20px;border:1px solid #cbd5e1;border-radius:8px"></textarea>
+        <button type="submit" style="padding:11px 18px;border:0;border-radius:8px;background:#2563eb;color:#fff;font-weight:600;cursor:pointer">Send Blood Request</button>
+    </form>
+</div>
+{% endblock %}

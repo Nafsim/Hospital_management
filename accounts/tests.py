@@ -1,7 +1,7 @@
 from django.test import TestCase
 
 from .forms import LoginForm
-from .models import User, Expense, Medicine, PaymentRecord
+from .models import User, Expense, Medicine, MedicineOrder, PatientPayment, PaymentRecord
 from hospitals.models import Hospital
 from patients.models import Patient
 from staff.models import Staff
@@ -9,6 +9,28 @@ from .models import PatientAppointment
 
 
 class LoginFormTests(TestCase):
+    def test_accountant_monthly_report_download_returns_pdf(self):
+        hospital = Hospital.objects.create(
+            name='Report Hospital',
+            code='TEST-REPORT',
+            address='Test address',
+        )
+        accountant = User.objects.create_user(
+            username='report-accountant@example.com',
+            email='report-accountant@example.com',
+            password='ValidPass123!',
+            role='accountant',
+            hospital=hospital,
+        )
+
+        self.client.force_login(accountant)
+        response = self.client.get('/accounts/accountant/reports/download/2026/5/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['Content-Type'], 'application/pdf')
+        self.assertIn('financial_report_2026_05.pdf', response['Content-Disposition'])
+        self.assertTrue(response.content.startswith(b'%PDF-'))
+
     def test_hospital_admin_can_edit_staff(self):
         hospital = Hospital.objects.create(
             name='Staff Edit Hospital',
@@ -71,6 +93,77 @@ class LoginFormTests(TestCase):
         self.assertEqual(staff.city, 'Dhaka')
         self.assertEqual(staff.national_id, 'NID-002')
         self.assertEqual(staff.qualification, 'BBA')
+
+
+class MedicineOrderWorkflowTests(TestCase):
+    def test_patient_payment_pharmacy_sale_updates_stock(self):
+        hospital = Hospital.objects.create(
+            name='Medicine Workflow Hospital',
+            code='TEST-MEDICINE',
+            address='Test address',
+        )
+        patient_user = User.objects.create_user(
+            username='medicine-patient@example.com',
+            email='medicine-patient@example.com',
+            password='ValidPass123!',
+            role='patient',
+        )
+        pharmacy_user = User.objects.create_user(
+            username='medicine-pharmacy@example.com',
+            email='medicine-pharmacy@example.com',
+            password='ValidPass123!',
+            role='pharmacy',
+            hospital=hospital,
+        )
+        Patient.objects.create(
+            user=patient_user,
+            hospital=hospital,
+            patient_id='PT-MED-001',
+        )
+        medicine = Medicine.objects.create(
+            hospital=hospital,
+            name='Test Paracetamol',
+            category='tablet',
+            unit='tablet',
+            stock=10,
+            price='25.00',
+        )
+
+        self.client.force_login(patient_user)
+        response = self.client.post(
+            '/accounts/patient/buy-medicine/',
+            {
+                'medicine_id': medicine.id,
+                'quantity': 2,
+                'method': 'bkash',
+                'transaction_id': 'TEST-PAYMENT-001',
+            },
+        )
+        self.assertRedirects(response, '/accounts/patient/buy-medicine/')
+        order = MedicineOrder.objects.get()
+        self.assertEqual(order.total, 50)
+        self.assertEqual(PatientPayment.objects.get().status, 'paid')
+
+        self.client.force_login(pharmacy_user)
+        response = self.client.post(
+            '/accounts/pharmacy/orders/',
+            {'order_id': order.id, 'action': 'approve'},
+        )
+        self.assertRedirects(response, '/accounts/pharmacy/orders/')
+        order.refresh_from_db()
+        self.assertEqual(order.status, 'approved')
+        medicine.refresh_from_db()
+        self.assertEqual(medicine.stock, 10)
+
+        response = self.client.post(
+            '/accounts/pharmacy/orders/',
+            {'order_id': order.id, 'action': 'sell'},
+        )
+        self.assertRedirects(response, '/accounts/pharmacy/orders/')
+        order.refresh_from_db()
+        medicine.refresh_from_db()
+        self.assertEqual(order.status, 'sold')
+        self.assertEqual(medicine.stock, 8)
 
     def test_pharmacy_stock_company_filter_and_payment_creates_accounting_expense(self):
         hospital = Hospital.objects.create(
@@ -288,3 +381,43 @@ class LoginFormTests(TestCase):
         self.assertContains(notes, 'Appointment Patient')
         self.assertContains(patients, 'Appointment Patient')
         self.assertEqual(Patient.objects.filter(user=patient_user, hospital=hospital).count(), 1)
+
+
+    def test_patient_can_download_medical_record_pdf(self):
+        hospital = Hospital.objects.create(
+            name='Medical Record Hospital',
+            code='TEST-MED-REC',
+            address='Test address',
+        )
+        patient_user = User.objects.create_user(
+            username='med-patient@example.com',
+            email='med-patient@example.com',
+            password='ValidPass123!',
+            first_name='Medical',
+            last_name='Patient',
+            role='patient',
+        )
+        from .models import MedicalRecord
+        record = MedicalRecord.objects.create(
+            hospital=hospital,
+            patient_user=patient_user,
+            patient_name='Medical Patient',
+            title='Routine Blood Examination',
+            record_type='lab',
+            test_name='Complete Blood Count',
+            notes='All values normal',
+            status='verified',
+        )
+
+        self.client.force_login(patient_user)
+        # Test listing page contains download link
+        page_res = self.client.get('/accounts/patient/medical-records/')
+        self.assertEqual(page_res.status_code, 200)
+        self.assertContains(page_res, f'/accounts/patient/medical-records/{record.id}/download/')
+
+        # Test download endpoint
+        dl_res = self.client.get(f'/accounts/patient/medical-records/{record.id}/download/')
+        self.assertEqual(dl_res.status_code, 200)
+        self.assertEqual(dl_res['Content-Type'], 'application/pdf')
+        self.assertIn('attachment', dl_res['Content-Disposition'])
+        self.assertTrue(dl_res.content.startswith(b'%PDF-'))

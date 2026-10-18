@@ -3324,6 +3324,148 @@ def patient_medical_records(request):
     }
     return render(request, 'accounts/patient/medical_records.html', context)
 
+def patient_medical_record_download(request, record_id):
+    if not request.user.is_authenticated:
+        return redirect('login')
+    if request.user.role != 'patient':
+        return redirect('dashboard')
+
+    user = request.user
+    record = get_object_or_404(
+        MedicalRecord.objects.filter(
+            Q(patient_user=user) |
+            Q(patient_phone=user.phone) |
+            Q(patient_name__icontains=user.get_full_name() or user.username)
+        ),
+        id=record_id
+    )
+
+    import re
+    safe_title = re.sub(r'[^a-zA-Z0-9_\-\s]', '', record.title or 'medical_report')
+    safe_title = re.sub(r'\s+', '_', safe_title.strip()) or f'record_{record.id}'
+    filename = f"{safe_title}.pdf" if not safe_title.lower().endswith('.pdf') else safe_title
+
+    # If the record has an uploaded valid PDF file, serve it directly
+    if record.file:
+        try:
+            file_path = record.file.path
+            if os.path.exists(file_path):
+                file_size = os.path.getsize(file_path)
+                with open(file_path, 'rb') as f:
+                    header = f.read(1024)
+                if header.startswith(b'%PDF-') and file_size > 500:
+                    with open(file_path, 'rb') as f:
+                        response = HttpResponse(f.read(), content_type='application/pdf')
+                    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+                    return response
+        except Exception:
+            pass
+
+    # Otherwise generate a formal PDF medical report using ReportLab
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+
+    p = canvas.Canvas(response, pagesize=A4)
+    width, height = A4
+
+    hospital_name = record.hospital.name if record.hospital else "NHIMS Hospital"
+    p.setFillColorRGB(0.08, 0.38, 0.74)
+    p.rect(0, height - 75, width, 75, fill=1, stroke=0)
+
+    p.setFillColorRGB(1, 1, 1)
+    p.setFont("Helvetica-Bold", 18)
+    p.drawString(45, height - 38, hospital_name)
+    p.setFont("Helvetica", 9)
+    p.drawString(45, height - 56, "National Health Information Management System | Official Medical Record")
+
+    p.setFillColorRGB(0.12, 0.16, 0.23)
+    y = height - 105
+
+    p.setFont("Helvetica-Bold", 14)
+    p.drawString(45, y, record.title or "Medical Record / Diagnostic Report")
+    y -= 16
+
+    p.setFont("Helvetica", 9)
+    p.setFillColorRGB(0.4, 0.45, 0.53)
+    rep_date = record.report_date.strftime('%d %B %Y') if record.report_date else record.created_at.strftime('%d %B %Y')
+    p.drawString(45, y, f"Report Date: {rep_date}   |   Status: {record.get_status_display()}")
+    y -= 18
+
+    p.setStrokeColorRGB(0.85, 0.88, 0.92)
+    p.setLineWidth(1)
+    p.line(45, y, width - 45, y)
+    y -= 16
+
+    p.setFillColorRGB(0.96, 0.98, 1.0)
+    p.rect(45, y - 72, width - 90, 72, fill=1, stroke=0)
+
+    p.setFillColorRGB(0.08, 0.38, 0.74)
+    p.setFont("Helvetica-Bold", 10)
+    p.drawString(58, y - 16, "PATIENT & RECORD DETAILS")
+
+    p.setFillColorRGB(0.15, 0.2, 0.28)
+    p.setFont("Helvetica", 9)
+    p.drawString(58, y - 34, f"Patient Name: {record.patient_name}")
+    p.drawString(58, y - 48, f"Patient ID: {record.patient_id or 'N/A'}")
+    p.drawString(58, y - 62, f"Contact: {record.patient_phone or 'N/A'}")
+
+    p.drawString(320, y - 34, f"Record Type: {record.get_record_type_display()}")
+    p.drawString(320, y - 48, f"Test Name: {record.test_name or 'N/A'}")
+    issued_by = record.uploaded_by.get_full_name() or record.uploaded_by.username if record.uploaded_by else 'Diagnostic Lab'
+    p.drawString(320, y - 62, f"Uploaded By: {issued_by}")
+
+    y -= 98
+
+    p.setFont("Helvetica-Bold", 11)
+    p.drawString(45, y, "Clinical Findings / Test Report Notes")
+    y -= 12
+    p.setStrokeColorRGB(0.85, 0.88, 0.92)
+    p.line(45, y, width - 45, y)
+    y -= 18
+
+    p.setFont("Helvetica", 9)
+    p.setFillColorRGB(0.2, 0.25, 0.3)
+    notes_content = record.notes.strip() if record.notes else "Official diagnostic and medical record logged in the system."
+    for paragraph in notes_content.split('\n'):
+        words = paragraph.split()
+        current_line = []
+        for word in words:
+            current_line.append(word)
+            test_line = " ".join(current_line)
+            if p.stringWidth(test_line, "Helvetica", 9) > (width - 100):
+                current_line.pop()
+                p.drawString(50, y, " ".join(current_line))
+                y -= 15
+                current_line = [word]
+                if y < 90:
+                    p.showPage()
+                    y = height - 60
+        if current_line:
+            p.drawString(50, y, " ".join(current_line))
+            y -= 15
+            if y < 90:
+                p.showPage()
+                y = height - 60
+
+    y = max(y - 30, 110)
+    p.setStrokeColorRGB(0.65, 0.7, 0.78)
+    p.line(width - 210, y, width - 45, y)
+    p.setFont("Helvetica", 8)
+    p.setFillColorRGB(0.4, 0.45, 0.53)
+    p.drawRightString(width - 45, y - 14, "Authorized Signature / Laboratory Seal")
+
+    p.setStrokeColorRGB(0.88, 0.9, 0.93)
+    p.line(45, 45, width - 45, 45)
+    p.setFont("Helvetica", 8)
+    p.setFillColorRGB(0.5, 0.55, 0.6)
+    p.drawString(45, 32, "Confidential Medical Document - Generated by NHIMS")
+    p.drawRightString(width - 45, 32, f"Downloaded on {timezone.now().strftime('%d %b %Y, %I:%M %p')}")
+
+    p.showPage()
+    p.save()
+    return response
+
+
 from .models import PatientPayment, PatientAppointment
 from decimal import Decimal, InvalidOperation
 def patient_payments(request):
@@ -3418,6 +3560,73 @@ def patient_payments(request):
         'purpose_choices': PatientPayment.PURPOSE_CHOICES,
     }
     return render(request, 'accounts/patient/payments.html', context)
+
+
+def patient_buy_medicine(request):
+    if not request.user.is_authenticated:
+        return redirect('login')
+    if request.user.role != 'patient':
+        return redirect('dashboard')
+
+    from .models import MedicineOrder, PatientPayment
+    patient_profile = Patient.objects.filter(user=request.user).select_related('hospital').first()
+    hospital = request.user.hospital or (patient_profile.hospital if patient_profile else None)
+    medicines = Medicine.objects.filter(hospital=hospital, stock__gt=0).order_by('name') if hospital else Medicine.objects.none()
+    orders = MedicineOrder.objects.filter(
+        patient_user=request.user,
+        hospital=hospital,
+    ).select_related('medicine', 'payment')
+
+    if request.method == 'POST':
+        medicine = get_object_or_404(
+            Medicine,
+            id=request.POST.get('medicine_id'),
+            hospital=hospital,
+        )
+        try:
+            quantity = int(request.POST.get('quantity') or 0)
+        except (TypeError, ValueError):
+            quantity = 0
+        method = request.POST.get('method', 'bkash')
+        reference = request.POST.get('transaction_id', '').strip()
+        notes = request.POST.get('notes', '').strip()
+
+        if quantity < 1 or quantity > medicine.stock:
+            messages.error(request, f'Enter a quantity between 1 and {medicine.stock}.')
+        elif method not in dict(PatientPayment.METHOD_CHOICES):
+            messages.error(request, 'Select a valid payment method.')
+        else:
+            with transaction.atomic():
+                total = medicine.price * quantity
+                payment = PatientPayment.objects.create(
+                    hospital=hospital,
+                    patient_user=request.user,
+                    amount=total,
+                    purpose='medicine',
+                    method=method,
+                    transaction_id=reference,
+                    note=f'Medicine order: {medicine.name}. {notes}'.strip(),
+                    status='paid',
+                )
+                MedicineOrder.objects.create(
+                    hospital=hospital,
+                    patient_user=request.user,
+                    medicine=medicine,
+                    quantity=quantity,
+                    unit_price=medicine.price,
+                    payment=payment,
+                    notes=notes,
+                )
+            messages.success(request, 'Medicine request and payment submitted to the pharmacy.')
+            return redirect('patient_buy_medicine')
+
+    return render(request, 'accounts/patient/buy_medicine.html', {
+        'hospital': hospital,
+        'medicines': medicines,
+        'orders': orders,
+        'method_choices': PatientPayment.METHOD_CHOICES,
+    })
+
 
 from .models import PatientEmergencyContact, PatientAppointment
 User = get_user_model()
@@ -4320,9 +4529,81 @@ def bloodbank_requests(request):
     if request.user.role != 'bloodbank':
         return redirect('dashboard')
     hospital = request.user.hospital
-    patients = Patient.objects.filter(hospital=hospital) if hospital else []
-    context = {'patients': patients}
+    from .models import BloodRequest
+
+    if request.method == 'POST':
+        blood_request = get_object_or_404(
+            BloodRequest,
+            id=request.POST.get('request_id'),
+            hospital=hospital,
+        )
+        if request.POST.get('action') == 'delete':
+            request_label = blood_request.request_id or f'#{blood_request.id}'
+            blood_request.delete()
+            messages.success(request, f'Request {request_label} was deleted.')
+            return redirect('bloodbank_requests')
+
+        status = request.POST.get('status')
+        if status in dict(BloodRequest.STATUS_CHOICES):
+            blood_request.status = status
+            blood_request.save(update_fields=['status'])
+            messages.success(request, f'Request {blood_request.request_id} updated.')
+        else:
+            messages.error(request, 'Invalid request status.')
+        return redirect('bloodbank_requests')
+
+    requests = BloodRequest.objects.filter(hospital=hospital) if hospital else BloodRequest.objects.none()
+    context = {'requests': requests}
     return render(request, 'accounts/bloodbank/requests.html', context)
+
+
+def blood_request_create(request):
+    if not request.user.is_authenticated:
+        return redirect('login')
+    if request.user.role not in ('doctor', 'nurse'):
+        return redirect('dashboard')
+
+    from .models import BloodRequest
+    hospital = request.user.hospital
+    patients = Patient.objects.filter(hospital=hospital).select_related('user') if hospital else Patient.objects.none()
+
+    if request.method == 'POST':
+        patient = get_object_or_404(
+            Patient,
+            id=request.POST.get('patient'),
+            hospital=hospital,
+        )
+        blood_group = request.POST.get('blood_group', '').strip()
+        units_raw = request.POST.get('units', '1').strip()
+        valid_groups = {choice[0] for choice in Patient.BLOOD_GROUP_CHOICES}
+
+        try:
+            units = int(units_raw)
+        except ValueError:
+            units = 0
+
+        if blood_group not in valid_groups or units < 1:
+            messages.error(request, 'Select a valid blood group and enter at least one unit.')
+        else:
+            BloodRequest.objects.create(
+                hospital=hospital,
+                patient_name=patient.patient_name,
+                blood_group=blood_group,
+                units=units,
+                priority=request.POST.get('priority', 'normal'),
+                requested_by=request.user.get_full_name() or request.user.username,
+                notes=request.POST.get('notes', '').strip(),
+            )
+            messages.success(request, 'Blood request sent to the blood bank.')
+            return redirect('blood_request_create')
+
+    context = {
+        'patients': patients,
+        'blood_group_choices': Patient.BLOOD_GROUP_CHOICES,
+        'priority_choices': BloodRequest.PRIORITY_CHOICES,
+        'base_template': 'accounts/doctor/base.html' if request.user.role == 'doctor' else 'accounts/nurse/base.html',
+    }
+    return render(request, 'accounts/blood_request_form.html', context)
 
 def bloodbank_collection(request):
     if not request.user.is_authenticated:
@@ -5175,6 +5456,26 @@ def accountant_payments(request):
     return render(request, 'accounts/accountant/payments.html', context)
 
 
+def accountant_medicine_sales(request):
+    if not request.user.is_authenticated:
+        return redirect('dashboard')
+    if request.user.role != 'accountant':
+        return redirect('dashboard')
+
+    from .models import MedicineOrder
+    hospital = request.user.hospital
+    orders = MedicineOrder.objects.filter(
+        hospital=hospital,
+        status='sold',
+    ).select_related('medicine', 'patient_user', 'payment')
+    total = orders.aggregate(total=Sum('total'))['total'] or Decimal('0')
+    return render(request, 'accounts/accountant/medicine_sales.html', {
+        'hospital': hospital,
+        'orders': orders,
+        'total': total,
+    })
+
+
 def accountant_payment_pdf(request, payment_id):
     if not request.user.is_authenticated:
         return redirect('login')
@@ -5833,42 +6134,48 @@ def accountant_report_download(request, year, month):
         transaction_date__lte=month_end
     )
 
-    writer = csv.writer(response)
-    response = HttpResponse(content_type='text/csv; charset=utf-8')
-    response.write('\ufeff')
+    response = HttpResponse(content_type='application/pdf')
     response['Content-Disposition'] = (
-        f'attachment; filename="financial_report_{year}_{month:02d}.csv"'
+        f'attachment; filename="financial_report_{year}_{month:02d}.pdf"'
     )
 
-    writer = csv.writer(response)
-    writer.writerow(['NHIMS - Hospital Financial Report'])
-    writer.writerow(['Hospital', str(hospital)])
-    writer.writerow(['Reporting Period', month_start.strftime('%B %Y')])
-    writer.writerow([])
-    writer.writerow(['Record Type', 'Date', 'Account / Expense', 'Category / Transaction Type', 'Reference', 'Amount (BDT)', 'Description'])
+    pdf = canvas.Canvas(response, pagesize=A4)
+    _, page_height = A4
+    left = 42
+    y = page_height - 48
+
+    def write_line(text, size=9, leading=14, bold=False):
+        nonlocal y
+        if y < 48:
+            pdf.showPage()
+            y = page_height - 48
+        pdf.setFont('Helvetica-Bold' if bold else 'Helvetica', size)
+        pdf.drawString(left, y, str(text)[:125])
+        y -= leading
+
+    write_line('NHIMS - Hospital Financial Report', size=16, leading=24, bold=True)
+    write_line(f'Hospital: {hospital}', size=10)
+    write_line(f'Reporting Period: {month_start.strftime("%B %Y")}', size=10, leading=22)
+    write_line('Financial Transactions', size=11, leading=18, bold=True)
+    write_line('Type | Date | Account / Expense | Category | Reference | Amount (BDT)', size=8, leading=14, bold=True)
 
     for transaction in transactions:
-        writer.writerow([
-            'Bank Transaction',
-            transaction.transaction_date.strftime('%Y-%m-%d'),
-            transaction.account.account_name,
-            transaction.get_transaction_type_display(),
-            transaction.reference,
-            transaction.amount,
-            transaction.description,
-        ])
+        write_line(
+            f'Bank Transaction | {transaction.transaction_date:%Y-%m-%d} | '
+            f'{transaction.account.account_name} | {transaction.get_transaction_type_display()} | '
+            f'{transaction.reference or "-"} | {transaction.amount}'
+        )
 
     for expense in expenses:
-        writer.writerow([
-            'Expense',
-            expense.expense_date.strftime('%Y-%m-%d'),
-            expense.title,
-            expense.get_category_display(),
-            expense.reference,
-            expense.amount,
-            expense.description,
-        ])
+        write_line(
+            f'Expense | {expense.expense_date:%Y-%m-%d} | {expense.title} | '
+            f'{expense.get_category_display()} | {expense.reference or "-"} | {expense.amount}'
+        )
 
+    if not transactions.exists() and not expenses.exists():
+        write_line('No paid expenses or bank transactions found for this period.')
+
+    pdf.save()
     return response
 
 def accountant_notices(request):
@@ -6074,6 +6381,60 @@ def pharmacy_stock(request):
         'payment_choices': Expense.PAYMENT_CHOICES,
     }
     return render(request, 'accounts/pharmacy/stock.html', context)
+
+
+def pharmacy_medicine_orders(request):
+    if not request.user.is_authenticated:
+        return redirect('login')
+    if request.user.role != 'pharmacy':
+        return redirect('dashboard')
+
+    from .models import MedicineOrder
+    hospital = request.user.hospital
+
+    if request.method == 'POST':
+        order = get_object_or_404(
+            MedicineOrder.objects.select_related('medicine'),
+            id=request.POST.get('order_id'),
+            hospital=hospital,
+        )
+        action = request.POST.get('action')
+        if action == 'approve' and order.status == 'pending':
+            if order.quantity > order.medicine.stock:
+                messages.error(request, 'This request cannot be approved because stock is insufficient.')
+            else:
+                order.status = 'approved'
+                order.approved_by = request.user
+                order.save(update_fields=['status', 'approved_by', 'updated_at'])
+                messages.success(request, 'Medicine request approved.')
+        elif action == 'reject' and order.status == 'pending':
+            order.status = 'rejected'
+            order.approved_by = request.user
+            order.save(update_fields=['status', 'approved_by', 'updated_at'])
+            messages.success(request, 'Medicine request rejected.')
+        elif action == 'sell' and order.status == 'approved':
+            with transaction.atomic():
+                medicine = Medicine.objects.select_for_update().get(id=order.medicine_id, hospital=hospital)
+                if order.quantity > medicine.stock:
+                    messages.error(request, 'The stock changed and is no longer sufficient.')
+                else:
+                    medicine.stock -= order.quantity
+                    medicine.save(update_fields=['stock', 'updated_at'])
+                    order.status = 'sold'
+                    order.sold_by = request.user
+                    order.save(update_fields=['status', 'sold_by', 'updated_at'])
+                    messages.success(request, 'Medicine marked as sold and stock updated.')
+        else:
+            messages.error(request, 'This order is no longer available for that action.')
+        return redirect('pharmacy_medicine_orders')
+
+    orders = MedicineOrder.objects.filter(hospital=hospital).select_related(
+        'medicine', 'patient_user', 'payment', 'approved_by', 'sold_by'
+    )
+    return render(request, 'accounts/pharmacy/medicine_orders.html', {
+        'hospital': hospital,
+        'orders': orders,
+    })
 
 
 def pharmacy_profile(request):

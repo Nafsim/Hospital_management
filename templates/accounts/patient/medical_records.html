@@ -103,14 +103,12 @@
                     <td>
                         <div class="action-buttons">
                             <button type="button" class="action-btn view" title="View"
-                                onclick="openViewModal('{{ r.title|escapejs }}','{{ r.get_record_type_display }}','{{ r.test_name|default:''|escapejs }}','{% if r.report_date %}{{ r.report_date|date:'d M Y' }}{% endif %}','{{ r.created_at|date:'d M Y' }}','{{ r.notes|default:''|escapejs }}','{% if r.file %}{{ r.file.url }}{% endif %}')">
+                                onclick="openViewModal('{{ r.title|escapejs }}','{{ r.get_record_type_display }}','{{ r.test_name|default:''|escapejs }}','{% if r.report_date %}{{ r.report_date|date:'d M Y' }}{% endif %}','{{ r.created_at|date:'d M Y' }}','{{ r.notes|default:''|escapejs }}','{% url 'patient_medical_record_download' r.id %}')">
                                 <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
                             </button>
-                            {% if r.file %}
-                            <a href="{{ r.file.url }}" class="action-btn download" title="Download" download target="_blank">
+                            <a href="{% url 'patient_medical_record_download' r.id %}" class="action-btn download" title="Download PDF">
                                 <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
                             </a>
-                            {% endif %}
                         </div>
                     </td>
                 </tr>
@@ -149,13 +147,13 @@
         </div>
         <div class="modal-footer">
             <button type="button" class="btn-cancel" onclick="closeModal()">Close</button>
-            <a href="#" id="viewDownloadBtn" class="btn-download" download target="_blank" style="display:none">Download</a>
+            <a href="#" id="viewDownloadBtn" class="btn-download" style="display:none">Download PDF</a>
         </div>
     </div>
 </div>
 
 <script>
-function openViewModal(title,type,test,reportDate,uploaded,notes,fileUrl){
+function openViewModal(title,type,test,reportDate,uploaded,notes,downloadUrl){
     document.getElementById('viewTitle').textContent=title||'—';
     document.getElementById('viewType').textContent=type||'—';
     document.getElementById('viewTest').textContent=test||'—';
@@ -163,8 +161,8 @@ function openViewModal(title,type,test,reportDate,uploaded,notes,fileUrl){
     document.getElementById('viewUploaded').textContent=uploaded||'—';
     document.getElementById('viewNotes').textContent=notes||'—';
     const btn=document.getElementById('viewDownloadBtn');
-    if(fileUrl){
-        btn.href=fileUrl;
+    if(downloadUrl){
+        btn.href=downloadUrl;
         btn.style.display='inline-flex';
     }else{
         btn.style.display='none';

@@ -354,6 +354,70 @@ class Medicine(models.Model):
     def __str__(self):
         return self.name
 
+
+class MedicineOrder(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'Pending Approval'),
+        ('approved', 'Approved'),
+        ('sold', 'Sold'),
+        ('rejected', 'Rejected'),
+    ]
+
+    hospital = models.ForeignKey(
+        'hospitals.Hospital',
+        on_delete=models.CASCADE,
+        related_name='medicine_orders'
+    )
+    patient_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='medicine_orders'
+    )
+    medicine = models.ForeignKey(
+        Medicine,
+        on_delete=models.PROTECT,
+        related_name='orders'
+    )
+    quantity = models.PositiveIntegerField(default=1)
+    unit_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    total = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    payment = models.ForeignKey(
+        'PatientPayment',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='medicine_orders'
+    )
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    notes = models.TextField(blank=True)
+    approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='approved_medicine_orders'
+    )
+    sold_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='sold_medicine_orders'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def save(self, *args, **kwargs):
+        self.total = (self.unit_price or 0) * self.quantity
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f'{self.medicine.name} - {self.patient_user} ({self.status})'
+
+
 class Blood(models.Model):
     BLOOD_GROUP_CHOICES = [
         ('A+', 'A+'),
