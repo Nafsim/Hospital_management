@@ -62,6 +62,45 @@ td{padding:.85rem 1rem;font-size:.85rem;color:#334155;border-bottom:1px solid #f
 .btn-save{background:#2563eb;color:#fff;border-color:#2563eb}
 .btn-delete{background:#dc2626;color:#fff;border-color:#dc2626}
 @media(max-width:600px){.form-grid{grid-template-columns:1fr}.stats-grid{grid-template-columns:1fr}}
+
+.patient-history-btn{display:inline-flex;align-items:center;gap:6px;background:none;border:0;padding:0;cursor:pointer;font-size:.85rem;font-weight:600;color:#1e293b;text-align:left;transition:color .2s ease}
+.patient-history-btn:hover{color:#2563eb}
+.patient-name-text{text-decoration:underline;text-decoration-color:transparent;transition:text-decoration-color .2s ease}
+.patient-history-btn:hover .patient-name-text{text-decoration-color:#2563eb}
+.history-chip{display:inline-flex;align-items:center;gap:3px;background:#eff6ff;color:#2563eb;font-size:10.5px;font-weight:600;padding:2px 6px;border-radius:999px;border:1px solid #bfdbfe;transition:all .2s ease}
+.patient-history-btn:hover .history-chip{background:#2563eb;color:#fff;border-color:#2563eb}
+.patient-phone-sub{font-size:11px;color:#94a3b8;margin-top:2px}
+.modal-overlay.show{display:flex!important}
+.modal-lg{max-width:860px!important}
+.modal-subtitle{font-size:12px;color:#64748b;margin-top:2px;font-weight:normal}
+.history-stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+.h-stat-card{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px}
+.h-stat-label{font-size:11px;color:#64748b;margin-bottom:2px;font-weight:600;text-transform:uppercase}
+.h-stat-val{font-size:1.15rem;font-weight:700}
+.text-green{color:#15803d}
+.text-purple{color:#7c3aed}
+.text-amber{color:#b45309}
+.text-blue{color:#2563eb}
+.history-tabs-bar{display:flex;gap:6px;margin-bottom:12px;border-bottom:1px solid #e2e8f0;padding-bottom:10px;flex-wrap:wrap}
+.htab-btn{background:#f1f5f9;border:1px solid #cbd5e1;border-radius:7px;padding:6px 12px;font-size:12px;font-weight:600;color:#475569;cursor:pointer;display:inline-flex;align-items:center;gap:4px;transition:all .2s ease}
+.htab-btn:hover{background:#e2e8f0;color:#1e293b}
+.htab-btn.active{background:#2563eb;border-color:#2563eb;color:#fff}
+.htab-btn .badge-count{background:rgba(255,255,255,.25);padding:1px 6px;border-radius:999px;font-size:10.5px}
+.htab-btn:not(.active) .badge-count{background:#e2e8f0;color:#475569}
+.history-table{width:100%;border-collapse:collapse}
+.history-table th{background:#f8fafc;color:#64748b;font-size:.72rem;font-weight:600;text-transform:uppercase;padding:.65rem .85rem;border-bottom:1px solid var(--border);text-align:left}
+.history-table td{padding:.7rem .85rem;font-size:.82rem;color:#334155;border-bottom:1px solid #f1f5f9}
+.cat-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 7px;border-radius:6px;font-size:11px;font-weight:600}
+.cat-badge.medicine{background:#ede9fe;color:#6d28d9}
+.cat-badge.test{background:#fef3c7;color:#b45309}
+.cat-badge.appointment{background:#dbeafe;color:#1d4ed8}
+.cat-badge.bill{background:#dcfce7;color:#15803d}
+.cat-badge.general{background:#f1f5f9;color:#475569}
+.history-total-row{background:#f8fafc;border-top:2px solid #cbd5e1}
+.spinner{width:26px;height:26px;border:3px solid #e2e8f0;border-top-color:#2563eb;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media(max-width:768px){.history-stats-grid{grid-template-columns:repeat(2,1fr)}}
+
 </style>
 {% endblock %}
 {% block content %}
@@ -107,7 +146,18 @@ td{padding:.85rem 1rem;font-size:.85rem;color:#334155;border-bottom:1px solid #f
                 {% for p in payments %}
                 <tr>
                     <td style="font-weight:600">{{ p.payment_no }}</td>
-                    <td>{{ p.patient_name }}</td>
+                    <td>
+                        <button type="button" class="patient-history-btn" onclick="openPatientHistoryModal('{{ p.patient_name|escapejs }}', '{{ p.patient_phone|default:''|escapejs }}')" title="Click to view all payment history for {{ p.patient_name }}">
+                            <span class="patient-name-text">{{ p.patient_name }}</span>
+                            <span class="history-chip">
+                                <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                History
+                            </span>
+                        </button>
+                        {% if p.patient_phone %}
+                        <div class="patient-phone-sub">{{ p.patient_phone }}</div>
+                        {% endif %}
+                    </td>
                     <td style="font-weight:600;color:#15803d">৳{{ p.amount }}</td>
                     <td>{{ p.get_method_display }}</td>
                     <td><span class="badge badge-{{ p.status }}">{{ p.get_status_display }}</span></td>
@@ -279,4 +329,209 @@ function openDeleteModal(id,no){
 function closeModal(id){document.getElementById(id).classList.remove('show')}
 window.addEventListener('click',function(e){if(e.target.classList.contains('modal-overlay'))e.target.classList.remove('show')});
 </script>
+
+<!-- Patient All Payment History Modal -->
+<div class="modal-overlay" id="patientHistoryModal">
+    <div class="modal modal-lg">
+        <div class="modal-header">
+            <div>
+                <h3 id="phModalTitle">Patient Payment History</h3>
+                <div class="modal-subtitle" id="phModalSubtitle">All payment history: medicine, diagnostic tests, appointments & bills</div>
+            </div>
+            <button type="button" class="modal-close" onclick="closeModal('patientHistoryModal')">
+                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
+            </button>
+        </div>
+        <div class="modal-body">
+            <!-- Stats -->
+            <div class="history-stats-grid">
+                <div class="h-stat-card">
+                    <div class="h-stat-label">Total Paid</div>
+                    <div class="h-stat-val text-green" id="phTotalAll">৳0.00</div>
+                </div>
+                <div class="h-stat-card">
+                    <div class="h-stat-label">Medicine</div>
+                    <div class="h-stat-val text-purple" id="phTotalMed">৳0.00</div>
+                </div>
+                <div class="h-stat-card">
+                    <div class="h-stat-label">Diagnostic Tests</div>
+                    <div class="h-stat-val text-amber" id="phTotalTest">৳0.00</div>
+                </div>
+                <div class="h-stat-card">
+                    <div class="h-stat-label">Appointments</div>
+                    <div class="h-stat-val text-blue" id="phTotalAppt">৳0.00</div>
+                </div>
+            </div>
+
+            <!-- Filter tabs -->
+            <div class="history-tabs-bar">
+                <button type="button" class="htab-btn active" data-cat="all" onclick="filterHistoryTable('all')">
+                    All Payments <span class="badge-count" id="countAll">0</span>
+                </button>
+                <button type="button" class="htab-btn" data-cat="medicine" onclick="filterHistoryTable('medicine')">
+                    Medicine Orders <span class="badge-count" id="countMed">0</span>
+                </button>
+                <button type="button" class="htab-btn" data-cat="test" onclick="filterHistoryTable('test')">
+                    Diagnostic Tests <span class="badge-count" id="countTest">0</span>
+                </button>
+                <button type="button" class="htab-btn" data-cat="appointment" onclick="filterHistoryTable('appointment')">
+                    Appointments <span class="badge-count" id="countAppt">0</span>
+                </button>
+                <button type="button" class="htab-btn" data-cat="other" onclick="filterHistoryTable('other')">
+                    Bills & Other <span class="badge-count" id="countOther">0</span>
+                </button>
+            </div>
+
+            <!-- Loading spinner -->
+            <div id="phLoading" style="display:none;text-align:center;padding:35px 10px;color:#64748b">
+                <div class="spinner"></div>
+                <div style="margin-top:10px;font-size:13px;font-weight:600">Fetching complete payment records...</div>
+            </div>
+
+            <!-- Table -->
+            <div class="table-wrap" id="phTableWrap" style="max-height:360px;overflow-y:auto">
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th>Date & Time</th>
+                            <th>Category</th>
+                            <th>Item / Description</th>
+                            <th>Method</th>
+                            <th>Txn / Ref No</th>
+                            <th style="text-align:right">Amount (৳)</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="phTableBody">
+                    </tbody>
+                    <tfoot>
+                        <tr class="history-total-row">
+                            <td colspan="5" style="text-align:right;font-weight:700" id="phSummaryLabel">Total Amount:</td>
+                            <td style="text-align:right;font-weight:800;color:#15803d;font-size:14.5px" id="phSummaryAmount">৳0.00</td>
+                            <td></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+
+            <!-- Empty state -->
+            <div id="phEmptyState" style="display:none;text-align:center;padding:35px 15px;color:#64748b">
+                <div style="font-weight:600;color:#1e293b;margin-bottom:4px;font-size:14px">No Records Found</div>
+                <div style="font-size:12.5px">There are no payment records under this filter.</div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-cancel" onclick="closeModal('patientHistoryModal')">Close</button>
+        </div>
+    </div>
+</div>
+
+<script>
+let phCachedRecords = [];
+let phCurrentCategory = 'all';
+
+function openPatientHistoryModal(patientName, patientPhone) {
+    document.getElementById('phModalTitle').textContent = patientName + " - Payment History";
+    document.getElementById('phModalSubtitle').textContent = "Phone: " + (patientPhone || 'N/A') + " | Complete payment records across tests, medicine & appointments";
+    document.getElementById('phTableBody').innerHTML = '';
+    document.getElementById('phEmptyState').style.display = 'none';
+    document.getElementById('phTableWrap').style.display = 'none';
+    document.getElementById('phLoading').style.display = 'block';
+    document.getElementById('patientHistoryModal').classList.add('show');
+
+    // Reset tabs
+    document.querySelectorAll('.htab-btn').forEach(b => b.classList.toggle('active', b.dataset.cat === 'all'));
+    phCurrentCategory = 'all';
+
+    const url = "{% url 'accountant_patient_history' %}?name=" + encodeURIComponent(patientName) + "&phone=" + encodeURIComponent(patientPhone || '');
+    fetch(url)
+        .then(res => res.json())
+        .then(data => {
+            document.getElementById('phLoading').style.display = 'none';
+            if (!data.success) {
+                alert(data.error || 'Failed to load history');
+                return;
+            }
+
+            phCachedRecords = data.records || [];
+            
+            // Set stats
+            document.getElementById('phTotalAll').textContent = '৳' + Number(data.totals.all || 0).toFixed(2);
+            document.getElementById('phTotalMed').textContent = '৳' + Number(data.totals.medicine || 0).toFixed(2);
+            document.getElementById('phTotalTest').textContent = '৳' + Number(data.totals.test || 0).toFixed(2);
+            document.getElementById('phTotalAppt').textContent = '৳' + Number(data.totals.appointment || 0).toFixed(2);
+
+            // Set tab counts
+            document.getElementById('countAll').textContent = data.counts.all || 0;
+            document.getElementById('countMed').textContent = data.counts.medicine || 0;
+            document.getElementById('countTest').textContent = data.counts.test || 0;
+            document.getElementById('countAppt').textContent = data.counts.appointment || 0;
+            document.getElementById('countOther').textContent = data.counts.other || 0;
+
+            renderHistoryTable();
+        })
+        .catch(err => {
+            document.getElementById('phLoading').style.display = 'none';
+            alert('Error fetching payment history: ' + err);
+        });
+}
+
+function filterHistoryTable(cat) {
+    phCurrentCategory = cat;
+    document.querySelectorAll('.htab-btn').forEach(b => b.classList.toggle('active', b.dataset.cat === cat));
+    renderHistoryTable();
+}
+
+function renderHistoryTable() {
+    const tbody = document.getElementById('phTableBody');
+    tbody.innerHTML = '';
+
+    const filtered = phCachedRecords.filter(r => {
+        if (phCurrentCategory === 'all') return true;
+        if (phCurrentCategory === 'other') return !['medicine', 'test', 'appointment'].includes(r.category);
+        return r.category === phCurrentCategory;
+    });
+
+    const wrap = document.getElementById('phTableWrap');
+    const empty = document.getElementById('phEmptyState');
+
+    if (filtered.length === 0) {
+        wrap.style.display = 'none';
+        empty.style.display = 'block';
+    } else {
+        empty.style.display = 'none';
+        wrap.style.display = 'block';
+
+        let subtotal = 0;
+        filtered.forEach(r => {
+            subtotal += Number(r.amount || 0);
+            const tr = document.createElement('tr');
+
+            let catClass = r.category;
+            if (!['medicine', 'test', 'appointment', 'bill'].includes(catClass)) catClass = 'general';
+
+            tr.innerHTML = `
+                <td style="font-size:12px;color:#64748b;white-space:nowrap">${r.date || '—'}</td>
+                <td><span class="cat-badge ${catClass}">${r.category_display || r.category}</span></td>
+                <td style="font-weight:600;color:#1e293b">${r.description || '—'}</td>
+                <td style="font-size:12px">${r.method || 'Cash'}</td>
+                <td style="font-family:monospace;font-size:11.5px;color:#475569">${r.ref || '—'}</td>
+                <td style="text-align:right;font-weight:700;color:#15803d">৳${Number(r.amount || 0).toFixed(2)}</td>
+                <td><span class="badge badge-completed">${r.status || 'Paid'}</span></td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        const catNames = {
+            'all': 'All Payments',
+            'medicine': 'Medicine Orders',
+            'test': 'Diagnostic Tests',
+            'appointment': 'Appointments',
+            'other': 'Bills & Other'
+        };
+        document.getElementById('phSummaryLabel').textContent = (catNames[phCurrentCategory] || 'Subtotal') + ' Total:';
+        document.getElementById('phSummaryAmount').textContent = '৳' + subtotal.toFixed(2);
+    }
+}
+
 {% endblock %}

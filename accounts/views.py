@@ -1,3 +1,4 @@
+import random
 import json
 from django.shortcuts import render , redirect, get_object_or_404
 from django.urls import reverse
@@ -40,7 +41,7 @@ from .models import NurseProfile
 from django.db.models import Sum
 from django.contrib.auth.decorators import login_required
 import csv
-from .models import PatientAppointment
+from .models import PatientAppointment, MedicineOrder, BloodTestRequest, PatientPayment, PaymentRecord, PatientProfile
 from django.db import IntegrityError
 from django.shortcuts import render, redirect, get_object_or_404
 from django.db import transaction
@@ -3542,7 +3543,26 @@ def patient_payments(request):
 
     payments = PatientPayment.objects.filter(
         patient_user=user
-    ).select_related('appointment', 'hospital')
+    ).select_related('appointment', 'hospital').order_by('-created_at')
+
+    # Fetch medicine orders for this patient
+    medicine_orders = MedicineOrder.objects.filter(
+        patient_user=user
+    ).select_related('medicine', 'payment', 'hospital').order_by('-id')
+
+    # Fetch diagnostic blood tests for this patient
+    test_requests = BloodTestRequest.objects.filter(
+        Q(patient__user=user) |
+        Q(patient_phone=user.phone) |
+        Q(patient_name__iexact=user.get_full_name() or user.username)
+    ).select_related('test', 'hospital').order_by('-created_at')
+
+    # Fetch appointment payments
+    appointment_payments = payments.filter(purpose='appointment')
+
+    total_medicine_amount = medicine_orders.aggregate(t=Sum('total'))['t'] or Decimal('0.00')
+    total_test_amount = sum(t.amount for t in test_requests if t.payment_status == 'paid')
+    total_appointment_amount = sum(a.amount for a in appointment_payments if a.status in ['paid', 'verified'])
 
     total_paid = sum(p.amount for p in payments if p.status in ['paid', 'verified'])
     pending_count = payments.filter(status='pending').count()
@@ -3552,6 +3572,12 @@ def patient_payments(request):
         'hospital': hospital,
         'hospitals': hospitals,
         'payments': payments,
+        'medicine_orders': medicine_orders,
+        'test_requests': test_requests,
+        'appointment_payments': appointment_payments,
+        'total_medicine_amount': total_medicine_amount,
+        'total_test_amount': total_test_amount,
+        'total_appointment_amount': total_appointment_amount,
         'unpaid_appointments': unpaid_appointments,
         'total_paid': total_paid,
         'pending_count': pending_count,
@@ -4112,25 +4138,168 @@ def counter_appointments(request):
     if request.user.role != 'counter':
         return redirect('dashboard')
 
-    hospital = request.user.hospital
+    hospital = request.user.hospital or Hospital.objects.first()
+    if not request.user.hospital and hospital:
+        request.user.hospital = hospital
+        try:
+            request.user.save(update_fields=['hospital'])
+        except Exception:
+            pass
 
     if not hospital:
         appointments = PatientAppointment.objects.none()
     else:
         appointments = PatientAppointment.objects.filter(
             hospital=hospital
-        ).select_related('doctor').order_by(
-            '-appointment_date',
-            '-appointment_time'
-        )
+        ).select_related('doctor').order_by('-id')
 
     if request.method == 'POST':
-        appointment_id = request.POST.get('appointment_id')
         action = request.POST.get('action')
 
         if not hospital:
+            messages.error(request, 'No hospital associated with this counter account.')
             return redirect('counter_appointments')
 
+        if action == 'add_patient':
+            name = request.POST.get('patient_name', '').strip()
+            email = request.POST.get('email', '').strip().lower()
+            password = request.POST.get('password', '').strip()
+            phone = request.POST.get('patient_phone', '').strip()
+            gender = request.POST.get('gender', 'M')
+            doctor_id = request.POST.get('doctor')
+            appointment_date = request.POST.get('appointment_date')
+            appointment_time = request.POST.get('appointment_time')
+            reason = request.POST.get('reason', '').strip()
+            amount_raw = request.POST.get('amount') or 500
+            method = request.POST.get('method', 'cash')
+            appointment_status = request.POST.get('status', 'approved')
+
+            if not name or not email or not password or not doctor_id or not appointment_date or not appointment_time:
+                messages.error(request, 'Please fill in all required fields (Name, Email, Password, Doctor, Date, Time).')
+                return redirect('counter_appointments')
+
+            try:
+                amount = Decimal(str(amount_raw))
+            except (InvalidOperation, TypeError, ValueError):
+                amount = Decimal('500.00')
+
+            doctor = get_object_or_404(User, id=doctor_id)
+            doc_name = doctor.get_full_name() or doctor.username
+
+            patient_user = User.objects.filter(email__iexact=email).first()
+            if patient_user:
+                if patient_user.role != 'patient':
+                    messages.error(request, f'Email {email} is already in use by a staff account.')
+                    return redirect('counter_appointments')
+                if not patient_user.hospital and hospital:
+                    patient_user.hospital = hospital
+                    patient_user.save(update_fields=['hospital'])
+            else:
+                name_parts = name.split()
+                first_name = name_parts[0] if name_parts else ''
+                last_name = " ".join(name_parts[1:]) if len(name_parts) > 1 else ''
+                patient_user = User.objects.create_user(
+                    username=email,
+                    email=email,
+                    password=password,
+                    first_name=first_name,
+                    last_name=last_name,
+                    phone=phone,
+                    role='patient',
+                    hospital=hospital,
+                    is_active=True
+                )
+
+            pat_code = f"P-{random.randint(10000, 99999)}"
+            while Patient.objects.filter(patient_id=pat_code).exists():
+                pat_code = f"P-{random.randint(10000, 99999)}"
+
+            patient_obj, _ = Patient.objects.get_or_create(
+                user=patient_user,
+                defaults={
+                    'hospital': hospital,
+                    'patient_id': pat_code,
+                    'gender': gender if gender in ['M', 'F', 'O'] else 'M'
+                }
+            )
+            PatientProfile.objects.get_or_create(
+                user=patient_user,
+                defaults={
+                    'patient_id': patient_obj.patient_id,
+                    'gender': 'Male' if gender == 'M' else ('Female' if gender == 'F' else 'Other')
+                }
+            )
+
+            appointment = PatientAppointment.objects.create(
+                hospital=hospital,
+                patient_user=patient_user,
+                doctor=doctor,
+                patient_name=name,
+                patient_phone=phone,
+                appointment_date=appointment_date,
+                appointment_time=appointment_time,
+                reason=reason,
+                amount=amount,
+                payment_status='paid',
+                status=appointment_status,
+                counter_note=f"Registered and {appointment_status} at counter by {request.user.get_full_name() or request.user.username}"
+            )
+
+            # Credit fee to Accountant role
+            today_str = timezone.now().strftime('%Y%m%d')
+            pay_no = f"PAY-{today_str}-{random.randint(1000, 9999)}"
+            bill_no = f"BIL-{today_str}-{random.randint(1000, 9999)}"
+
+            billing = Billing.objects.create(
+                hospital=hospital,
+                bill_no=bill_no,
+                patient=patient_obj,
+                patient_name=name,
+                patient_phone=phone,
+                service=f"Doctor Consultation - Dr. {doc_name}",
+                amount=amount,
+                discount=0,
+                total=amount,
+                status='paid',
+                bill_date=timezone.now().date(),
+                notes=f"Counter appointment #{appointment.id}",
+                created_by=request.user
+            )
+
+            PaymentRecord.objects.create(
+                hospital=hospital,
+                payment_no=pay_no,
+                billing=billing,
+                patient_name=name,
+                patient_phone=phone,
+                amount=amount,
+                method=method,
+                status='completed',
+                reference=f"APPT-{appointment.id}",
+                notes=f"Appointment fee for Dr. {doc_name}. Received at counter.",
+                payment_date=timezone.now().date(),
+                received_by=request.user
+            )
+
+            PatientPayment.objects.create(
+                hospital=hospital,
+                patient_user=patient_user,
+                appointment=appointment,
+                amount=amount,
+                purpose='appointment',
+                method=method,
+                transaction_id=pay_no,
+                note=f"Consultation with Dr. {doc_name}",
+                status='paid'
+            )
+
+            messages.success(
+                request,
+                f"Patient '{name}' added successfully! Appointment is {appointment_status.upper()} and ৳{amount} payment credited to Accountant."
+            )
+            return redirect('counter_appointments')
+
+        appointment_id = request.POST.get('appointment_id')
         appointment = get_object_or_404(
             PatientAppointment,
             id=appointment_id,
@@ -4140,12 +4309,18 @@ def counter_appointments(request):
         if action == 'approve' and appointment.status == 'pending':
             appointment.status = 'approved'
             appointment.save(update_fields=['status'])
+            messages.success(request, 'Appointment approved.')
 
         elif action == 'reject' and appointment.status == 'pending':
             appointment.status = 'rejected'
             appointment.save(update_fields=['status'])
+            messages.success(request, 'Appointment rejected.')
 
         return redirect('counter_appointments')
+
+    doctors = User.objects.filter(role='doctor', is_active=True).order_by('first_name', 'last_name')
+    if hospital and doctors.filter(hospital=hospital).exists():
+        doctors = doctors.filter(hospital=hospital)
 
     context = {
         'appointments': appointments,
@@ -4153,6 +4328,9 @@ def counter_appointments(request):
         'pending_appointments': appointments.filter(status='pending').count(),
         'approved_appointments': appointments.filter(status='approved').count(),
         'rejected_appointments': appointments.filter(status='rejected').count(),
+        'doctors': doctors,
+        'today': timezone.now().date(),
+        'method_choices': PaymentRecord.METHOD_CHOICES,
     }
 
     return render(
@@ -5149,6 +5327,7 @@ def bloodbank_profile(request):
 
 # accountant
 from django.db.models import Sum, Count, Q
+from decimal import Decimal
 def accountant_dashboard(request):
     if not request.user.is_authenticated:
         return redirect('login')
@@ -5215,6 +5394,8 @@ def accountant_dashboard(request):
         'recent_expenses': recent_expenses,
     }
     return render(request, 'accounts/accountant/dashboard.html', context)
+
+
 def accountant_billing(request):
     if not request.user.is_authenticated:
         return redirect('login')
@@ -5361,13 +5542,196 @@ def accountant_billing_pdf(request, bill_id):
     p.save()
     return response
 from .models import PaymentRecord, Billing
+
+def accountant_patient_history(request):
+    if not request.user.is_authenticated:
+        return JsonResponse({'error': 'Unauthorized'}, status=401)
+    if request.user.role not in ['accountant', 'hospital_admin', 'moh', 'counter']:
+        return JsonResponse({'error': 'Permission denied'}, status=403)
+
+    name = request.GET.get('name', '').strip()
+    phone = request.GET.get('phone', '').strip()
+    hospital = request.user.hospital
+
+    if not name and not phone:
+        return JsonResponse({'error': 'Patient name or phone is required'}, status=400)
+
+    records = []
+
+    # 1. PaymentRecord
+    pr_qs = PaymentRecord.objects.all().select_related('billing')
+    if hospital:
+        pr_qs = pr_qs.filter(hospital=hospital)
+    q_filter = Q()
+    if name:
+        q_filter |= Q(patient_name__iexact=name) | Q(patient_name__icontains=name)
+    if phone:
+        q_filter |= Q(patient_phone=phone)
+    for pr in pr_qs.filter(q_filter):
+        notes_lower = (pr.notes or '').lower()
+        service_lower = (pr.billing.service.lower() if pr.billing and pr.billing.service else '')
+        if 'medicine' in notes_lower or 'medicine' in service_lower or 'pharmacy' in notes_lower:
+            cat = 'medicine'
+            cat_label = 'Medicine'
+        elif 'test' in notes_lower or 'test' in service_lower or 'lab' in notes_lower or 'diagnostic' in service_lower:
+            cat = 'test'
+            cat_label = 'Diagnostic Test'
+        elif 'appt' in notes_lower or 'appointment' in notes_lower or 'consultation' in service_lower or 'doctor' in notes_lower:
+            cat = 'appointment'
+            cat_label = 'Appointment'
+        elif pr.billing:
+            cat = 'bill'
+            cat_label = 'Hospital Bill'
+        else:
+            cat = 'general'
+            cat_label = 'General Payment'
+
+        desc = pr.notes or (f"Bill #{pr.billing.bill_no}: {pr.billing.service}" if pr.billing else f"Payment #{pr.payment_no}")
+        records.append({
+            'source': 'payment_record',
+            'id': pr.id,
+            'category': cat,
+            'category_display': cat_label,
+            'date': pr.payment_date.strftime('%d %b %Y') if pr.payment_date else (pr.created_at.strftime('%d %b %Y') if pr.created_at else '—'),
+            'timestamp': pr.created_at.isoformat() if pr.created_at else (pr.payment_date.isoformat() if pr.payment_date else ''),
+            'description': desc,
+            'method': pr.get_method_display(),
+            'ref': pr.payment_no or pr.reference or '—',
+            'amount': float(pr.amount),
+            'status': pr.get_status_display()
+        })
+
+    # 2. MedicineOrder
+    mo_qs = MedicineOrder.objects.all().select_related('medicine', 'payment', 'patient_user')
+    if hospital:
+        mo_qs = mo_qs.filter(hospital=hospital)
+    mo_filter = Q()
+    if name:
+        mo_filter |= Q(patient_user__first_name__icontains=name) | Q(patient_user__last_name__icontains=name) | Q(patient_user__username__icontains=name)
+    if phone:
+        mo_filter |= Q(patient_user__phone=phone)
+    for mo in mo_qs.filter(mo_filter):
+        med_name = mo.medicine.name if mo.medicine else "Medicine"
+        ref_id = mo.payment.transaction_id if mo.payment and mo.payment.transaction_id else f"ORD-{mo.id}"
+        if any(r['ref'] == ref_id and r['category'] == 'medicine' for r in records):
+            continue
+        order_date = mo.payment.created_at.strftime('%d %b %Y, %I:%M %p') if mo.payment else '—'
+        order_ts = mo.payment.created_at.isoformat() if mo.payment else ''
+        records.append({
+            'source': 'medicine_order',
+            'id': mo.id,
+            'category': 'medicine',
+            'category_display': 'Medicine',
+            'date': order_date,
+            'timestamp': order_ts,
+            'description': f"{med_name} (Qty: {mo.quantity} @ ৳{mo.unit_price})",
+            'method': mo.payment.get_method_display() if mo.payment else 'Cash',
+            'ref': ref_id,
+            'amount': float(mo.total),
+            'status': mo.get_status_display()
+        })
+
+    # 3. BloodTestRequest
+    btr_qs = BloodTestRequest.objects.all().select_related('test', 'patient')
+    if hospital:
+        btr_qs = btr_qs.filter(hospital=hospital)
+    btr_filter = Q()
+    if name:
+        btr_filter |= Q(patient_name__iexact=name) | Q(patient_name__icontains=name)
+    if phone:
+        btr_filter |= Q(patient_phone=phone)
+    for btr in btr_qs.filter(btr_filter):
+        ref_id = btr.request_id
+        if any(r['ref'] == ref_id for r in records):
+            continue
+        records.append({
+            'source': 'blood_test',
+            'id': btr.id,
+            'category': 'test',
+            'category_display': 'Diagnostic Test',
+            'date': btr.created_at.strftime('%d %b %Y, %I:%M %p'),
+            'timestamp': btr.created_at.isoformat(),
+            'description': f"Lab Test: {btr.test_name} ({btr.request_id})",
+            'method': btr.get_payment_method_display(),
+            'ref': btr.request_id,
+            'amount': float(btr.amount),
+            'status': btr.get_payment_status_display()
+        })
+
+    # 4. PatientPayment
+    pp_qs = PatientPayment.objects.all().select_related('appointment', 'patient_user')
+    if hospital:
+        pp_qs = pp_qs.filter(hospital=hospital)
+    pp_filter = Q()
+    if name:
+        pp_filter |= Q(patient_user__first_name__icontains=name) | Q(patient_user__last_name__icontains=name) | Q(patient_user__username__icontains=name)
+    if phone:
+        pp_filter |= Q(patient_user__phone=phone)
+    for pp in pp_qs.filter(pp_filter):
+        if pp.purpose == 'medicine' and hasattr(pp, 'medicine_orders') and pp.medicine_orders.exists():
+            continue
+        ref_id = pp.transaction_id or f"PAY-{pp.id}"
+        if any(r['ref'] == ref_id for r in records):
+            continue
+        cat = 'appointment' if pp.purpose == 'appointment' else ('test' if pp.purpose == 'lab' else 'general')
+        desc = pp.note or f"{pp.get_purpose_display()} payment"
+        if pp.appointment:
+            doc_name = pp.appointment.doctor.get_full_name() or pp.appointment.doctor.username if pp.appointment.doctor else 'Doctor'
+            desc = f"Appointment with Dr. {doc_name} ({pp.appointment.appointment_date})"
+        records.append({
+            'source': 'patient_payment',
+            'id': pp.id,
+            'category': cat,
+            'category_display': pp.get_purpose_display(),
+            'date': pp.created_at.strftime('%d %b %Y, %I:%M %p'),
+            'timestamp': pp.created_at.isoformat(),
+            'description': desc,
+            'method': pp.get_method_display(),
+            'ref': ref_id,
+            'amount': float(pp.amount),
+            'status': pp.get_status_display()
+        })
+
+    records.sort(key=lambda x: x.get('timestamp') or '', reverse=True)
+
+    totals = {
+        'all': sum(r['amount'] for r in records),
+        'medicine': sum(r['amount'] for r in records if r['category'] == 'medicine'),
+        'test': sum(r['amount'] for r in records if r['category'] == 'test'),
+        'appointment': sum(r['amount'] for r in records if r['category'] == 'appointment'),
+        'other': sum(r['amount'] for r in records if r['category'] not in ['medicine', 'test', 'appointment'])
+    }
+    counts = {
+        'all': len(records),
+        'medicine': len([r for r in records if r['category'] == 'medicine']),
+        'test': len([r for r in records if r['category'] == 'test']),
+        'appointment': len([r for r in records if r['category'] == 'appointment']),
+        'other': len([r for r in records if r['category'] not in ['medicine', 'test', 'appointment']])
+    }
+
+    return JsonResponse({
+        'success': True,
+        'patient_name': name,
+        'patient_phone': phone,
+        'totals': totals,
+        'counts': counts,
+        'records': records
+    })
+
+
 def accountant_payments(request):
     if not request.user.is_authenticated:
         return redirect('login')
     if request.user.role != 'accountant':
         return redirect('dashboard')
 
-    hospital = request.user.hospital
+    hospital = request.user.hospital or Hospital.objects.first()
+    if not request.user.hospital and hospital:
+        request.user.hospital = hospital
+        try:
+            request.user.save(update_fields=['hospital'])
+        except Exception:
+            pass
     search = request.GET.get('q', '').strip()
     bills = Billing.objects.filter(hospital=hospital, status__in=['pending', 'partial']) if hospital else Billing.objects.none()
 
@@ -5666,6 +6030,8 @@ def accountant_invoice_pdf(request, invoice_id):
     p.save()
     return response
 
+from decimal import InvalidOperation
+
 def accountant_expenses(request):
     if not request.user.is_authenticated:
         return redirect('login')
@@ -5738,6 +6104,7 @@ def accountant_expenses(request):
         'today': timezone.localdate(),
     }
     return render(request, 'accounts/accountant/expenses.html', context)
+
 from decimal import Decimal, InvalidOperation
 from .models import Expense
 from patients.models import Patient

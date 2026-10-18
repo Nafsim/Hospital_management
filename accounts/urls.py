@@ -108,6 +108,7 @@ path('accountant/dashboard/', views.accountant_dashboard, name='accountant_dashb
 path('accountant/billing/', views.accountant_billing, name='accountant_billing'),
 path('accountant/billing/<int:bill_id>/pdf/', views.accountant_billing_pdf, name='accountant_billing_pdf'),
 path('accountant/payments/', views.accountant_payments, name='accountant_payments'),
+    path('accountant/patient-history/', views.accountant_patient_history, name='accountant_patient_history'),
 path('accountant/medicine-sales/', views.accountant_medicine_sales, name='accountant_medicine_sales'),
 path('accountant/payments/<int:payment_id>/pdf/', views.accountant_payment_pdf, name='accountant_payment_pdf'),
 path('accountant/invoices/', views.accountant_invoices, name='accountant_invoices'),
