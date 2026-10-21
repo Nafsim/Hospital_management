@@ -6851,3 +6851,9 @@ def pharmacy_profile(request):
 
     context = {'hospital': hospital, 'profile': profile, 'user': request.user}
     return render(request, 'accounts/pharmacy/profile.html', context)
+##
+def buyer_display(self):
+    if self.is_customer_sale or not self.patient_user_id:
+        return self.customer_name or 'Walk-in Customer'
+    return self.patient_user.get_full_name() or self.patient_user.username
+

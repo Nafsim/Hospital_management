@@ -1771,3 +1771,21 @@ class CustomerMedicineSale(models.Model):
 
     def __str__(self):
         return f'{self.medicine.name} - {self.customer_name} (?{self.total})'
+##
+patient_user = models.ForeignKey(
+    settings.AUTH_USER_MODEL,
+    on_delete=models.CASCADE,
+    related_name='medicine_orders',
+    null=True,
+    blank=True,          # now optional
+)
+customer_name = models.CharField(max_length=150, blank=True)
+customer_phone = models.CharField(max_length=30, blank=True)
+is_customer_sale = models.BooleanField(default=False)
+# optional link if you have PaymentRecord
+payment_record = models.ForeignKey(
+    'PaymentRecord',
+    on_delete=models.SET_NULL,
+    null=True, blank=True,
+    related_name='medicine_orders',
+)

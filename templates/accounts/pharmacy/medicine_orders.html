@@ -1,6 +1,223 @@
 {% extends "accounts/pharmacy/base.html" %}
 {% block title %}Medicine Requests - NHIMS{% endblock %}
 {% block content %}
-<style>.orders-card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden}.orders-head{padding:18px;border-bottom:1px solid #e2e8f0}.orders-head h1{margin:0 0 4px;font-size:1.5rem;color:#1e293b}.orders-head p{margin:0;color:#64748b;font-size:.85rem}.orders-table{width:100%;border-collapse:collapse}.orders-table th,.orders-table td{padding:12px 14px;text-align:left;border-bottom:1px solid #f1f5f9;font-size:.82rem;white-space:nowrap}.orders-table th{background:#f8fafc;color:#64748b;text-transform:uppercase;font-size:.7rem}.order-status{padding:4px 8px;border-radius:999px;font-size:.7rem;font-weight:600}.pending{background:#fef3c7;color:#a16207}.approved{background:#dbeafe;color:#1d4ed8}.sold{background:#dcfce7;color:#15803d}.rejected{background:#fee2e2;color:#b91c1c}.action{border:0;border-radius:7px;padding:7px 9px;font-size:.72rem;font-weight:600;cursor:pointer;margin-right:4px}.approve{background:#dbeafe;color:#1d4ed8}.reject{background:#fee2e2;color:#b91c1c}.sell{background:#dcfce7;color:#15803d}</style>
-<div class="orders-card"><div class="orders-head"><h1>Medicine Requests</h1><p>Approve patient requests and mark medicines as sold to update real stock.</p></div>{% for message in messages %}<div style="padding:11px 18px;background:#dcfce7;color:#166534">{{ message }}</div>{% endfor %}<div style="overflow:auto"><table class="orders-table"><thead><tr><th>Patient</th><th>Medicine</th><th>Available Stock</th><th>Qty</th><th>Total</th><th>Payment</th><th>Status</th><th>Action</th></tr></thead><tbody>{% for order in orders %}<tr><td>{{ order.patient_user.get_full_name|default:order.patient_user.username }}</td><td>{{ order.medicine.name }}</td><td>{{ order.medicine.stock }}</td><td>{{ order.quantity }}</td><td>৳{{ order.total }}</td><td>{{ order.payment.get_status_display }}</td><td><span class="order-status {{ order.status }}">{{ order.get_status_display }}</span></td><td>{% if order.status == 'pending' %}<form method="post" style="display:inline">{% csrf_token %}<input type="hidden" name="order_id" value="{{ order.id }}"><button class="action approve" name="action" value="approve">Approve</button><button class="action reject" name="action" value="reject">Reject</button></form>{% elif order.status == 'approved' %}<form method="post">{% csrf_token %}<input type="hidden" name="order_id" value="{{ order.id }}"><button class="action sell" name="action" value="sell">Mark Sold</button></form>{% else %}—{% endif %}</td></tr>{% empty %}<tr><td colspan="8" style="padding:20px;text-align:center;color:#64748b">No medicine requests.</td></tr>{% endfor %}</tbody></table></div></div>
+<style>
+.orders-card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden}
+.orders-head{padding:18px;border-bottom:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.orders-head h1{margin:0 0 4px;font-size:1.5rem;color:#1e293b}
+.orders-head p{margin:0;color:#64748b;font-size:.85rem}
+.orders-table{width:100%;border-collapse:collapse}
+.orders-table th,.orders-table td{padding:12px 14px;text-align:left;border-bottom:1px solid #f1f5f9;font-size:.82rem;white-space:nowrap}
+.orders-table th{background:#f8fafc;color:#64748b;text-transform:uppercase;font-size:.7rem}
+.order-status{padding:4px 8px;border-radius:999px;font-size:.7rem;font-weight:600}
+.pending{background:#fef3c7;color:#a16207}
+.approved{background:#dbeafe;color:#1d4ed8}
+.sold{background:#dcfce7;color:#15803d}
+.rejected{background:#fee2e2;color:#b91c1c}
+.action{border:0;border-radius:7px;padding:7px 9px;font-size:.72rem;font-weight:600;cursor:pointer;margin-right:4px}
+.approve{background:#dbeafe;color:#1d4ed8}
+.reject{background:#fee2e2;color:#b91c1c}
+.sell{background:#dcfce7;color:#15803d}
+.customer-btn{display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#0ea5e9,#2563eb);color:#fff;border:0;padding:10px 16px;border-radius:9px;font-size:13.5px;font-weight:600;cursor:pointer}
+.customer-btn:hover{transform:translateY(-1px);box-shadow:0 5px 14px rgba(37,99,235,.22)}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:9999;align-items:center;justify-content:center;padding:16px}
+.modal-overlay.show{display:flex}
+.modal{background:#fff;width:100%;max-width:480px;border-radius:14px;box-shadow:0 20px 50px rgba(0,0,0,.2);overflow:hidden}
+.modal-header{padding:14px 18px;border-bottom:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center}
+.modal-header h3{margin:0;font-size:1rem;font-weight:600}
+.modal-close{width:30px;height:30px;border:0;background:#f1f5f9;border-radius:7px;color:#64748b;cursor:pointer;font-size:16px}
+.modal-body{padding:18px}
+.form-group{margin-bottom:12px}
+.form-group label{display:block;font-size:12.5px;font-weight:600;color:#475569;margin-bottom:4px}
+.form-group input,.form-group select,.form-group textarea{width:100%;height:38px;border:1px solid #cbd5e1;border-radius:7px;padding:0 11px;font-size:13px;outline:none;box-sizing:border-box}
+.form-group textarea{height:70px;padding:9px 11px;resize:vertical}
+.form-group input:focus,.form-group select:focus{border-color:#60a5fa}
+.modal-footer{padding:12px 18px;border-top:1px solid #e2e8f0;display:flex;justify-content:flex-end;gap:8px}
+.btn-cancel{padding:8px 14px;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;border:1px solid #cbd5e1;background:#fff;color:#475569}
+.btn-save{padding:8px 14px;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;border:1px solid #2563eb;background:#2563eb;color:#fff}
+.stock-hint{font-size:12px;color:#64748b;margin-top:4px}
+.total-preview{font-size:15px;font-weight:700;color:#15803d;margin-top:8px}
+.badge-customer{display:inline-block;margin-left:4px;padding:2px 6px;background:#e0f2fe;color:#0369a1;border-radius:999px;font-size:.65rem}
+</style>
+
+<div class="orders-card">
+    <div class="orders-head">
+        <div>
+            <h1>Medicine Requests</h1>
+            <p>Approve patient requests, mark sold, or sell to walk-in customers from real stock.</p>
+        </div>
+        <button type="button" class="customer-btn" onclick="openCustomerModal()">
+            Customer
+        </button>
+    </div>
+
+    {% for message in messages %}
+    <div style="padding:11px 18px;background:#dcfce7;color:#166534">{{ message }}</div>
+    {% endfor %}
+
+    <div style="overflow:auto">
+        <table class="orders-table">
+            <thead>
+                <tr>
+                    <th>Buyer</th>
+                    <th>Medicine</th>
+                    <th>Available Stock</th>
+                    <th>Qty</th>
+                    <th>Total</th>
+                    <th>Payment</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for order in orders %}
+                <tr>
+                    <td>
+                        {% if order.is_customer_sale or not order.patient_user_id %}
+                            <strong>{{ order.customer_name|default:"Walk-in" }}</strong>
+                            {% if order.customer_phone %}<br><span style="color:#64748b;font-size:.75rem">{{ order.customer_phone }}</span>{% endif %}
+                            <span class="badge-customer">Customer</span>
+                        {% else %}
+                            {{ order.patient_user.get_full_name|default:order.patient_user.username }}
+                        {% endif %}
+                    </td>
+                    <td>{{ order.medicine.name }}</td>
+                    <td>{{ order.medicine.stock }}</td>
+                    <td>{{ order.quantity }}</td>
+                    <td>৳{{ order.total }}</td>
+                    <td>
+                        {% if order.payment %}
+                            {{ order.payment.get_status_display }}
+                        {% elif order.is_customer_sale %}
+                            Cash / Paid
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+                    <td><span class="order-status {{ order.status }}">{{ order.get_status_display }}</span></td>
+                    <td>
+                        {% if order.status == 'pending' %}
+                        <form method="post" style="display:inline">{% csrf_token %}
+                            <input type="hidden" name="order_id" value="{{ order.id }}">
+                            <button class="action approve" name="action" value="approve">Approve</button>
+                            <button class="action reject" name="action" value="reject">Reject</button>
+                        </form>
+                        {% elif order.status == 'approved' %}
+                        <form method="post">{% csrf_token %}
+                            <input type="hidden" name="order_id" value="{{ order.id }}">
+                            <button class="action sell" name="action" value="sell">Mark Sold</button>
+                        </form>
+                        {% else %}—{% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="8" style="padding:20px;text-align:center;color:#64748b">No medicine requests.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Customer Sale Modal -->
+<div class="modal-overlay" id="customerModal">
+    <div class="modal" style="max-width:420px; max-height:85vh; display:flex; flex-direction:column;">
+        <form method="post" id="customerSaleForm" style="display:flex; flex-direction:column; max-height:85vh;">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="customer_sale">
+
+            <div class="modal-header" style="flex-shrink:0;">
+                <h3>Customer Sale</h3>
+                <button type="button" class="modal-close" onclick="closeCustomerModal()">✕</button>
+            </div>
+
+            <div class="modal-body" style="overflow-y:auto; flex:1; padding:16px 18px;">
+                <div class="form-group">
+                    <label>Customer Name *</label>
+                    <input type="text" name="customer_name" required placeholder="Full name">
+                </div>
+                <div class="form-group">
+                    <label>Phone</label>
+                    <input type="text" name="customer_phone" placeholder="01XXXXXXXXX">
+                </div>
+                <div class="form-group">
+                    <label>Medicine *</label>
+                    <select name="medicine_id" id="customerMedicine" required onchange="updateCustomerPreview()">
+                        <option value="">Select medicine</option>
+                        {% for m in medicines %}
+                        <option value="{{ m.id }}"
+                                data-stock="{{ m.stock }}"
+                                data-price="{{ m.price }}">
+                            {{ m.name }}{% if m.strength %} · {{ m.strength }}{% endif %}
+                            (Stock: {{ m.stock }}, ৳{{ m.price }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <div class="stock-hint" id="stockHint"></div>
+                </div>
+                <div class="form-group">
+                    <label>Quantity *</label>
+                    <input type="number" name="quantity" id="customerQty" value="1" min="1" required oninput="updateCustomerPreview()">
+                </div>
+                <div class="form-group">
+                    <label>Payment Method</label>
+                    <select name="payment_method">
+                        <option value="cash">Cash</option>
+                        <option value="card">Card</option>
+                        <option value="bkash">bKash</option>
+                        <option value="nagad">Nagad</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Notes</label>
+                    <textarea name="notes" placeholder="Optional" rows="2"></textarea>
+                </div>
+                <div class="total-preview" id="totalPreview">Total: ৳0.00</div>
+            </div>
+
+            <div class="modal-footer" style="flex-shrink:0; border-top:1px solid #e2e8f0;">
+                <button type="button" class="btn-cancel" onclick="closeCustomerModal()">Cancel</button>
+                <button type="submit" class="btn-save">Sell & Update Stock</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openCustomerModal() {
+    document.getElementById('customerModal').classList.add('show');
+    updateCustomerPreview();
+}
+function closeCustomerModal() {
+    document.getElementById('customerModal').classList.remove('show');
+}
+window.addEventListener('click', function(e) {
+    if (e.target.classList.contains('modal-overlay')) e.target.classList.remove('show');
+});
+
+function updateCustomerPreview() {
+    const sel = document.getElementById('customerMedicine');
+    const opt = sel.options[sel.selectedIndex];
+    const qty = parseInt(document.getElementById('customerQty').value) || 0;
+    const stock = parseInt(opt.dataset.stock || 0);
+    const price = parseFloat(opt.dataset.price || 0);
+    const hint = document.getElementById('stockHint');
+    const preview = document.getElementById('totalPreview');
+
+    if (!opt.value) {
+        hint.textContent = '';
+        preview.textContent = 'Total: ৳0.00';
+        return;
+    }
+    hint.textContent = 'Available stock: ' + stock;
+    if (qty > stock) {
+        hint.style.color = '#b91c1c';
+        hint.textContent += '  (Quantity exceeds stock!)';
+    } else {
+        hint.style.color = '#64748b';
+    }
+    const total = (price * qty).toFixed(2);
+    preview.textContent = 'Total: ৳' + total;
+}
+</script>
 {% endblock %}

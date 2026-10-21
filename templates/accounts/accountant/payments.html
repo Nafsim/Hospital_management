@@ -145,18 +145,14 @@ td{padding:.85rem 1rem;font-size:.85rem;color:#334155;border-bottom:1px solid #f
                 {% for p in payments %}
                 <tr>
                     <td style="font-weight:600">{{ p.payment_no }}</td>
-                    <td>
-                        <button type="button" class="patient-history-btn" onclick="openPatientHistoryModal('{{ p.patient_name|escapejs }}', '{{ p.patient_phone|default:''|escapejs }}')" title="Click to view all payment history for {{ p.patient_name }}">
-                            <span class="patient-name-text">{{ p.patient_name }}</span>
-                            <span class="history-chip">
-                                <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                History
-                            </span>
-                        </button>
-                        {% if p.patient_phone %}
-                        <div class="patient-phone-sub">{{ p.patient_phone }}</div>
-                        {% endif %}
-                    </td>
+<td>
+    <button type="button" class="patient-history-btn" onclick="openPatientHistoryModal('{{ p.patient_name|escapejs }}', '{{ p.patient_phone|default:''|escapejs }}')" title="Click to view payment history">
+        <span class="patient-name-text">{{ p.patient_name }}</span>
+    </button>
+    {% if p.patient_phone %}
+    <div class="patient-phone-sub">{{ p.patient_phone }}</div>
+    {% endif %}
+</td>
                     <td style="font-weight:600;color:#15803d">৳{{ p.amount }}</td>
                     <td>{{ p.get_method_display }}</td>
                     <td><span class="badge badge-{{ p.status }}">{{ p.get_status_display }}</span></td>
@@ -164,7 +160,10 @@ td{padding:.85rem 1rem;font-size:.85rem;color:#334155;border-bottom:1px solid #f
                     <td>
                         <div class="action-buttons">
                             <button type="button" class="action-btn view" title="View" onclick="openViewModal('{{ p.payment_no|escapejs }}','{{ p.patient_name|escapejs }}','{{ p.patient_phone|default:''|escapejs }}','{{ p.amount }}','{{ p.get_method_display }}','{{ p.get_status_display }}','{{ p.reference|default:''|escapejs }}','{{ p.payment_date|date:'d M Y' }}','{{ p.notes|default:''|escapejs }}')">
-                                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
+<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/>
+    <circle cx="12" cy="12" r="3"/>
+</svg>
                             </button>
                             <button type="button" class="action-btn edit" title="Edit" onclick="openEditModal('{{ p.id }}','{{ p.patient_name|escapejs }}','{{ p.patient_phone|default:''|escapejs }}','{{ p.amount }}','{{ p.method }}','{{ p.status }}','{{ p.reference|default:''|escapejs }}','{{ p.payment_date|date:'Y-m-d' }}','{{ p.notes|default:''|escapejs }}')">
                                 <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L8 18l-4 1 1-4z"/></svg>
