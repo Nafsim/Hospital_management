@@ -5541,7 +5541,7 @@ def accountant_billing_pdf(request, bill_id):
     p.showPage()
     p.save()
     return response
-from .models import PaymentRecord, Billing
+
 
 def accountant_patient_history(request):
     if not request.user.is_authenticated:

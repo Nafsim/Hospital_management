@@ -100,7 +100,6 @@ td{padding:.85rem 1rem;font-size:.85rem;color:#334155;border-bottom:1px solid #f
 .spinner{width:26px;height:26px;border:3px solid #e2e8f0;border-top-color:#2563eb;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto}
 @keyframes spin{to{transform:rotate(360deg)}}
 @media(max-width:768px){.history-stats-grid{grid-template-columns:repeat(2,1fr)}}
-
 </style>
 {% endblock %}
 {% block content %}
@@ -165,7 +164,7 @@ td{padding:.85rem 1rem;font-size:.85rem;color:#334155;border-bottom:1px solid #f
                     <td>
                         <div class="action-buttons">
                             <button type="button" class="action-btn view" title="View" onclick="openViewModal('{{ p.payment_no|escapejs }}','{{ p.patient_name|escapejs }}','{{ p.patient_phone|default:''|escapejs }}','{{ p.amount }}','{{ p.get_method_display }}','{{ p.get_status_display }}','{{ p.reference|default:''|escapejs }}','{{ p.payment_date|date:'d M Y' }}','{{ p.notes|default:''|escapejs }}')">
-                                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
+                                <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
                             </button>
                             <button type="button" class="action-btn edit" title="Edit" onclick="openEditModal('{{ p.id }}','{{ p.patient_name|escapejs }}','{{ p.patient_phone|default:''|escapejs }}','{{ p.amount }}','{{ p.method }}','{{ p.status }}','{{ p.reference|default:''|escapejs }}','{{ p.payment_date|date:'Y-m-d' }}','{{ p.notes|default:''|escapejs }}')">
                                 <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L8 18l-4 1 1-4z"/></svg>
@@ -180,7 +179,7 @@ td{padding:.85rem 1rem;font-size:.85rem;color:#334155;border-bottom:1px solid #f
                     </td>
                 </tr>
                 {% empty %}
-                <tr><td colspan="7"><div class="empty-state"><h3>No Payments</h3><p>Click “Record Payment” to add one.</p></div></td></tr>
+                <tr><td colspan="7"><div class="empty-state"><h3>No Payments</h3><p>Click "Record Payment" to add one.</p></div></td></tr>
                 {% endfor %}
             </tbody>
         </table>
@@ -286,50 +285,6 @@ td{padding:.85rem 1rem;font-size:.85rem;color:#334155;border-bottom:1px solid #f
     </div>
 </div>
 
-<script>
-function fillBill(){
-    const s=document.getElementById('billSelect');
-    const o=s.options[s.selectedIndex];
-    if(o.value){
-        document.getElementById('cPatientName').value=o.dataset.name||'';
-        document.getElementById('cPatientPhone').value=o.dataset.phone||'';
-        document.getElementById('cAmount').value=o.dataset.amount||0;
-    }
-}
-function openCreateModal(){document.getElementById('createModal').classList.add('show')}
-function openEditModal(id,name,phone,amount,method,status,ref,date,notes){
-    document.getElementById('editPayId').value=id;
-    document.getElementById('editPatientName').value=name||'';
-    document.getElementById('editPatientPhone').value=phone||'';
-    document.getElementById('editAmount').value=amount||0;
-    document.getElementById('editMethod').value=method||'cash';
-    document.getElementById('editStatus').value=status||'completed';
-    document.getElementById('editRef').value=ref||'';
-    document.getElementById('editDate').value=date||'';
-    document.getElementById('editNotes').value=notes||'';
-    document.getElementById('editModal').classList.add('show');
-}
-function openViewModal(no,patient,phone,amount,method,status,ref,date,notes){
-    document.getElementById('vNo').textContent=no||'—';
-    document.getElementById('vPatient').textContent=patient||'—';
-    document.getElementById('vPhone').textContent=phone||'—';
-    document.getElementById('vAmount').textContent='৳'+(amount||'0');
-    document.getElementById('vMethod').textContent=method||'—';
-    document.getElementById('vStatus').textContent=status||'—';
-    document.getElementById('vRef').textContent=ref||'—';
-    document.getElementById('vDate').textContent=date||'—';
-    document.getElementById('vNotes').textContent=notes||'—';
-    document.getElementById('viewModal').classList.add('show');
-}
-function openDeleteModal(id,no){
-    document.getElementById('deletePayId').value=id;
-    document.getElementById('deletePayNo').textContent=no;
-    document.getElementById('deleteModal').classList.add('show');
-}
-function closeModal(id){document.getElementById(id).classList.remove('show')}
-window.addEventListener('click',function(e){if(e.target.classList.contains('modal-overlay'))e.target.classList.remove('show')});
-</script>
-
 <!-- Patient All Payment History Modal -->
 <div class="modal-overlay" id="patientHistoryModal">
     <div class="modal modal-lg">
@@ -427,17 +382,65 @@ window.addEventListener('click',function(e){if(e.target.classList.contains('moda
 </div>
 
 <script>
+function fillBill(){
+    const s=document.getElementById('billSelect');
+    const o=s.options[s.selectedIndex];
+    if(o.value){
+        document.getElementById('cPatientName').value=o.dataset.name||'';
+        document.getElementById('cPatientPhone').value=o.dataset.phone||'';
+        document.getElementById('cAmount').value=o.dataset.amount||0;
+    }
+}
+function openCreateModal(){document.getElementById('createModal').classList.add('show')}
+function openEditModal(id,name,phone,amount,method,status,ref,date,notes){
+    document.getElementById('editPayId').value=id;
+    document.getElementById('editPatientName').value=name||'';
+    document.getElementById('editPatientPhone').value=phone||'';
+    document.getElementById('editAmount').value=amount||0;
+    document.getElementById('editMethod').value=method||'cash';
+    document.getElementById('editStatus').value=status||'completed';
+    document.getElementById('editRef').value=ref||'';
+    document.getElementById('editDate').value=date||'';
+    document.getElementById('editNotes').value=notes||'';
+    document.getElementById('editModal').classList.add('show');
+}
+function openViewModal(no,patient,phone,amount,method,status,ref,date,notes){
+    document.getElementById('vNo').textContent=no||'—';
+    document.getElementById('vPatient').textContent=patient||'—';
+    document.getElementById('vPhone').textContent=phone||'—';
+    document.getElementById('vAmount').textContent='৳'+(amount||'0');
+    document.getElementById('vMethod').textContent=method||'—';
+    document.getElementById('vStatus').textContent=status||'—';
+    document.getElementById('vRef').textContent=ref||'—';
+    document.getElementById('vDate').textContent=date||'—';
+    document.getElementById('vNotes').textContent=notes||'—';
+    document.getElementById('viewModal').classList.add('show');
+}
+function openDeleteModal(id,no){
+    document.getElementById('deletePayId').value=id;
+    document.getElementById('deletePayNo').textContent=no;
+    document.getElementById('deleteModal').classList.add('show');
+}
+function closeModal(id){document.getElementById(id).classList.remove('show')}
+window.addEventListener('click',function(e){if(e.target.classList.contains('modal-overlay'))e.target.classList.remove('show')});
+
+// Patient history functions
 let phCachedRecords = [];
 let phCurrentCategory = 'all';
 
 function openPatientHistoryModal(patientName, patientPhone) {
+    const modal = document.getElementById('patientHistoryModal');
+    if (!modal) {
+        alert('Modal element not found');
+        return;
+    }
+    modal.classList.add('show');
     document.getElementById('phModalTitle').textContent = patientName + " - Payment History";
     document.getElementById('phModalSubtitle').textContent = "Phone: " + (patientPhone || 'N/A') + " | Complete payment records across tests, medicine & appointments";
     document.getElementById('phTableBody').innerHTML = '';
     document.getElementById('phEmptyState').style.display = 'none';
     document.getElementById('phTableWrap').style.display = 'none';
     document.getElementById('phLoading').style.display = 'block';
-    document.getElementById('patientHistoryModal').classList.add('show');
 
     // Reset tabs
     document.querySelectorAll('.htab-btn').forEach(b => b.classList.toggle('active', b.dataset.cat === 'all'));
@@ -533,5 +536,6 @@ function renderHistoryTable() {
         document.getElementById('phSummaryAmount').textContent = '৳' + subtotal.toFixed(2);
     }
 }
+</script>
 
 {% endblock %}

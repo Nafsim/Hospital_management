@@ -108,7 +108,7 @@ path('accountant/dashboard/', views.accountant_dashboard, name='accountant_dashb
 path('accountant/billing/', views.accountant_billing, name='accountant_billing'),
 path('accountant/billing/<int:bill_id>/pdf/', views.accountant_billing_pdf, name='accountant_billing_pdf'),
 path('accountant/payments/', views.accountant_payments, name='accountant_payments'),
-    path('accountant/patient-history/', views.accountant_patient_history, name='accountant_patient_history'),
+path('accountant/patient-history/', views.accountant_patient_history, name='accountant_patient_history'),
 path('accountant/medicine-sales/', views.accountant_medicine_sales, name='accountant_medicine_sales'),
 path('accountant/payments/<int:payment_id>/pdf/', views.accountant_payment_pdf, name='accountant_payment_pdf'),
 path('accountant/invoices/', views.accountant_invoices, name='accountant_invoices'),
@@ -121,6 +121,7 @@ path('accountant/reports/', views.accountant_reports, name='accountant_reports')
 path('accountant/reports/download/<int:year>/<int:month>/', views.accountant_report_download, name='accountant_report_download'),
 path('accountant/notices/', views.accountant_notices, name='accountant_notices'),
 path('accountant/profile/', views.accountant_profile, name='accountant_profile'),
+
 # pharmacy
 path('pharmacy/dashboard/', views.pharmacy_dashboard, name='pharmacy_dashboard'),
 path('pharmacy/stock/', views.pharmacy_stock, name='pharmacy_stock'),
