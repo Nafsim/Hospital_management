@@ -23,9 +23,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-voo!71o$yz)j)yh5^xp=6l+_@%+mgipty!hk+ew197r9@3@5i0'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['nafsim.pythonanywhere.com']
+
+CSRF_TRUSTED_ORIGINS = [
+    'https://nafsim.pythonanywhere.com',
+]
 
 
 # Application definition
