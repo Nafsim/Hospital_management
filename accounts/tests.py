@@ -1,7 +1,7 @@
 from django.test import TestCase
 
 from .forms import LoginForm
-from .models import User, Expense, Medicine, MedicineOrder, PatientPayment, PaymentRecord
+from .models import ChatMessage, User, Expense, Medicine, MedicineOrder, PatientPayment, PaymentRecord
 from hospitals.models import Hospital
 from patients.models import Patient
 from staff.models import Staff
@@ -157,8 +157,8 @@ class RegistrationWorkflowTests(TestCase):
                 'admin_last_name': 'Admin',
                 'admin_email': 'facility-admin@example.com',
                 'admin_phone': '01700000002',
-                'admin_password': 'FacilityStrongPass987!',
-                'confirm_password': 'FacilityStrongPass987!',
+                'admin_password': 'x',
+                'confirm_password': 'x',
             },
         )
 
@@ -167,6 +167,138 @@ class RegistrationWorkflowTests(TestCase):
         self.assertEqual(user.role, 'hospital_admin')
         self.assertEqual(user.hospital.name, 'New Community Hospital')
         self.assertFalse(user.hospital.is_active)
+        self.assertTrue(user.check_password('x'))
+
+
+class ChatAccessTests(TestCase):
+    def test_patient_can_chat_with_doctor_only_after_counter_approves_appointment(self):
+        hospital = Hospital.objects.create(
+            name='Chat Hospital',
+            code='TEST-CHAT',
+            address='Test address',
+        )
+        doctor = User.objects.create_user(
+            username='chat-doctor@example.com',
+            email='chat-doctor@example.com',
+            password='ValidPass123!',
+            first_name='Chat',
+            last_name='Doctor',
+            role='doctor',
+            hospital=hospital,
+        )
+        patient = User.objects.create_user(
+            username='chat-patient@example.com',
+            email='chat-patient@example.com',
+            password='ValidPass123!',
+            role='patient',
+        )
+        counter = User.objects.create_user(
+            username='chat-counter@example.com',
+            email='chat-counter@example.com',
+            password='ValidPass123!',
+            role='counter',
+            hospital=hospital,
+        )
+        appointment = PatientAppointment.objects.create(
+            hospital=hospital,
+            patient_user=patient,
+            doctor=doctor,
+            patient_name='Chat Patient',
+            appointment_date='2026-11-27',
+            appointment_time='10:00',
+            status='pending',
+        )
+
+        self.client.force_login(patient)
+        response = self.client.get('/accounts/messages/')
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn(doctor.id, response.context['teammates'].values_list('id', flat=True))
+        response = self.client.post(
+            '/accounts/messages/send/',
+            {'recipient_id': doctor.id, 'body': 'Hello'},
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertFalse(ChatMessage.objects.exists())
+
+        self.client.force_login(doctor)
+        response = self.client.get('/accounts/messages/')
+        self.assertNotIn(patient.id, response.context['teammates'].values_list('id', flat=True))
+
+        self.client.force_login(counter)
+        response = self.client.post(
+            '/accounts/counter/appointments/',
+            {'action': 'approve', 'appointment_id': appointment.id},
+        )
+        self.assertRedirects(response, '/accounts/counter/appointments/')
+
+        self.client.force_login(doctor)
+        response = self.client.get('/accounts/messages/')
+        self.assertIn(patient.id, response.context['teammates'].values_list('id', flat=True))
+
+        self.client.force_login(patient)
+        response = self.client.get('/accounts/messages/')
+        self.assertIn(doctor.id, response.context['teammates'].values_list('id', flat=True))
+        response = self.client.post(
+            '/accounts/messages/send/',
+            {'recipient_id': doctor.id, 'body': 'Hello'},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(ChatMessage.objects.filter(sender=patient, recipient=doctor).exists())
+
+
+class CounterAppointmentFeedbackTests(TestCase):
+    def test_approval_and_rejection_show_sweetalert_messages(self):
+        hospital = Hospital.objects.create(
+            name='Counter Feedback Hospital',
+            code='TEST-COUNTER-FEEDBACK',
+            address='Test address',
+        )
+        doctor = User.objects.create_user(
+            username='feedback-doctor@example.com',
+            email='feedback-doctor@example.com',
+            password='ValidPass123!',
+            role='doctor',
+            hospital=hospital,
+        )
+        patient = User.objects.create_user(
+            username='feedback-patient@example.com',
+            email='feedback-patient@example.com',
+            password='ValidPass123!',
+            role='patient',
+        )
+        counter = User.objects.create_user(
+            username='feedback-counter@example.com',
+            email='feedback-counter@example.com',
+            password='ValidPass123!',
+            role='counter',
+            hospital=hospital,
+        )
+        self.client.force_login(counter)
+
+        for action, expected_message in (
+            ('approve', 'Appointment approved.'),
+            ('reject', 'Appointment rejected.'),
+        ):
+            appointment = PatientAppointment.objects.create(
+                hospital=hospital,
+                patient_user=patient,
+                doctor=doctor,
+                patient_name='Feedback Patient',
+                appointment_date='2026-11-27',
+                appointment_time='10:00',
+                status='pending',
+            )
+            response = self.client.post(
+                '/accounts/counter/appointments/',
+                {'action': action, 'appointment_id': appointment.id},
+                follow=True,
+            )
+
+            self.assertEqual(response.status_code, 200)
+            self.assertContains(response, expected_message)
+            self.assertContains(response, 'Swal.fire')
+            appointment.refresh_from_db()
+            self.assertEqual(appointment.status, 'approved' if action == 'approve' else 'rejected')
 
 
 class MedicineOrderWorkflowTests(TestCase):

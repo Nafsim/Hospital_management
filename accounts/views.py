@@ -2082,7 +2082,8 @@ def _chat_members(user):
         ).values_list('patient_id', flat=True)
         appointment_patient_ids = PatientAppointment.objects.filter(
             doctor=user,
-        ).exclude(status='cancelled').values_list('patient_user_id', flat=True)
+            status='approved',
+        ).values_list('patient_user_id', flat=True)
         return User.objects.filter(
             models.Q(
                 patient_profile__patient_id__in=patient_codes,
@@ -2095,7 +2096,8 @@ def _chat_members(user):
 
     appointment_doctor_ids = PatientAppointment.objects.filter(
         patient_user=user,
-    ).exclude(status='cancelled').values_list('doctor_id', flat=True)
+        status='approved',
+    ).values_list('doctor_id', flat=True)
     return User.objects.filter(
         id__in=appointment_doctor_ids,
         role='doctor',
@@ -2114,11 +2116,13 @@ def _chat_hospital_id(user, recipient):
         appointment = PatientAppointment.objects.filter(
             doctor=user,
             patient_user=recipient,
+            status='approved',
         ).first()
     else:
         appointment = PatientAppointment.objects.filter(
             patient_user=user,
             doctor=recipient,
+            status='approved',
         ).first()
     return appointment.hospital_id if appointment else recipient.hospital_id or user.hospital_id
 

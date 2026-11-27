@@ -70,7 +70,8 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             ).values_list('patient_id', flat=True)
             appointment_patient_ids = PatientAppointment.objects.filter(
                 doctor=user,
-            ).exclude(status='cancelled').values_list('patient_user_id', flat=True)
+                status='approved',
+            ).values_list('patient_user_id', flat=True)
             return User.objects.filter(
                 id=user_id,
                 role='patient',
@@ -81,7 +82,8 @@ class ChatConsumer(AsyncJsonWebsocketConsumer):
             ).exclude(id=user.id).first()
         appointment_doctor_ids = PatientAppointment.objects.filter(
             patient_user=user,
-        ).exclude(status='cancelled').values_list('doctor_id', flat=True)
+            status='approved',
+        ).values_list('doctor_id', flat=True)
         return User.objects.filter(
             id=user_id,
             role='doctor',

@@ -212,22 +212,22 @@
                     <td>
                         {% if appointment.status == 'pending' %}
                         <div class="action-buttons">
-                            <form method="post">
+                            <form method="post" class="appointment-action-form">
                                 {% csrf_token %}
                                 <input type="hidden" name="appointment_id" value="{{ appointment.id }}">
                                 <input type="hidden" name="action" value="approve">
-                                <button type="submit" class="action-btn approve-btn" onclick="return confirm('Approve this appointment?')">
+                                <button type="submit" class="action-btn approve-btn">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                         <path d="m5 12 4 4L19 6"/>
                                     </svg>
                                     Approve
                                 </button>
                             </form>
-                            <form method="post">
+                            <form method="post" class="appointment-action-form">
                                 {% csrf_token %}
                                 <input type="hidden" name="appointment_id" value="{{ appointment.id }}">
                                 <input type="hidden" name="action" value="reject">
-                                <button type="submit" class="action-btn reject-btn" onclick="return confirm('Reject this appointment?')">
+                                <button type="submit" class="action-btn reject-btn">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                         <path d="m18 6-12 12M6 6l12 12"/>
                                     </svg>
@@ -422,4 +422,40 @@ window.addEventListener('click', function(e) {
 });
 </script>
 
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+document.querySelectorAll('.appointment-action-form').forEach(function (form) {
+    form.addEventListener('submit', function (event) {
+        event.preventDefault();
+        const approving = form.querySelector('input[name="action"]').value === 'approve';
+        Swal.fire({
+            title: approving ? 'Approve this appointment?' : 'Reject this appointment?',
+            text: approving
+                ? 'The patient will be able to chat with the doctor.'
+                : 'The appointment request will be rejected.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: approving ? '#16a34a' : '#dc2626',
+            cancelButtonColor: '#64748b',
+            confirmButtonText: approving ? 'Yes, approve' : 'Yes, reject',
+            cancelButtonText: 'Cancel'
+        }).then(function (result) {
+            if (result.isConfirmed) {
+                form.submit();
+            }
+        });
+    });
+});
+
+{% for message in messages %}
+Swal.fire({
+    title: '{{ message|escapejs }}',
+    icon: '{{ message.tags|escapejs }}',
+    confirmButtonColor: '#2563eb'
+});
+{% endfor %}
+</script>
 {% endblock %}
