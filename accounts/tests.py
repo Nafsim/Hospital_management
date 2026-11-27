@@ -95,6 +95,80 @@ class LoginFormTests(TestCase):
         self.assertEqual(staff.qualification, 'BBA')
 
 
+class RegistrationWorkflowTests(TestCase):
+    def test_registration_page_links_back_to_login_and_shows_both_registration_types(self):
+        response = self.client.get('/accounts/register/')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Register your hospital or healthcare facility with NHIMS.')
+        self.assertContains(response, 'Create your personal account to access digital healthcare services.')
+        self.assertContains(response, 'Already have an account? Sign In')
+        self.assertContains(response, 'images/template.png')
+        self.assertContains(response, 'Select Registration Type')
+        self.assertContains(response, 'Create Account &amp; Sign In')
+        self.assertNotContains(response, 'Allergies')
+        self.assertNotContains(response, 'Chronic Conditions')
+
+    def test_patient_registration_creates_patient_records_and_signs_in(self):
+        response = self.client.post(
+            '/accounts/register/',
+            {
+                'registration_type': 'patient',
+                'first_name': 'Test',
+                'last_name': 'Patient',
+                'email': 'new-patient@example.com',
+                'phone': '01700000000',
+                'password': 'abc',
+                'confirm_password': 'abc',
+                'date_of_birth': '1995-03-05',
+                'gender': 'F',
+                'blood_group': 'B+',
+                'nid': 'NID-NEW-001',
+                'address': 'Test address',
+                'city': 'Dhaka',
+                'emergency_name': 'Emergency Contact',
+                'emergency_phone': '01800000000',
+            },
+        )
+
+        self.assertRedirects(response, '/accounts/patient/dashboard/')
+        user = User.objects.get(email='new-patient@example.com')
+        self.assertEqual(user.role, 'patient')
+        self.assertEqual(user.patient_profile.gender, 'F')
+        self.assertEqual(user.patient_account_profile.nid, 'NID-NEW-001')
+        self.assertEqual(user.patient_account_profile.city, 'Dhaka')
+        self.assertTrue(user.check_password('abc'))
+        self.assertEqual(int(response.wsgi_request.user.pk), user.pk)
+
+    def test_hospital_registration_creates_pending_hospital_admin_account(self):
+        response = self.client.post(
+            '/accounts/register/',
+            {
+                'registration_type': 'hospital',
+                'name': 'New Community Hospital',
+                'code': 'NEW-COMMUNITY',
+                'address': '123 Health Road',
+                'city': 'Dhaka',
+                'state': 'Dhaka',
+                'facility_type': 'hospital',
+                'phone': '01700000001',
+                'email': 'facility@example.com',
+                'admin_first_name': 'Facility',
+                'admin_last_name': 'Admin',
+                'admin_email': 'facility-admin@example.com',
+                'admin_phone': '01700000002',
+                'admin_password': 'FacilityStrongPass987!',
+                'confirm_password': 'FacilityStrongPass987!',
+            },
+        )
+
+        self.assertRedirects(response, '/accounts/hospital-admin/')
+        user = User.objects.get(email='facility-admin@example.com')
+        self.assertEqual(user.role, 'hospital_admin')
+        self.assertEqual(user.hospital.name, 'New Community Hospital')
+        self.assertFalse(user.hospital.is_active)
+
+
 class MedicineOrderWorkflowTests(TestCase):
     def test_patient_payment_pharmacy_sale_updates_stock(self):
         hospital = Hospital.objects.create(

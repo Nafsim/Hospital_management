@@ -4,7 +4,13 @@ from django.shortcuts import render , redirect, get_object_or_404
 from django.urls import reverse
 from django.contrib.auth import login, authenticate
 from django.contrib import messages
-from .forms import LoginForm, HospitalCreationForm
+from .forms import (
+    HospitalRegistrationForm,
+    LoginForm,
+    HospitalCreationForm,
+    PatientRegistrationForm,
+    RegistrationTypeForm,
+)
 import calendar
 from datetime import datetime, timedelta, date
 from django.apps import apps
@@ -49,6 +55,118 @@ from .models import (
     User, Notice, Department, DoctorPatient, DoctorSchedule,
     DoctorPrescription, DoctorReferral, ChatMessage,
 )
+
+
+def register_view(request):
+    if request.user.is_authenticated:
+        return redirect('dashboard')
+
+    registration_type_form = RegistrationTypeForm(
+        request.POST if request.method == 'POST' else None
+    )
+    patient_form = PatientRegistrationForm(
+        request.POST if request.method == 'POST' and request.POST.get('registration_type') == 'patient' else None
+    )
+    hospital_form = HospitalRegistrationForm(
+        request.POST if request.method == 'POST' and request.POST.get('registration_type') == 'hospital' else None
+    )
+    if request.method == 'POST':
+        if registration_type_form.is_valid():
+            registration_type = registration_type_form.cleaned_data['registration_type']
+            if registration_type == 'patient' and patient_form.is_valid():
+                try:
+                    with transaction.atomic():
+                        email = patient_form.cleaned_data['email']
+                        patient_user = User.objects.create_user(
+                            username=email,
+                            email=email,
+                            password=patient_form.cleaned_data['password'],
+                            first_name=patient_form.cleaned_data['first_name'],
+                            last_name=patient_form.cleaned_data['last_name'],
+                            phone=patient_form.cleaned_data['phone'],
+                            role='patient',
+                            is_active=True,
+                        )
+                        patient_id = f"P-{random.randint(10000, 99999)}"
+                        while Patient.objects.filter(patient_id=patient_id).exists():
+                            patient_id = f"P-{random.randint(10000, 99999)}"
+                        gender = patient_form.cleaned_data.get('gender') or ''
+                        patient = Patient.objects.create(
+                            user=patient_user,
+                            patient_id=patient_id,
+                            date_of_birth=patient_form.cleaned_data.get('date_of_birth'),
+                            gender=gender,
+                            blood_group=patient_form.cleaned_data.get('blood_group') or '',
+                            address=patient_form.cleaned_data.get('address', ''),
+                            emergency_contact_name=patient_form.cleaned_data.get('emergency_name', ''),
+                            emergency_contact_phone=patient_form.cleaned_data.get('emergency_phone', ''),
+                        )
+                        PatientProfile.objects.create(
+                            user=patient_user,
+                            patient_id=patient.patient_id,
+                            date_of_birth=patient.date_of_birth,
+                            gender=dict(Patient.GENDER_CHOICES).get(gender, ''),
+                            blood_group=patient.blood_group,
+                            nid=patient_form.cleaned_data.get('nid', ''),
+                            address=patient.address,
+                            city=patient_form.cleaned_data.get('city', ''),
+                            emergency_name=patient.emergency_contact_name,
+                            emergency_phone=patient.emergency_contact_phone,
+                        )
+                except IntegrityError:
+                    patient_form.add_error(
+                        None,
+                        'The account could not be created because the email is already in use.',
+                    )
+                else:
+                    login(request, patient_user)
+                    messages.success(request, 'Your patient account has been created.')
+                    return redirect('patient_dashboard')
+            elif registration_type == 'hospital' and hospital_form.is_valid():
+                try:
+                    with transaction.atomic():
+                        hospital = Hospital.objects.create(
+                            name=hospital_form.cleaned_data['name'],
+                            code=hospital_form.cleaned_data['code'],
+                            address=hospital_form.cleaned_data['address'],
+                            city=hospital_form.cleaned_data['city'],
+                            state=hospital_form.cleaned_data['state'],
+                            facility_type=hospital_form.cleaned_data['facility_type'],
+                            phone=hospital_form.cleaned_data['phone'],
+                            email=hospital_form.cleaned_data['email'],
+                            is_active=False,
+                        )
+                        email = hospital_form.cleaned_data['admin_email']
+                        hospital_user = User.objects.create_user(
+                            username=email,
+                            email=email,
+                            password=hospital_form.cleaned_data['admin_password'],
+                            first_name=hospital_form.cleaned_data['admin_first_name'],
+                            last_name=hospital_form.cleaned_data['admin_last_name'],
+                            phone=hospital_form.cleaned_data['admin_phone'],
+                            role='hospital_admin',
+                            hospital=hospital,
+                            is_active=True,
+                        )
+                except IntegrityError:
+                    hospital_form.add_error(
+                        None,
+                        'The facility could not be registered because its code or account email is already in use.',
+                    )
+                else:
+                    login(request, hospital_user)
+                    messages.success(
+                        request,
+                        'Your facility registration has been submitted for approval.',
+                    )
+                    return redirect('hospital_admin_dashboard')
+    return render(request, 'accounts/register.html', {
+        'registration_type_form': registration_type_form,
+        'patient_form': patient_form,
+        'hospital_form': hospital_form,
+    })
+
+
 def login_view(request):
     if request.user.is_authenticated:
         return redirect('dashboard')

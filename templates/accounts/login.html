@@ -26,7 +26,7 @@
             height: 100vh;
         }
         .left-side {
-    width: 50%;
+    width: 52%;
     height: 100vh;
     overflow: hidden;
 }
@@ -38,7 +38,7 @@
     object-fit: fill;
 }
         .right-side {
-            width: 50%;
+            width: 48%;
             height: 100vh;
             background: linear-gradient(135deg, #f0f9ff 0%, #dbeafe 45%, #bfdbfe 100%);
             display: flex;
@@ -143,6 +143,19 @@
             transform: translateY(-1px);
             box-shadow: 0 8px 20px rgba(37, 99, 235, 0.25);
         }
+        .registration-link {
+            display: block;
+            margin-top: 12px;
+            color: #2563eb;
+            font-size: 14px;
+            font-weight: 600;
+            text-align: center;
+            text-decoration: none;
+        }
+        .registration-link:hover {
+            color: #1d4ed8;
+            text-decoration: underline;
+        }
         .alert {
             border-radius: 10px;
             font-size: 13px;
@@ -220,6 +233,7 @@
                         </div>
                         <button type="submit" class="btn btn-login">Login to NHIMS</button>
                     </form>
+                    <a class="registration-link" href="{% url 'register' %}">National Health Registration</a>
                 </div>
             </div>
         </div>
